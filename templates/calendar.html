@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid mt-2 mb-5">
+    <!-- Header with Title and Active Week Info -->
+    <div class="text-center mb-4">
+        <h2 class="mb-2 fw-bold text-42-cyan">📅 Calendario Settimanale</h2>
+        <small class="text-muted">Settimana attiva: <span class="badge bg-success">Week {{ active_week }}</span></small>
+    </div>
+
+    <!-- Week Navigation - Modern Design -->
+    <div class="week-navigation-container mb-4">
+        <div class="week-navigation">
+            <!-- Current Week Display -->
+            <div class="week-current">
+                <div class="week-current-label">Stai visualizzando</div>
+                <div class="week-current-number">Week {{ current_week }}</div>
+            </div>
+            
+            <!-- Navigation Buttons Row -->
+            <div class="week-nav-buttons">
+                <!-- Previous Week Button -->
+                {% if current_week > 1 %}
+                <a href="{{ url_for('home', week=current_week - 1) }}" class="week-nav-btn week-nav-prev">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                    <span>Week {{ current_week - 1 }}</span>
+                </a>
+                {% endif %}
+                
+                <!-- Next Week Button -->
+                {% if current_week < active_week %}
+                <a href="{{ url_for('home', week=current_week + 1) }}" class="week-nav-btn week-nav-next">
+                    <span>Week {{ current_week + 1 }}</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sticky header che appare durante lo scroll -->
+    <div id="stickyDaysHeader" class="sticky-days-header" style="display: none;">
+        <div class="sticky-header-content" id="stickyHeaderContent">
+            <table class="table table-bordered user-calendar-table mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        {% for day in days %}
+                            <th class="text-center p-3">{{ day }} {% if day_dates and day in day_dates %}<br><small class="text-muted">{{ day_dates[day]|format_event_date }}</small>{% endif %}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+
+    <div class="table-responsive" id="userTableContainer">
+        <table class="table table-bordered user-calendar-table">
+            <thead class="table-dark">
+                <tr>
+                    {% for day in days %}
+                        <th class="text-center p-3">{{ day }} {% if day_dates and day in day_dates %}<br><small class="text-muted">{{ day_dates[day]|format_event_date }}</small>{% endif %}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    {% for d in days %}
+                        <td class="user-day-cell p-2 align-top">
+                                {% for event in calendar_grid[d] %}
+                                    {% set is_registered = session.user and event.is_user_registered %}
+                                        {% set is_full = (event.registered_visible if event.registered_visible is defined else event.registered) >= event.max_slots %}
+                                    <div class="card mb-2 user-event-card {{ event.title|event_type_class }} {% if is_registered %}event-registered{% elif is_full %}event-full{% endif %}">
+                                        <div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>{{ event.title }}</strong>
+                                                <br>
+                                                <small class="fw-bold">🕐 {{ event.start_time }} - {{ event.end_time }}</small>
+                                            </div>
+                                        </div>
+                                        <div class="card-body p-2">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="badge {% if (event.registered_visible if event.registered_visible is defined else event.registered) >= event.max_slots %}bg-danger{% else %}bg-success{% endif %}">
+                                                    👥 {{ (event.registered_visible if event.registered_visible is defined else event.registered) }}/{{ event.max_slots }}
+                                                </span>
+                                                <span class="badge bg-warning text-dark">
+                                                    ₳ {{ event.compensation }}
+                                                </span>
+                                            </div>
+                                            
+                                            {% if session.user and session.user.is_admin and event.participants_raw %}
+                                                {# Count attended participants #}
+                                                {% set attended_count = namespace(value=0) %}
+                                                {% for participant in event.participants_raw %}
+                                                    {% set pattended = (participant[2]|default(1)|int) %}
+                                                    {% if pattended == 1 %}
+                                                        {% set attended_count.value = attended_count.value + 1 %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                
+                                                {# Only show div if there are attended participants #}
+                                                {% if attended_count.value > 0 %}
+                                                    <div class="participants-compact bg-light p-2 rounded mb-2">
+                                                        <div class="d-flex flex-wrap gap-1 align-items-center">
+                                                            {% for participant in event.participants_raw %}
+                                                                {# raw tuple: (name, reg_date, attended) #}
+                                                                {% set pname = participant[0] %}
+                                                                {% set pattended = (participant[2]|default(1)|int) %}
+                                                                {# Only show if attended is 1 (true) #}
+                                                                {% if pattended == 1 %}
+                                                                    <span class="participant-badge badge {% if session.user and session.user.login == pname %}bg-success{% else %}bg-secondary{% endif %}">
+                                                                        {{ pname }}
+                                                                        {% if session.user and session.user.login == pname and not event.is_passed %}
+                                                                            <button type="button" class="btn-unsub" data-bs-toggle="modal" data-bs-target="#unregisterModal{{ event.id }}" title="Disiscrivi">×</button>
+                                                                        {% endif %}
+                                                                    </span>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            {% elif event.participants_visible %}
+                                                <div class="participants-compact bg-light p-2 rounded mb-2">
+                                                    <div class="d-flex flex-wrap gap-1 align-items-center">
+                                                        {% for pname in event.participants_visible %}
+                                                            <span class="participant-badge badge {% if session.user and session.user.login == pname %}bg-success{% else %}bg-secondary{% endif %}">
+                                                                {{ pname }}
+                                                                {% if session.user and session.user.login == pname and not event.is_passed %}
+                                                                    <button type="button" class="btn-unsub" data-bs-toggle="modal" data-bs-target="#unregisterModal{{ event.id }}" title="Disiscrivi">×</button>
+                                                                {% endif %}
+                                                            </span>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+                                        
+                                            {% if event.is_passed %}
+                                                <div class="alert alert-danger p-1 mb-0 text-center small">
+                                                    ⏰ Scaduto
+                                                </div>
+                                            {% elif event.registered < event.max_slots %}
+                                                {% set user_registered = event.is_user_registered %}
+                                                {% if not user_registered %}
+                                                <form action="/register/{{ event.id }}" method="post">
+                                                    <button type="submit" class="btn btn-success btn-sm w-100">
+                                                        + Iscriviti
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                            {% else %}
+                                                <div class="alert alert-danger p-1 mb-0 text-center small">
+                                                    ⚠️ Pieno
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                
+                {% if not calendar_grid[d] %}
+                    <div class="text-muted text-center py-5 fst-italic">
+                        <p class="mb-0">📭</p>
+                        <small>Nessun evento</small>
+                    </div>
+                {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal per conferma disiscrizione -->
+{% for day in days %}
+    {% for event in calendar_grid[day] %}
+        <div class="modal fade" id="unregisterModal{{ event.id }}" tabindex="-1" aria-labelledby="unregisterModalLabel{{ event.id }}" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content bg-42-black">
+                    <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
+                        <h5 class="modal-title text-danger fw-bold" id="unregisterModalLabel{{ event.id }}">⚠️ Conferma Disiscrizione</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body bg-42-black">
+                        <p>Vuoi davvero disiscriverti dall'evento <strong>{{ event.title }}</strong>?</p>
+                        <p class="text-muted small mb-0">{{ event.day }} {% if day_dates and event.day in day_dates %}{{ day_dates[event.day]|format_event_date }}{% endif %}, {{ event.start_time }} - {{ event.end_time }}</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                        <form action="/unregister/{{ event.id }}" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-danger">
+                                ✕ Disiscrivi
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+{% endfor %}
+
+<!-- Modal per notifica cambio settimana -->
+<div class="modal fade" id="weekActivatedModal" tabindex="-1" aria-labelledby="weekActivatedModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-42-black border-warning">
+            <div class="modal-header bg-42-black border-warning" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
+                <h5 class="modal-title text-warning fw-bold" id="weekActivatedModalLabel">⚡ Settimana Attivata</h5>
+            </div>
+            <div class="modal-body bg-42-black text-center">
+                <div class="display-1 text-warning mb-3">📅</div>
+                <h5 class="text-white mb-3" id="weekActivatedMessage">Week X è stata attivata!</h5>
+                <p class="text-muted mb-0">La pagina verrà ricaricata per mostrare la nuova settimana.</p>
+            </div>
+            <div class="modal-footer bg-42-black border-warning">
+                <button type="button" class="btn btn-warning w-100" onclick="location.reload()">
+                    ✓ Ricarica Pagina
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Mostra/nascondi header sticky durante lo scroll
+window.addEventListener('scroll', function() {
+    const tableContainer = document.getElementById('userTableContainer');
+    const stickyHeader = document.getElementById('stickyDaysHeader');
+    
+    if (tableContainer && stickyHeader) {
+        const containerRect = tableContainer.getBoundingClientRect();
+        const stickyTop = 50; // Top position dello sticky header
+        
+        // Mostra l'header sticky quando il container della tabella è nascosto sopra
+        // Usiamo containerRect.top + altezza header (circa 58px) per sapere quando l'header è nascosto
+        if (containerRect.top + 58 <= stickyTop) {
+            stickyHeader.style.display = 'block';
+        } else {
+            stickyHeader.style.display = 'none';
+        }
+    }
+});
+
+// Sincronizza lo scroll orizzontale tra tabella e header sticky
+const tableContainer = document.getElementById('userTableContainer');
+const stickyHeaderContent = document.getElementById('stickyHeaderContent');
+
+if (tableContainer && stickyHeaderContent) {
+    // Quando la tabella scrolla orizzontalmente, muovi il contenuto dell'header
+    tableContainer.addEventListener('scroll', function() {
+        const scrollLeft = tableContainer.scrollLeft;
+        stickyHeaderContent.style.transform = `translateX(-${scrollLeft}px)`;
+    });
+}
+</script>
+
+<!-- Real-time updates with Socket.IO (caricato dopo tutti gli altri script) -->
+<script>
+// Aspetta che Socket.IO sia caricato
+(function() {
+    function initSocketIO() {
+        if (typeof io === 'undefined') {
+            console.warn('⏳ Socket.IO not loaded yet, retrying...');
+            setTimeout(initSocketIO, 100);
+            return;
+        }
+        
+        console.log('✅ Socket.IO loaded, connecting...');
+        const socket = io();
+
+        socket.on('connect', function() {
+            console.log('✅ Connected to real-time updates');
+        });
+
+        socket.on('event_update', function(data) {
+            console.log('📡 Received event update:', data);
+            
+            // Ricarica la pagina per mostrare gli aggiornamenti
+            location.reload();
+        });
+
+        socket.on('week_activated', function(data) {
+            console.log('📅 Week activated:', data);
+            
+            // Aggiorna il messaggio del modal
+            document.getElementById('weekActivatedMessage').textContent = data.message;
+            
+            // Mostra il modal
+            const modal = new bootstrap.Modal(document.getElementById('weekActivatedModal'));
+            modal.show();
+        });
+
+        socket.on('disconnect', function() {
+            console.log('❌ Disconnected from real-time updates');
+        });
+    }
+    
+    // Inizia il tentativo di connessione
+    initSocketIO();
+})();
+</script>
+
+{% endblock %}

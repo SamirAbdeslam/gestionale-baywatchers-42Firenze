@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg">
+                <div class="card-body text-center p-5">
+                    <h1 class="mb-4">
+                        <span class="fs-1 text-42-cyan">42</span>
+                    </h1>
+                    <h2 class="mb-4">Gestionale Calendario</h2>
+                    <p class="text-muted mb-4">
+                        Accedi con il tuo account 42 per gestire gli eventi e le iscrizioni
+                    </p>
+                    <a href="{{ url_for('login') }}" class="btn btn-success btn-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-box-arrow-in-right me-2" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M6 3.5a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 0-1 0v2A1.5 1.5 0 0 0 6.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-8A1.5 1.5 0 0 0 5 3.5v2a.5.5 0 0 0 1 0v-2z"/>
+                            <path fill-rule="evenodd" d="M11.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H1.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+                        </svg>
+                        Login con 42
+                    </a>
+                    
+                    <div class="mt-5">
+                        <small class="text-muted">
+                            <p class="mb-2">📋 Gestisci i tuoi eventi settimanali</p>
+                            <p class="mb-2">👥 Iscriviti agli eventi disponibili</p>
+                            <p class="mb-0">💰 Traccia i compensi e le ore lavorate</p>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <small class="text-muted">
+                    Powered by <span class="text-42-cyan">42 API</span>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background: linear-gradient(135deg, var(--42-dark-gray) 0%, var(--42-black) 100%);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .card {
+        border: 2px solid var(--42-cyan) !important;
+        background: var(--42-gray) !important;
+    }
+    
+    .btn-success {
+        padding: 12px 40px;
+        font-size: 1.1rem;
+    }
+</style>
+{% endblock %}

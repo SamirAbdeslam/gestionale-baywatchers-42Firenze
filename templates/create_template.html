@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4 mb-5">
+    <!-- Card principale -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">➕ Crea Nuovo Template Settimana</h4>
+        </div>
+        <div class="card-body">
+            <form id="templateForm" method="POST" action="/save_template">
+                <!-- Form template info -->
+                <div class="row mb-4">
+                    <div class="col-md-5">
+                        <label for="template_name" class="form-label fw-bold">Nome Template *</label>
+                        <input type="text" class="form-control" id="template_name" name="template_name" 
+                               placeholder="es: Default Week 1" required>
+                        <small class="text-muted">Es: "Default Week 1", "Exam Week 2", etc.</small>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label for="target_week" class="form-label fw-bold">Settimana Target *</label>
+                        <select class="form-select" id="target_week" name="target_week" required>
+                            <option value="1">Week 1</option>
+                            <option value="2">Week 2</option>
+                            <option value="3">Week 3</option>
+                            <option value="4">Week 4</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-5">
+                        <label for="template_description" class="form-label fw-bold">Descrizione</label>
+                        <input type="text" class="form-control" id="template_description" name="template_description" 
+                               placeholder="Descrizione opzionale del template">
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <!-- Header eventi con bottoni -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0 fw-bold">📅 Eventi della Settimana</h5>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="clearDraft()" id="clearDraftBtn" style="display: none;">
+                            🗑️ Svuota Bozza
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="addEvent()">
+                            ➕ Aggiungi Evento
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Mini calendario per visualizzare gli eventi -->
+                <div class="table-responsive mb-4">
+                    <table class="table table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="text-center" width="20%">Lunedì</th>
+                                <th class="text-center" width="20%">Martedì</th>
+                                <th class="text-center" width="20%">Mercoledì</th>
+                                <th class="text-center" width="20%">Giovedì</th>
+                                <th class="text-center" width="20%">Venerdì</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td id="day-Lunedì" class="template-day-cell align-top p-2"></td>
+                                <td id="day-Martedì" class="template-day-cell align-top p-2"></td>
+                                <td id="day-Mercoledì" class="template-day-cell align-top p-2"></td>
+                                <td id="day-Giovedì" class="template-day-cell align-top p-2"></td>
+                                <td id="day-Venerdì" class="template-day-cell align-top p-2"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Container nascosto per gli eventi (da inviare al server) -->
+                <div id="events-container"></div>
+                
+                <!-- Bottoni azione -->
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{{ url_for('admin_panel') }}" class="btn btn-danger">
+                        ✖ Annulla
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        💾 Salva Template
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Aggiungi Evento al Template -->
+<div class="modal fade" id="addTemplateEventModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold">➕ Aggiungi Evento al Template</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-42-black">
+                <div class="mb-3">
+                    <label for="event_type" class="form-label">Tipo di Evento *</label>
+                    <select class="form-select" id="event_type" required onchange="toggleCustomFields()">
+                        <option value="">Seleziona tipo evento...</option>
+                        <option value="icebreaker">Icebreaker/eventi - 150 ₳</option>
+                        <option value="sorveglianza">Sorveglianza esami (2 ore) - 200 ₳</option>
+                        <option value="correzioni">Correzioni rush - 300 ₳</option>
+                        <option value="cluster">Presenza cluster - 100 ₳</option>
+                        <option value="accoglienza">Accoglienza primo giorno - 300 ₳</option>
+                        <option value="custom">🔧 Altro (personalizzato)</option>
+                    </select>
+                    <div class="form-text" id="compensation-text">Il compenso è automatico in base al tipo di evento</div>
+                </div>
+                
+                <!-- Campi personalizzati (nascosti di default) -->
+                <div id="custom-fields" style="display: none;">
+                    <div class="alert alert-info">
+                        <strong>📝 Evento Personalizzato</strong> - Inserisci nome e compenso
+                    </div>
+                    <div class="mb-3">
+                        <label for="custom_title" class="form-label">Nome Evento *</label>
+                        <input type="text" class="form-control" id="custom_title" placeholder="Es: Workshop speciale">
+                    </div>
+                    <div class="mb-3">
+                        <label for="custom_compensation" class="form-label">Altarian (₳) *</label>
+                        <input type="number" class="form-control" id="custom_compensation" placeholder="Es: 250" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="custom_description" class="form-label">Descrizione</label>
+                        <textarea class="form-control" id="custom_description" rows="2" placeholder="Descrizione dell'evento personalizzato"></textarea>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="event_day" class="form-label">Giorno *</label>
+                    <select class="form-select" id="event_day" required>
+                        <option value="">Seleziona...</option>
+                        <option value="Lunedì">Lunedì</option>
+                        <option value="Martedì">Martedì</option>
+                        <option value="Mercoledì">Mercoledì</option>
+                        <option value="Giovedì">Giovedì</option>
+                        <option value="Venerdì">Venerdì</option>
+                    </select>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="event_start" class="form-label">Ora inizio *</label>
+                        <input type="text" class="form-control time-picker" id="event_start" placeholder="09:00" required>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="event_end" class="form-label">Ora fine *</label>
+                        <input type="text" class="form-control time-picker" id="event_end" placeholder="18:00" required>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="event_slots" class="form-label">Posti massimi *</label>
+                        <input type="number" class="form-control" id="event_slots" value="2" min="1" max="100" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success" onclick="saveEvent()">
+                    <strong>✓</strong> Aggiungi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let events = [];
+let editingIndex = -1;
+
+// Chiave per localStorage
+const STORAGE_KEY = 'template_events_draft';
+
+// Mappa tipi evento (come nell'admin)
+const eventTypes = {
+    'icebreaker': { title: 'Icebreaker/eventi', compensation: 150, description: 'Evento icebreaker o simili' },
+    'sorveglianza': { title: 'Sorveglianza esami', compensation: 200, description: 'Sorveglianza esami (2 ore)' },
+    'correzioni': { title: 'Correzioni rush', compensation: 300, description: 'Correzioni evaluations' },
+    'cluster': { title: 'Presenza cluster', compensation: 100, description: 'Presenza in cluster' },
+    'accoglienza': { title: 'Accoglienza primo giorno', compensation: 300, description: 'Accoglienza nuovi studenti' }
+};
+
+// Carica eventi salvati al caricamento pagina
+function loadEventsFromStorage() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            events = JSON.parse(saved);
+            renderCalendar();
+            updateClearButton();
+            console.log('Eventi caricati da localStorage:', events.length);
+            
+            // Mostra notifica bozza caricata
+            if (events.length > 0) {
+                showDraftNotification();
+            }
+        }
+    } catch (e) {
+        console.error('Errore caricamento eventi:', e);
+    }
+}
+
+// Mostra notifica bozza caricata
+function showDraftNotification() {
+    const notification = document.createElement('div');
+    notification.className = 'alert alert-info alert-dismissible fade show';
+    notification.style.cssText = 'margin-bottom: 1rem;';
+    notification.innerHTML = `
+        <strong>Bozza recuperata</strong> - Sono stati caricati ${events.length} evento${events.length !== 1 ? 'i' : ''} salvati in precedenza.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Inserisci all'inizio della card body
+    const cardBody = document.querySelector('.card-body');
+    if (cardBody) {
+        cardBody.insertBefore(notification, cardBody.firstChild);
+    }
+    
+    // Auto-rimuovi dopo 8 secondi
+    setTimeout(() => {
+        notification.remove();
+    }, 8000);
+}
+
+// Salva eventi in localStorage
+function saveEventsToStorage() {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+    } catch (e) {
+        console.error('Errore salvataggio eventi:', e);
+    }
+}
+
+// Pulisci localStorage dopo salvataggio template
+function clearEventsFromStorage() {
+    localStorage.removeItem(STORAGE_KEY);
+}
+
+// Aggiorna visibilità bottone "Svuota Bozza"
+function updateClearButton() {
+    const btn = document.getElementById('clearDraftBtn');
+    if (btn) {
+        btn.style.display = events.length > 0 ? 'inline-block' : 'none';
+    }
+}
+
+// Pulisci bozza manualmente
+function clearDraft() {
+    if (confirm('Svuotare la bozza? Tutti gli eventi non salvati verranno eliminati.')) {
+        events = [];
+        clearEventsFromStorage();
+        renderCalendar();
+        updateClearButton();
+    }
+}
+
+// Carica eventi all'avvio
+window.addEventListener('DOMContentLoaded', loadEventsFromStorage);
+
+function toggleCustomFields() {
+    const eventType = document.getElementById('event_type').value;
+    const customFields = document.getElementById('custom-fields');
+    
+    if (eventType === 'custom') {
+        customFields.style.display = 'block';
+    } else {
+        customFields.style.display = 'none';
+    }
+}
+
+function addEvent() {
+    editingIndex = -1;
+    // Reset form
+    document.getElementById('event_type').value = '';
+    document.getElementById('event_day').value = '';
+    document.getElementById('event_start').value = '';
+    document.getElementById('event_end').value = '';
+    document.getElementById('event_slots').value = '2';
+    document.getElementById('custom_title').value = '';
+    document.getElementById('custom_compensation').value = '';
+    document.getElementById('custom_description').value = '';
+    toggleCustomFields();
+    
+    // Aggiorna titolo modal
+    document.querySelector('#addTemplateEventModal .modal-title').textContent = '➕ Aggiungi Evento al Template';
+    document.querySelector('#addTemplateEventModal .btn-success').innerHTML = '<strong>✓</strong> Aggiungi';
+    
+    // Apri modal
+    new bootstrap.Modal(document.getElementById('addTemplateEventModal')).show();
+}
+
+function editEvent(index) {
+    editingIndex = index;
+    const event = events[index];
+    
+    // Determina se è custom o predefinito
+    let isCustom = true;
+    let eventTypeValue = 'custom';
+    
+    for (const [key, data] of Object.entries(eventTypes)) {
+        if (data.title === event.title && data.compensation == event.compensation) {
+            isCustom = false;
+            eventTypeValue = key;
+            break;
+        }
+    }
+    
+    // Popola form
+    document.getElementById('event_type').value = eventTypeValue;
+    document.getElementById('event_day').value = event.day;
+    document.getElementById('event_start').value = event.start;
+    document.getElementById('event_end').value = event.end;
+    document.getElementById('event_slots').value = event.slots;
+    
+    if (isCustom) {
+        document.getElementById('custom_title').value = event.title;
+        document.getElementById('custom_compensation').value = event.compensation;
+        document.getElementById('custom_description').value = event.description || '';
+    }
+    
+    toggleCustomFields();
+    
+    // Aggiorna titolo modal
+    document.querySelector('#addTemplateEventModal .modal-title').textContent = '✏️ Modifica Evento';
+    document.querySelector('#addTemplateEventModal .btn-success').innerHTML = '<strong>✓</strong> Salva Modifiche';
+    
+    // Apri modal
+    new bootstrap.Modal(document.getElementById('addTemplateEventModal')).show();
+}
+
+function saveEvent() {
+    const eventType = document.getElementById('event_type').value;
+    const day = document.getElementById('event_day').value;
+    const start = document.getElementById('event_start').value;
+    const end = document.getElementById('event_end').value;
+    const slots = document.getElementById('event_slots').value;
+    
+    let title, compensation, description;
+    
+    if (!eventType || !day || !start || !end) {
+        alert('Compila tutti i campi obbligatori!');
+        return;
+    }
+    
+    // Determina titolo, compenso e descrizione in base al tipo
+    if (eventType === 'custom') {
+        title = document.getElementById('custom_title').value;
+        compensation = document.getElementById('custom_compensation').value;
+        description = document.getElementById('custom_description').value;
+        
+        if (!title || !compensation) {
+            alert('Per eventi personalizzati, inserisci nome e compenso!');
+            return;
+        }
+    } else {
+        const eventData = eventTypes[eventType];
+        title = eventData.title;
+        compensation = eventData.compensation;
+        description = eventData.description;
+    }
+    
+    // Validazione orari
+    if (start >= end) {
+        alert('L\'orario di inizio deve essere minore dell\'orario di fine!');
+        return;
+    }
+    
+    const event = { day, title, start, end, slots, compensation, description };
+    
+    if (editingIndex >= 0) {
+        events[editingIndex] = event;
+        editingIndex = -1;
+    } else {
+        events.push(event);
+    }
+    
+    // Salva in localStorage
+    saveEventsToStorage();
+    
+    renderCalendar();
+    updateClearButton();
+    bootstrap.Modal.getInstance(document.getElementById('addTemplateEventModal')).hide();
+}
+
+function renderCalendar() {
+    // Pulisci tutti i giorni
+    ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'].forEach(day => {
+        const cell = document.getElementById(`day-${day}`);
+        if (cell) cell.innerHTML = '';
+    });
+    
+    // Aggiungi eventi
+    events.forEach((event, index) => {
+        const cell = document.getElementById(`day-${event.day}`);
+        if (!cell) return;
+        
+        const eventCard = document.createElement('div');
+        eventCard.className = 'card mb-2 border-primary';
+        eventCard.style.fontSize = '0.85rem';
+        eventCard.innerHTML = `
+            <div class="card-header bg-primary text-white py-1 px-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <strong style="font-size: 0.95rem;">${event.title}</strong>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-outline-info btn-sm py-0 px-1" onclick="editEvent(${index})" title="Modifica evento">
+                            ✏️
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" onclick="removeEvent(${index})" title="Elimina evento">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-2">
+                <div class="small text-muted">
+                    🕐 ${event.start} - ${event.end}<br>
+                    👥 ${event.slots} posti<br>
+                    ₳ ${event.compensation}
+                </div>
+            </div>
+        `;
+        cell.appendChild(eventCard);
+    });
+    
+    // Aggiorna input nascosti
+    updateHiddenInputs();
+}
+
+function removeEvent(index) {
+    if (confirm('Rimuovere questo evento dal template?')) {
+        events.splice(index, 1);
+        // Salva in localStorage
+        saveEventsToStorage();
+        renderCalendar();
+        updateClearButton();
+    }
+}
+
+function updateHiddenInputs() {
+    const container = document.getElementById('events-container');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    events.forEach((event, index) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = `events[${index}]`;
+        input.value = JSON.stringify(event);
+        container.appendChild(input);
+    });
+}
+
+// Validazione form prima dell'invio
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('templateForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (events.length === 0) {
+                e.preventDefault();
+                alert('Aggiungi almeno un evento al template!');
+            } else {
+                // Pulisci localStorage dopo il submit (il template verrà salvato nel DB)
+                clearEventsFromStorage();
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.template-day-cell {
+    background-color: var(--42-gray);
+    min-height: 250px;
+    vertical-align: top;
+}
+
+.template-day-cell .card {
+    transition: transform 0.2s;
+}
+
+.template-day-cell .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.template-day-cell .btn-outline-info {
+    color: #ffc107;
+    border-color: #ffc107;
+    background: transparent;
+}
+
+.template-day-cell .btn-outline-info:hover {
+    background-color: #ffc107;
+    color: #000;
+    transform: scale(1.1);
+}
+
+.template-day-cell .btn-outline-danger {
+    color: #dc3545;
+    border-color: #dc3545;
+    background: transparent;
+}
+
+.template-day-cell .btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: #fff;
+    transform: scale(1.1);
+}
+</style>
+
+{% endblock %}

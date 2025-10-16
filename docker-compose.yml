@@ -1,0 +1,36 @@
+services:
+  baywatcher:
+    build: .
+    container_name: gestionaleBaywatcher
+    env_file:
+      - .env
+    volumes:
+      - baywatcher-data:/app/calendar_data
+    networks:
+      - baywatcher
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://baywatcher:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token "${CLOUDFLARE_TOKEN}" --protocol auto
+    env_file:
+      - .env
+    depends_on:
+      - baywatcher
+    networks:
+      - baywatcher
+    restart: unless-stopped
+
+volumes:
+  baywatcher-data:
+    driver: local
+
+networks:
+  baywatcher:
+    driver: bridge

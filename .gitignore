@@ -1,0 +1,13 @@
+.env
+.env-test
+*.db
+__pycache__/
+*.pyc
+.vscode/
+.venv
+key.pem
+cert.pem
+personal.txt
+*.csv
+quick_import.sh
+import_baywatch_participants.py

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display - Week {{ active_week }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta http-equiv="refresh" content="30;url=https://monitoring.42firenze.it/tv/clusters.html">
+    <style>
+        /* Display Mode Specific Styles */
+        body {
+            overflow: hidden;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .display-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 5px;
+            background-color: var(--42-dark-gray);
+        }
+        
+        .display-header {
+            text-align: center;
+            margin-bottom: 5px;
+            padding: 5px 15px;
+            background: linear-gradient(135deg, var(--42-black) 0%, var(--42-dark-gray) 100%);
+            border: 2px solid var(--42-cyan);
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 186, 188, 0.3);
+        }
+        
+        .display-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--42-cyan);
+            margin: 0;
+            text-shadow: 0 0 20px rgba(0, 186, 188, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .display-week-badge {
+            display: inline-block;
+            background-color: var(--42-cyan);
+            color: var(--42-black);
+            padding: 3px 13px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 0.88rem;
+        }
+        
+        .display-calendar {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .display-table {
+            width: 100%;
+            height: 100%;
+            border-collapse: separate;
+            border-spacing: 5px;
+        }
+        
+        .display-day-header {
+            background-color: var(--42-black);
+            color: var(--42-cyan);
+            padding: 4px 3px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.83rem;
+            border: 2px solid var(--42-cyan);
+            border-radius: 6px;
+            vertical-align: top;
+        }
+        
+        .display-day-date {
+            display: block;
+            font-size: 0.68rem;
+            color: var(--42-off-white);
+            margin-top: 1px;
+            opacity: 0.8;
+        }
+        
+        .display-day-cell {
+            background-color: var(--42-gray);
+            padding: 3px;
+            vertical-align: top;
+            border: 1px solid var(--42-light-gray);
+            border-radius: 6px;
+            position: relative;
+            height: 100%;
+        }
+        
+        .display-event {
+            background-color: var(--42-black);
+            border: 2px solid var(--42-light-gray);
+            border-radius: 6px;
+            padding: 5px;
+            margin-bottom: 5px;
+            transition: all 0.3s ease;
+            font-size: 0.82rem;
+        }
+        
+        .display-event:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* Colori per tipo di evento - versioni chiare per display */
+        /* Sorveglianza esami - ROSSO chiaro */
+        .display-event.event-type-esame,
+        .display-event.event-type-sorveglianza {
+            background: linear-gradient(135deg, rgba(229, 42, 45, 0.15) 0%, rgba(228, 83, 85, 0.1) 100%);
+            border-color: rgba(229, 42, 45, 0.3);
+        }
+        
+        /* Icebreaker - BLU chiaro */
+        .display-event.event-type-icebreaker {
+            background: linear-gradient(135deg, rgba(56, 56, 232, 0.15) 0%, rgba(104, 104, 240, 0.1) 100%);
+            border-color: rgba(56, 56, 232, 0.3);
+        }
+        
+        /* Correzioni rush - GIALLO chiaro */
+        .display-event.event-type-rush,
+        .display-event.event-type-correzioni {
+            background: linear-gradient(135deg, rgba(245, 188, 57, 0.15) 0%, rgba(247, 199, 89, 0.1) 100%);
+            border-color: rgba(245, 188, 57, 0.3);
+        }
+        
+        /* Presenza cluster - VERDE chiaro */
+        .display-event.event-type-cluster,
+        .display-event.event-type-presenza {
+            background: linear-gradient(135deg, rgba(51, 196, 127, 0.15) 0%, rgba(80, 212, 150, 0.1) 100%);
+            border-color: rgba(51, 196, 127, 0.3);
+        }
+        
+        /* Accoglienza primo giorno - VIOLA chiaro */
+        .display-event.event-type-accoglienza {
+            background: linear-gradient(135deg, rgba(183, 49, 136, 0.15) 0%, rgba(224, 90, 177, 0.1) 100%);
+            border-color: rgba(183, 49, 136, 0.3);
+        }
+        
+        /* Eventi personalizzati - CYAN chiaro (default) */
+        .display-event.event-type-custom,
+        .display-event.event-type-altro {
+            background: linear-gradient(135deg, rgba(0, 186, 188, 0.15) 0%, rgba(0, 186, 188, 0.1) 100%);
+            border-color: rgba(0, 186, 188, 0.3);
+        }
+        
+        /* Evidenzia eventi disponibili */
+        .display-event.available {
+            box-shadow: 0 0 15px rgba(0, 186, 188, 0.2);
+        }
+        
+        /* Eventi pieni o passati */
+        .display-event.unavailable {
+            border-color: #666;
+        }
+        
+        .display-event.unavailable .display-event-title,
+        .display-event.unavailable .display-event-time,
+        .display-event.unavailable .display-slots {
+            opacity: 0.5;
+        }
+        
+        .display-event-title {
+            font-weight: bold;
+            font-size: 0.78rem;
+            color: var(--42-cyan);
+            margin-bottom: 2px;
+        }
+        
+        .display-event.available .display-event-title {
+            font-size: 0.83rem;
+            text-shadow: 0 0 10px rgba(0, 186, 188, 0.5);
+        }
+        
+        .display-event-time {
+            font-size: 0.68rem;
+            color: var(--42-off-white);
+            margin-bottom: 2px;
+        }
+        
+        .display-event-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 5px;
+            font-size: 0.73rem;
+            margin-bottom: 0;
+        }
+        
+        .display-event-info-inline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            align-items: center;
+        }
+        
+        .display-event-left {
+            flex: 0 0 auto;
+        }
+        
+        .display-event-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            align-items: flex-end;
+        }
+        
+        .display-slots {
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 0.68rem;
+        }
+        
+        .display-slots.available {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .display-slots.full {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .display-slots.passed {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+
+        
+        .display-participants {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            opacity: 1 !important;
+        }
+        
+        .display-participants-title {
+            display: none;
+        }
+        
+        .display-participants-list {
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 1px;
+            align-items: flex-end;
+            opacity: 1 !important;
+        }
+        
+        .display-participant-badge {
+            background-color: var(--42-cyan);
+            color: var(--42-black);
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 0.63rem;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 1 !important;
+        }
+        
+        .display-empty {
+            text-align: center;
+            padding: 8px 5px;
+            color: var(--42-light-gray);
+            font-style: italic;
+            font-size: 0.7rem;
+        }
+        
+        /* Auto-refresh indicator */
+        .refresh-indicator {
+            position: fixed;
+            bottom: 5px;
+            right: 5px;
+            background-color: rgba(0, 186, 188, 0.2);
+            color: var(--42-cyan);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.65rem;
+            border: 1px solid var(--42-cyan);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 1400px) {
+            .display-title {
+                font-size: 1.3rem;
+            }
+            .display-week-badge {
+                font-size: 0.85rem;
+                padding: 2px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="display-container">
+        <!-- Header -->
+        <div class="display-header">
+            <h1 class="display-title">
+                <span>📅 Calendario Eventi</span>
+                <span class="display-week-badge">Week {{ display_week }}</span>
+            </h1>
+        </div>
+        
+        <!-- Calendar Grid -->
+        <div class="display-calendar">
+            <table class="display-table">
+                <tr>
+                    {% for day in days %}
+                    <th class="display-day-header" style="width: 20%;">
+                        {{ day }}
+                        {% if day_dates and day in day_dates %}
+                        <span class="display-day-date">{{ day_dates[day]|format_event_date }}</span>
+                        {% endif %}
+                    </th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    {% for day in days %}
+                    <td class="display-day-cell">
+                        {% if calendar_grid[day] %}
+                            {% for event in calendar_grid[day] %}
+                            <div class="display-event {{ event.title|event_type_class }} {% if event.is_available %}available{% else %}unavailable{% endif %}">
+                                <div class="display-event-title">
+                                    {{ event.title }}
+                                </div>
+                                <div class="display-event-time">
+                                    🕐 {{ event.start_time }} - {{ event.end_time }}
+                                </div>
+                                <div class="display-event-info">
+                                    <div class="display-event-left">
+                                        {% if event.is_passed %}
+                                            <span class="display-slots passed">⏰ Scaduto</span>
+                                        {% elif event.available_slots > 0 %}
+                                            <span class="display-slots available">
+                                                👥 {{ event.registered }}/{{ event.max_slots }} ({{ event.available_slots }} liberi)
+                                            </span>
+                                        {% else %}
+                                            <span class="display-slots full">
+                                                ⚠️ Pieno ({{ event.max_slots }}/{{ event.max_slots }})
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    {% if event.participants_visible %}
+                                    <div class="display-event-right">
+                                        <div class="display-participants">
+                                            <div class="display-participants-list">
+                                                {% for participant in event.participants_visible %}
+                                                <span class="display-participant-badge">{{ participant }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="display-empty">
+                                📭<br>Nessun evento
+                            </div>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Auto-refresh indicator -->
+    <div class="refresh-indicator" id="refreshIndicator">
+        🔄 Aggiornamento automatico
+    </div>
+</body>
+</html>

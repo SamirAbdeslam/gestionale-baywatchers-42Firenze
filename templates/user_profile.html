@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4 mb-5">
+    <h2 class="mb-4 text-center fw-bold">👤 Il Mio Profilo</h2>
+    <div class="row">
+        <!-- Header con foto e info principali -->
+        <div class="col-12 mb-4">
+            <div class="card bg-42-black border-success">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            {% if session.user.image_url %}
+                            <img src="{{ session.user.image_url }}" alt="Avatar" class="rounded-circle border border-3 border-success shadow-lg" style="width: 120px; height: 120px; object-fit: cover;">
+                            {% endif %}
+                        </div>
+                        <div class="col">
+                            <h2 class="mb-2 text-42-cyan fw-bold">{{ session.user.display_name or session.user.login }}</h2>
+                            <p class="text-muted mb-3">@{{ session.user.login }}</p>
+                            <div class="d-flex flex-wrap gap-3">
+                                <div class="badge bg-warning text-dark px-3 py-2" style="font-size: 1.1rem;">₳ {{ current_wallet }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiche -->
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning text-white h-100 border-0 shadow">
+                <div class="card-body text-center">
+                    <h3 class="display-4 fw-bold mb-2">{{ total_events }}</h3>
+                    <p class="mb-0 fw-semibold">Eventi Totali</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning text-white h-100 border-0 shadow">
+                <div class="card-body text-center">
+                    <h3 class="display-4 fw-bold mb-2">{{ total_hours }}</h3>
+                    <p class="mb-0 fw-semibold">Ore Effettuate</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning text-dark h-100 border-0 shadow">
+                <div class="card-body text-center">
+                    <h3 class="display-4 fw-bold mb-2">₳ {{ total_points_earned }}</h3>
+                    <p class="mb-0 fw-semibold">Altarian Guadagnati</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning text-white h-100 border-0 shadow">
+                <div class="card-body text-center">
+                    <h3 class="display-4 fw-bold mb-2">₳ {{ current_wallet + total_points_earned }}</h3>
+                    <p class="mb-0 fw-semibold">Totale Altarian</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Riepilogo Eventi per Settimana -->
+        <div class="col-12 mt-3">
+            <div class="card shadow bg-42-black border-success">
+                <div class="card-header bg-primary text-white py-3">
+                    <h4 class="mb-0">Riepilogo Eventi per Settimana</h4>
+                </div>
+                <div class="card-body p-0">
+                    {% if events_by_week %}
+                        {% for week in range(1, 5) %}
+                            {% if week in events_by_week %}
+                            <div class="mb-0">
+                                <div class="px-2 py-3 bg-42-black border-bottom border-success">
+                                    <h5 class="text-42-cyan mb-0 fw-bold">
+                                        Week {{ week }}
+                                        <span class="badge bg-success ms-2">{{ events_by_week[week]|length }} eventi</span>
+                                    </h5>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0 participants-table" style="table-layout: fixed; width: 100%;">
+                                        <colgroup>
+                                            <col style="width: 36.67%;">
+                                            <col style="width: 21.11%;">
+                                            <col style="width: 21.11%;">
+                                            <col style="width: 21.11%;">
+                                        </colgroup>
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Titolo</th>
+                                                <th class="text-center">Giorno</th>
+                                                <th class="text-center">Orario</th>
+                                                <th class="text-center">Altarian</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for event in events_by_week[week] %}
+                                            <tr {% if event.attended == 0 %}class="table-dark"{% endif %}>
+                                                <td>
+                                                    <strong>{{ event.title }}</strong>
+                                                    {% if event.attended == 0 %}
+                                                        <span class="badge bg-warning text-dark ms-2">NON PARTECIPATO</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-center">{{ event.day }} {{ (event.event_date|format_event_date) if event.event_date else '' }}</td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-info text-dark">
+                                                        {{ event.start_time }} - {{ event.end_time }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    {% if event.attended == 1 %}
+                                                        <span class="badge bg-warning text-dark">
+                                                            {{ event.compensation }} 💰
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary text-decoration-line-through">
+                                                            {{ event.compensation }} 💰
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                            <tr class="table-active">
+                                                <td colspan="3" class="text-end fw-bold">Totale Week {{ week }}:</td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-warning text-dark fs-6">
+                                                        {{ events_by_week[week]|selectattr('attended', 'equalto', 1)|sum(attribute='compensation') }} 💰
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            <p class="mb-0">Non sei ancora iscritto a nessun evento.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

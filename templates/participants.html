@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Partecipanti</h2>
+
+{% if event %}
+    <div class="event-info">
+        <h3>{{ event[0] }}</h3>
+        <p>{{ event[1] }} dalle {{ event[2] }} alle {{ event[3] }}</p>
+    </div>
+    
+    <h3>Lista Iscritti ({{ participants|length }})</h3>
+    
+    {% if participants %}
+        <ul class="participants-list">
+            {% for participant in participants %}
+                <li>{{ participant[0] }} — Iscritto il {{ participant[1] }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Nessun partecipante ancora iscritto.</p>
+    {% endif %}
+{% else %}
+    <p>Evento non trovato.</p>
+{% endif %}
+
+<br>
+<a href="/">← Torna al calendario</a>
+{% endblock %}

@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid mt-4 mb-5">
+    <h2 class="mb-4 text-center fw-bold">👥 Riepilogo Partecipanti</h2>
+
+    {% if participants_stats %}
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card bg-warning text-dark h-100 border-0 shadow">
+                    <div class="card-body text-center">
+                        <h3 class="display-4 fw-bold mb-2">{{ participants_stats|length }}</h3>
+                        <p class="mb-0 fw-semibold">Partecipanti Totali</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-warning text-dark h-100 border-0 shadow">
+                    <div class="card-body text-center">
+                        <h3 class="display-4 fw-bold mb-2">{{ participants_stats|sum(attribute='num_events') }}</h3>
+                        <p class="mb-0 fw-semibold">Eventi Partecipati Totali</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-warning text-dark h-100 border-0 shadow">
+                    <div class="card-body text-center">
+                        <h3 class="display-4 fw-bold mb-2">{{ participants_stats|sum(attribute='total_hours') }}</h3>
+                        <p class="mb-0 fw-semibold">Ore Totali</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-warning text-dark h-100 border-0 shadow">
+                    <div class="card-body text-center">
+                        <h3 class="display-4 fw-bold mb-2">₳ {{ participants_stats|sum(attribute='total_compensation') }}</h3>
+                        <p class="mb-0 fw-semibold">Altarian Totale</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow bg-42-black border-success">
+            <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Lista Completa Partecipanti</h5>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('download_all_participants_csv') }}" class="btn btn-success btn-sm">
+                        📋 CSV Sintetico
+                    </a>
+                    <a href="{{ url_for('download_all_participants_detailed_csv') }}" class="btn btn-success btn-sm">
+                        📋 CSV Dettagliato
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 participants-table">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Nome Partecipante</th>
+                                <th class="text-center">Eventi Iscritti</th>
+                                <th class="text-center">Ore Totali</th>
+                                <th class="text-center">Altarian Totale</th>
+                                <th class="text-center">Dettagli</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for participant in participants_stats %}
+                            <tr>
+                                <td><strong>{{ participant.name }}</strong></td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary">{{ participant.num_events }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-success">{{ participant.total_hours }} h</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-warning text-dark">₳ {{ participant.total_compensation }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-info btn-eye-detail" data-bs-toggle="modal" data-bs-target="#participantModal{{ loop.index }}">
+                                        <span class="d-none d-md-inline">👁️ Vedi dettagli</span>
+                                        <span class="d-inline d-md-none">👁️</span>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <h4 class="alert-heading">Nessun partecipante registrato</h4>
+            <p class="mb-0">Non ci sono ancora iscrizioni agli eventi.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal per ogni partecipante -->
+{% for participant in participants_stats %}
+<div class="modal fade" id="participantModal{{ loop.index }}" tabindex="-1" aria-labelledby="participantModalLabel{{ loop.index }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-42-black">
+            <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
+                <h5 class="modal-title text-42-cyan fw-bold" id="participantModalLabel{{ loop.index }}">
+                    👤 {{ participant.name }} - Dettaglio Partecipazione
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-42-black">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="card bg-warning text-dark h-100 border-0 shadow">
+                            <div class="card-body text-center">
+                                <h3 class="display-4 fw-bold mb-2">{{ participant.num_events }}</h3>
+                                <p class="mb-0 fw-semibold">Eventi Partecipati</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-warning text-dark h-100 border-0 shadow">
+                            <div class="card-body text-center">
+                                <h3 class="display-4 fw-bold mb-2">{{ participant.total_hours }}</h3>
+                                <p class="mb-0 fw-semibold">Ore Totali</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-warning text-dark h-100 border-0 shadow">
+                            <div class="card-body text-center">
+                                <h3 class="display-4 fw-bold mb-2">₳ {{ participant.total_compensation }}</h3>
+                                <p class="mb-0 fw-semibold">Altarian Totale</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="mb-3 fw-bold text-42-cyan">📅 Eventi a cui ha partecipato:</h6>
+                <div class="list-group">
+                    {% for event in participant.events %}
+                    <div class="list-group-item bg-42-gray border-success {% if event.attended == 0 %}bg-warning bg-opacity-10{% endif %}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold text-42-cyan">
+                                    {{ event.title }}
+                                    {% if event.attended == 0 %}
+                                        <span class="badge bg-warning text-dark ms-2">NON PARTECIPATO</span>
+                                    {% endif %}
+                                </h6>
+                                <p class="mb-1">
+                                    <span class="badge bg-primary">{{ event.day }} {{ (event.event_date|format_event_date) if event.event_date else '' }}</span>
+                                    <span class="badge bg-info text-dark">{{ event.start_time }} - {{ event.end_time }}</span>
+                                    <span class="badge bg-success">{{ event.duration }} ore</span>
+                                    {% if event.attended == 1 %}
+                                        <span class="badge bg-warning text-dark">💰 {{ event.compensation }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary text-decoration-line-through">💰 {{ event.compensation }}</span>
+                                    {% endif %}
+                                </p>
+                                <small class="text-muted">Iscritto il: {{ event.registration_date[:16] }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer bg-42-black border-success d-flex justify-content-between">
+                <a href="{{ url_for('download_participant_csv', participant_name=participant.name) }}" class="btn btn-outline-success">
+                    📥 Scarica CSV
+                </a>
+                <button type="button" class="btn btn-outline-success" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
