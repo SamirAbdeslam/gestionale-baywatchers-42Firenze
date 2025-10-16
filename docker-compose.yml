@@ -27,6 +27,16 @@ services:
       - baywatcher
     restart: unless-stopped
 
+  deployer:
+    build: ./deployer
+    container_name: webhook_listener
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # To control Docker
+      - ${PWD}:/repo                                # Your repo code
+    networks:
+      - baywatcher
+    restart: unless-stopped
+
 volumes:
   baywatcher-data:
     driver: local
