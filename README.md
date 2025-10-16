@@ -95,9 +95,7 @@ docker compose logs -f baywatcher
 
 ### 4. Accesso
 
-- **Applicazione**: https://your-cloudflare-domain.com
-- **Display pubblico**: https://your-cloudflare-domain.com/display
-- **Admin panel**: https://your-cloudflare-domain.com/admin (solo per staff 42)
+- **Applicazione**: [https://app.baywatchers42firenze.dev](https://app.baywatchers42firenze.dev)
 
 ## 📚 Documentazione
 
