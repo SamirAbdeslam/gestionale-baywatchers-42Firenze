@@ -2212,6 +2212,42 @@ def remove_from_whitelist(whitelist_id):
     flash('Utente rimosso dalla whitelist', 'success')
     return redirect(url_for('admin_panel'))
 
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    """
+    Webhook endpoint per ricevere notifiche di push da GitHub/GitLab.
+    Invia una richiesta al deployer per aggiornare l'applicazione.
+    """
+    try:
+        # Verifica opzionale del secret (consigliato in produzione)
+        webhook_secret = os.getenv('WEBHOOK_SECRET')
+        if webhook_secret:
+            # Per GitHub: X-Hub-Signature-256
+            # Per GitLab: X-Gitlab-Token
+            provided_secret = request.headers.get('X-Gitlab-Token') or request.headers.get('X-Hub-Signature-256')
+            if not provided_secret or webhook_secret not in str(provided_secret):
+                return "Unauthorized", 401
+        
+        # Chiamata al deployer interno
+        import requests
+        deployer_url = os.getenv('DEPLOYER_URL', 'http://webhook_listener:9000/webhook')
+        
+        print(f"📥 Webhook ricevuto, chiamata al deployer: {deployer_url}")
+        
+        # Inoltra la richiesta al deployer
+        response = requests.post(deployer_url, json=request.get_json(), timeout=10)
+        
+        if response.status_code == 200:
+            print("✓ Deployer chiamato con successo")
+            return "Deployment triggered successfully", 200
+        else:
+            print(f"⚠️ Errore dal deployer: {response.status_code}")
+            return f"Deployer error: {response.status_code}", 500
+            
+    except Exception as e:
+        print(f"❌ Errore webhook: {e}")
+        return f"Webhook error: {str(e)}", 500
+
 if __name__ == '__main__':
     # Run with SocketIO for real-time updates
     socketio.run(app, host='0.0.0.0', port=5000, debug=False)
