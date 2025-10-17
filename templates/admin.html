@@ -657,7 +657,7 @@ document.getElementById('addEventModal').addEventListener('hidden.bs.modal', fun
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                                <form action="{{ url_for('admin_unregister', event_id=event.id, participant_name=participant[0]) }}" method="post" class="d-inline">
+                                <form action="/admin_unregister/{{ event.id }}/{{ participant[0] }}" method="post" class="d-inline">
                                     <button type="submit" class="btn btn-danger">
                                         ✕ Rimuovi
                                     </button>
@@ -1062,9 +1062,7 @@ document.getElementById('addEventModal').addEventListener('hidden.bs.modal', fun
                                                 <td><strong class="text-42-cyan">{{ user.login }}</strong></td>
                                                 <td><small class="text-muted">{{ user.added_at[:16] }}</small></td>
                                                 <td class="text-center">
-                                                    <form action="/admin/whitelist/remove/{{ user.id }}" method="post" class="d-inline" onsubmit="return confirm('Rimuovere {{ user.login }} dalla whitelist?');">
-                                                        <button type="submit" class="btn btn-outline-danger btn-sm">✕</button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#removeWhitelistModal{{ user.id }}">✕</button>
                                                 </td>
                                             </tr>
                                         {% endfor %}
@@ -1084,1092 +1082,119 @@ document.getElementById('addEventModal').addEventListener('hidden.bs.modal', fun
     </div>
 </div>
 
-<script>
-// Abilita il bottone solo se viene digitato "CANCEL{% extends 'base.html' %}
-{% block content %}
-<div class="container-fluid mt-2 mb-5">
-    <h2 class="mb-2 text-center fw-bold">🔧 Admin Panel - Week {{ current_week }}</h2>
-
-    <!-- Blocco Settings collapsible -->
-    <div class="card mb-4 bg-42-black border-success">
-        <!-- Bottone Settings solo su mobile -->
-        <div class="card-header p-0 d-block d-md-none">
-            <button class="btn btn-link w-100 fw-bold text-42-cyan" type="button" data-bs-toggle="collapse" data-bs-target="#settingsCollapse" aria-expanded="false" aria-controls="settingsCollapse" style="font-size: 1.2rem; text-decoration: none; text-align: center;">
-                ⚙️ Settings <span class="ms-2"><i class="bi bi-chevron-down"></i></span>
-            </button>
-        </div>
-        <!-- Controlli admin: collapsabili su mobile, sempre visibili su desktop -->
-        <div class="collapse d-md-none" id="settingsCollapse">
-            <div class="card-body p-3">
-                <div class="admin-controls" style="flex-direction: column; gap: 0.5rem;">
-                    <!-- Controlli Admin -->
-                    <div class="row g-3 align-items-stretch">
-                        <!-- SETTIMANA -->
-                        <div class="col-12">
-                            <label class="form-label mb-2 text-42-cyan fw-bold d-block" style="font-size: 1rem;">📅 SETTIMANA</label>
-                            <div class="btn-group w-100" role="group">
-                                {% for week in range(1, 5) %}
-                                    <a href="/admin?week={{ week }}" class="btn {% if week == current_week %}btn-success{% else %}btn-outline-success{% endif %}" style="padding: 0.625rem 1rem; font-size: 1rem; font-weight: 600;">
-                                        W{{ week }}
-                                    </a>
-                                {% endfor %}
-                            </div>
-                        </div>
-
-                        <!-- ATTIVAZIONE -->
-                        <div class="col-12">
-                            <label class="form-label mb-2 text-42-cyan fw-bold d-block" style="font-size: 1rem;">⚡ ATTIVAZIONE</label>
-                            <button type="button" class="btn btn-activate-week w-100 {% if current_week == active_week %}btn-success{% else %}btn-outline-success{% endif %}" data-bs-toggle="modal" data-bs-target="#activateWeekModal" {% if current_week == active_week %}disabled{% endif %} style="padding: 0.625rem 1rem; font-size: 1rem; font-weight: 600;">
-                                {% if current_week == active_week %}
-                                    ✓ W{{ current_week }} Attiva
-                                {% else %}
-                                    Attiva W{{ current_week }}
-                                {% endif %}
-                            </button>
-                        </div>
-
-                        <!-- MAX EVENTI - 50/50 Split -->
-                        <div class="col-12">
-                            <label class="form-label mb-2 text-warning fw-bold d-block" style="font-size: 1rem;">
-                                ⚙️ MAX EVENTI
-                                <span class="fw-normal ms-1" style="opacity: 0.8; font-size: 0.85rem;">
-                                    {% if max_events_per_user == 0 %}
-                                        (∞ illimitati)
-                                    {% else %}
-                                        (attuale: {{ max_events_per_user }})
-                                    {% endif %}
-                                </span>
-                            </label>
-                            <form action="/set_max_events_per_user" method="post" class="d-flex gap-2">
-                                <input type="number" name="max_events" class="form-control" min="0" max="20" value="{{ max_events_per_user }}" placeholder="0" style="height: unset !important; flex: 1; font-size: 1rem; padding: 0.625rem 1rem;">
-                                <button type="submit" class="btn btn-outline-success" title="Salva impostazione" style="flex: 1; padding: 0.625rem 1rem; font-size: 1rem; font-weight: 600;">
-                                    💾 Salva
-                                </button>
-                            </form>
-                        </div>
-
-                        <!-- 2x2 Grid for remaining buttons -->
-                        <!-- Row 1 -->
-                        <div class="col-12">
-                            <label class="form-label mb-2 fw-bold d-block" style="font-size: 1rem;">
-                                🏊 Inizio Piscine
-                                {% if pool_start %}
-                                <span class="fw-normal text-42-cyan ms-1" style="font-size: 0.9rem;">
-                                    ({{ pool_start[8:10] }}/{{ pool_start[5:7] }}/{{ pool_start[0:4] }})
-                                </span>
-                                {% endif %}
-                            </label>
-                            <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#setPoolDatesModal" style="padding: 0.625rem 1rem; font-size: 1rem; font-weight: 600;">
-                                Imposta
-                            </button>
-                        </div>
-
-                        <div class="col-12">
-                            <label class="form-label mb-2 fw-bold d-block" style="font-size: 1rem;">
-                                <span class="text-info">📋 Template</span>
-                            </label>
-                            <button type="button" class="btn btn-outline-info w-100" data-bs-toggle="modal" data-bs-target="#templatesModal" style="padding: 0.625rem 1rem; font-size: 1rem; font-weight: 600;">
-                                Gestisci
-                            </button>
-                        </div>
-
-                        <!-- Row 2 -->
-                        <div class="col-12">
-                            <label class="form-label mb-2 fw-bold d-block" style="font-size: 1rem;">
-                                <span class="text-42-cyan">👥 Baywatcher</span>
-                            </label>
-                            <button type="button" class="btn btn-outline-light w-100" data-bs-toggle="modal" data-bs-target="#whitelistModal" style="padding: 0.625rem 1rem; font-size: 1rem; font-weight: 600;">
-                                Whitelist
-                            </button>
-                        </div>
-
-                        <div class="col-12">
-                            <label class="form-label mb-2 text-danger fw-bold d-block" style="font-size: 1rem;">🗑️ Elimina Week</label>
-                            <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteWeekEventsModal" style="padding: 0.625rem 1rem; font-size: 1rem; font-weight: 600;">
-                                Week {{ current_week }}
-                            </button>
-                        </div>
-
-                        <!-- Row 3 - Last button centered or full width -->
-                        <div class="col-12">
-                            <label class="form-label mb-2 text-danger fw-bold d-block" style="font-size: 1rem;">💀 Elimina Tutto</label>
-                            <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteAllEventsModal" style="padding: 0.625rem 1rem; font-size: 1rem; font-weight: 600;">
-                                Tutte le Week
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Sempre visibile su desktop/tablet -->
-        <div class="card-body p-3 d-none d-md-block admin-desktop-controls">
-            <div class="row g-2 align-items-center">
-                <!-- 1. SETTIMANA (sempre prima posizione) -->
-                <div class="col-xl col-lg-6 col-md-6">
-                    <label class="form-label mb-2 text-42-cyan fw-bold small">📅 SETTIMANA</label>
-                    <div class="btn-group w-100" role="group">
-                        {% for week in range(1, 5) %}
-                            <a href="/admin?week={{ week }}" class="btn {% if week == current_week %}btn-success{% else %}btn-outline-success{% endif %}" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                                W{{ week }}
-                            </a>
-                        {% endfor %}
-                    </div>
-                </div>
-                <!-- 2. ATTIVAZIONE (sempre seconda posizione) -->
-                <div class="col-xl col-lg-6 col-md-6">
-                    <label class="form-label mb-2 text-42-cyan fw-bold small">⚡ ATTIVAZIONE</label>
-                    <button type="button" class="btn w-100 btn-activate-week {% if current_week == active_week %}btn-success{% else %}btn-outline-success{% endif %}" data-bs-toggle="modal" data-bs-target="#activateWeekModal" {% if current_week == active_week %}disabled{% endif %} style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                        {% if current_week == active_week %}
-                            ✓ W{{ current_week }} Attiva
-                        {% else %}
-                            Attiva W{{ current_week }}
-                        {% endif %}
-                    </button>
-                </div>
-                <!-- 3. Pool Range (data nel label) -->
-                <div class="col-xl col-lg-6 col-md-6">
-                    <label class="form-label mb-2 fw-bold small">
-                        🏊 Inizio Piscine
-                        {% if pool_start %}
-                        <span class="fw-normal text-42-cyan">
-                            ({{ pool_start[8:10] }}/{{ pool_start[5:7] }}/{{ pool_start[0:4] }})
-                        </span>
-                        {% endif %}
-                    </label>
-                    <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#setPoolDatesModal" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                        Imposta
-                    </button>
-                </div>
-                <!-- 4. Baywatcher -->
-                <div class="col-xl col-lg-6 col-md-6">
-                    <label class="form-label mb-2 fw-bold small">
-                        <span class="text-42-cyan">👥 Baywatcher</span>
-                    </label>
-                    <button type="button" class="btn btn-outline-light w-100" data-bs-toggle="modal" data-bs-target="#whitelistModal" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                        Whitelist
-                    </button>
-                </div>
-                <!-- 5. Template -->
-                <div class="col-xl col-lg-6 col-md-6">
-                    <label class="form-label mb-2 fw-bold small">
-                        <span class="text-info">📋 Template</span>
-                    </label>
-                    <button type="button" class="btn btn-outline-info w-100" data-bs-toggle="modal" data-bs-target="#templatesModal" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                        Gestisci
-                    </button>
-                </div>
-                <!-- 6. MAX EVENTI -->
-                <div class="col-xl col-lg-6 col-md-6">
-                    <label class="form-label mb-2 text-warning fw-bold small">
-                        ⚙️ MAX EVENTI
-                        <span class="fw-normal">
-                            {% if max_events_per_user == 0 %}
-                                (<span class="text-success">∞</span>)
-                            {% else %}
-                                (<span class="text-42-cyan">{{ max_events_per_user }}</span>)
-                            {% endif %}
-                        </span>
-                    </label>
-                    <form action="/set_max_events_per_user" method="post" class="d-flex gap-2">
-                        <input type="number" name="max_events" class="form-control" min="0" max="20" value="{{ max_events_per_user }}" placeholder="0" style="flex: 1; padding: 0.375rem 0.75rem; font-size: 0.875rem; height: auto;">
-                        <button type="submit" class="btn btn-outline-success" title="Salva impostazione" style="flex-shrink: 0; padding: 0.375rem 0.75rem; font-size: 0.875rem;">💾</button>
-                    </form>
-                </div>
-                <!-- 7. ELIMINAZIONE -->
-                <div class="col-xl col-lg-6 col-md-6">
-                    <label class="form-label mb-2 text-danger fw-bold small">🗑️ ELIMINAZIONE</label>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-outline-danger flex-fill" data-bs-toggle="modal" data-bs-target="#deleteWeekEventsModal" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                            Week {{ current_week }}
-                        </button>
-                        <button type="button" class="btn btn-outline-danger flex-fill" data-bs-toggle="modal" data-bs-target="#deleteAllEventsModal" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                            Tutte le Week
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-<!-- Modal per impostare pool date range (stile Template Settimane) -->
-<div class="modal fade" id="setPoolDatesModal" tabindex="-1" aria-labelledby="setPoolDatesModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-42-black border-success">
-            <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                <h5 class="modal-title text-42-cyan fw-bold" id="setPoolDatesModalLabel">📆 Imposta Range Piscine</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="POST" action="/admin/set_pool_dates">
-                <div class="modal-body bg-42-black">
-                    <p class="text-muted mb-3">Imposta la <strong>data di inizio</strong> del periodo pool. La data di fine verrà calcolata automaticamente (4 settimane a partire dall'inizio).</p>
-                    <div class="mb-3">
-                        <label for="pool_start" class="form-label text-info">Data Inizio Piscine</label>
-                        <input type="date" id="pool_start" name="pool_start" class="form-control" value="{{ pool_start if pool_start }}" required>
-                        {% if pool_start %}
-                        <div class="form-text small text-muted">Attuale: {{ pool_start[8:10] ~ '/' ~ pool_start[5:7] ~ '/' ~ pool_start[0:4] }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="mb-2 small text-muted">La fine delle piscine verrà impostata automaticamente.</div>
-                </div>
-                <div class="modal-footer bg-42-black">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-success">Salva Range</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-    <!-- Calendario Admin Dettagliato -->
-
-    <!-- Sticky header che appare durante lo scroll -->
-    <!-- Sticky header che appare durante lo scroll -->
-    <div id="stickyDaysHeader" class="sticky-days-header" style="display: none;">
-        <div class="sticky-header-content" id="stickyHeaderContent">
-            <table class="table table-bordered admin-calendar-table mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        {% for day in ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'] %}
-                            <th class="text-center p-3">
-                                <div class="d-flex justify-content-between align-items-center gap-2">
-                                    <span>{{ day }}</span>
-                                    {% if day_dates and day in day_dates %}
-                                        <small class="text-muted ms-2">{{ day_dates[day]|format_event_date }}</small>
-                                    {% endif %}
-                                    <div class="d-flex gap-1">
-                                        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#addEventModal" onclick="setDay('{{ day }}')" title="Aggiungi evento" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                                            +
-                                        </button>
-                                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteDayEventsModal{{ loop.index }}" title="Elimina tutti gli eventi di {{ day }}" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                                            🗑️
-                                        </button>
-                                    </div>
-                                </div>
-                            </th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-            </table>
-        </div>
-    </div>
-    <div class="table-responsive" id="adminTableContainer">
-        <table class="table table-bordered admin-calendar-table">
-            <thead class="table-dark">
-                <tr>
-                    {% for day in ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'] %}
-                        <th class="text-center p-3">
-                            <div class="d-flex justify-content-between align-items-center gap-2">
-                                <span>{{ day }}</span>
-                                {% if day_dates and day in day_dates %}
-                                    <small class="text-muted ms-2">{{ day_dates[day]|format_event_date }}</small>
-                                {% endif %}
-                                <div class="d-flex gap-1">
-                                    <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#addEventModal" onclick="setDay('{{ day }}')" title="Aggiungi evento" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                                        +
-                                    </button>
-                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteDayEventsModal{{ loop.index }}" title="Elimina tutti gli eventi di {{ day }}" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                                        🗑️
-                                    </button>
-                                </div>
-                            </div>
-                        </th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    {% for day in ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'] %}
-                        <td class="admin-day-cell p-2 align-top">
-                            {% for event in events %}
-                                {% if event.day == day %}
-                                    {% set is_full = (event.registered_visible if event.registered_visible is defined else event.registered) >= event.max_slots %}
-                                    <div class="card mb-2 admin-event-card {{ event.title|event_type_class }} {% if is_full %}event-full{% endif %}">
-                                        <div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong>{{ event.title }}</strong>
-                                                <br>
-                                                <small class="fw-bold">🕐 {{ event.start_time }} - {{ event.end_time }}</small>
-                                            </div>
-                                            <div class="d-flex gap-1">
-                                                <button type="button" class="btn btn-sm" style="background-color: var(--42-cyan); border-color: var(--42-cyan); color: #000; font-weight: 600;" title="Modifica evento" data-bs-toggle="modal" data-bs-target="#editEventModal{{ event.id }}">
-                                                    ✏️
-                                                </button>
-                                                <button type="button" class="btn btn-sm" style="background-color: #ff4444; border-color: #ff4444; color: #fff; font-weight: 600;" title="Elimina evento" data-bs-toggle="modal" data-bs-target="#deleteEventModal{{ event.id }}">
-                                                    🗑️
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="card-body p-2">
-                                            {% if event.description %}
-                                                <p class="card-text small text-muted mb-2">{{ event.description }}</p>
-                                            {% endif %}
-
-                                            <div class="mb-2">
-                                                <span class="badge bg-warning text-dark">
-                                                    ₳ {{ event.compensation }}
-                                                </span>
-                                            </div>
-
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <span class="badge {% if (event.registered_visible if event.registered_visible is defined else event.registered) >= event.max_slots %}bg-danger{% else %}bg-success{% endif %}">
-                                                    👥 {{ (event.registered_visible if event.registered_visible is defined else event.registered) }}/{{ event.max_slots }} posti
-                                                </span>
-                                            </div>
-
-                                            {% if event.participants_raw %}
-                                                <div class="bg-light p-2 rounded mb-2">
-                                                    <strong class="small text-success">✓ Iscritti:</strong>
-                                                    <div class="mt-1">
-                                                        {% for participant in event.participants_raw %}
-                                                            <div class="d-flex justify-content-between align-items-center py-1 border-bottom {% if participant[2] == 0 %}bg-opacity-25{% endif %}">
-                                                                <div class="small">
-                                                                    <strong>{{ participant[0] }}</strong>
-                                                                    {% if participant[2] == 0 %}
-                                                                        <span class="badge bg-warning text-dark ms-1">NON PARTECIPATO</span>
-                                                                    {% endif %}
-                                                                    <br>
-                                                                    <small class="text-muted">{{ participant[1][:16] }}</small>
-                                                                </div>
-                                                                <div class="d-flex gap-1">
-                                                                    {% if participant[2] == 1 %}
-                                                                        <button type="button" class="btn btn-outline-warning btn-sm py-0 px-1" title="Segna come non partecipato" data-bs-toggle="modal" data-bs-target="#markAbsentModal{{ event.id }}_{{ loop.index }}">⏳</button>
-                                                                    {% else %}
-                                                                        <form action="/admin/mark_present/{{ event.id }}/{{ participant[0] }}" method="post" class="d-inline">
-                                                                            <button type="submit" class="btn btn-outline-success btn-sm py-0 px-1" title="Segna come partecipato">✓</button>
-                                                                        </form>
-                                                                    {% endif %}
-                                                                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" title="Rimuovi" data-bs-toggle="modal" data-bs-target="#removeParticipantModal{{ event.id }}_{{ loop.index }}">
-                                                                        ✕
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        {% endfor %}
-                                                    </div>
-                                                </div>
-                                            {% else %}
-                                                <p class="text-muted small mb-2 fst-italic">Nessun iscritto</p>
-                                            {% endif %}
-
-                                            <!-- Bottone per aggiungere manualmente un partecipante (ADMIN può bypassare limite) -->
-                                            <button type="button" class="btn btn-outline-success btn-sm w-100" data-bs-toggle="modal" data-bs-target="#addParticipantModal{{ event.id }}">
-                                                ➕ Aggiungi Partecipante
-                                            </button>
-                                        </div>
-                                    </div>
-                                {% endif %}
-                            {% endfor %}
-                        </td>
-                    {% endfor %}
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Modal per aggiungere evento -->
-<div class="modal fade" id="addEventModal" tabindex="-1" aria-labelledby="addEventModalLabel" aria-hidden="true">
+<!-- Modal per conferma rimozione dalla whitelist -->
+{% for user in whitelist %}
+<div class="modal fade" id="removeWhitelistModal{{ user.id }}" tabindex="-1" aria-labelledby="removeWhitelistModalLabel{{ user.id }}" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content bg-42-black">
-            <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                <h5 class="modal-title text-42-cyan fw-bold" id="addEventModalLabel">➕ Aggiungi Nuovo Evento</h5>
+            <div class="modal-header bg-42-black border-danger" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
+                <h5 class="modal-title text-danger fw-bold" id="removeWhitelistModalLabel{{ user.id }}">⚠️ Conferma Rimozione</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="/add_event">
-                <div class="modal-body bg-42-black">
-                    <div class="mb-3">
-                        <label for="event_type" class="form-label">Tipo di Evento *</label>
-                        <select class="form-select" id="event_type" name="event_type" required onchange="toggleCustomFields()">
-                            <option value="">Seleziona tipo evento...</option>
-                            <option value="icebreaker">Icebreaker - 150 ₳</option>
-                            <option value="sorveglianza">Sorveglianza esami (2 ore) - 200 ₳</option>
-                            <option value="correzioni">Correzioni rush - 300 ₳</option>
-                            <option value="cluster">Presenza cluster - 100 ₳</option>
-                            <option value="accoglienza">Accoglienza primo giorno - 300 ₳</option>
-                            <option value="custom">🔧 Altro (personalizzato)</option>
-                        </select>
-                        <div class="form-text" id="compensation-text">Il compenso è automatico in base al tipo di evento</div>
-                    </div>
-
-                    <!-- Campi personalizzati (nascosti di default) -->
-                    <div id="custom-fields" style="display: none;">
-                        <div class="alert alert-info">
-                            <strong>📝 Evento Personalizzato</strong> - Inserisci nome e compenso
-                        </div>
-                        <div class="mb-3">
-                            <label for="custom_title" class="form-label">Nome Evento *</label>
-                            <input type="text" class="form-control" id="custom_title" name="custom_title" placeholder="Es: Workshop speciale">
-                        </div>
-                        <div class="mb-3">
-                            <label for="custom_compensation" class="form-label">Altarian (₳) *</label>
-                            <input type="number" class="form-control" id="custom_compensation" name="custom_compensation" placeholder="Es: 250" min="0">
-                        </div>
-                        <div class="mb-3">
-                            <label for="custom_description" class="form-label">Descrizione</label>
-                            <textarea class="form-control" id="custom_description" name="custom_description" rows="2" placeholder="Descrizione dell'evento personalizzato"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="week" class="form-label">Settimana *</label>
-                        <select class="form-select" id="week" name="week" required>
-                            {% for week in range(1, 5) %}
-                                <option value="{{ week }}" {% if week == current_week %}selected{% endif %}>Week {{ week }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                <!-- Per la nuova gestione, le date vengono impostate globalmente nel pool: non inserire la data per evento -->
-                <div class="form-text">Le date degli eventi vengono derivate dal range globale impostato nello staff panel.</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="day" class="form-label">Giorno *</label>
-                        <select class="form-select" id="day" name="day" required>
-                            <option value="">Seleziona...</option>
-                            <option value="Lunedì">Lunedì</option>
-                            <option value="Martedì">Martedì</option>
-                            <option value="Mercoledì">Mercoledì</option>
-                            <option value="Giovedì">Giovedì</option>
-                            <option value="Venerdì">Venerdì</option>
-                        </select>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="start_time" class="form-label">Ora inizio *</label>
-                            <input type="text" class="form-control time-picker" id="start_time" name="start_time" placeholder="09:00" required>
-                        </div>
-
-                        <div class="col-md-4 mb-3">
-                            <label for="end_time" class="form-label">Ora fine *</label>
-                            <input type="text" class="form-control time-picker" id="end_time" name="end_time" placeholder="18:00" required>
-                        </div>
-
-                        <div class="col-md-4 mb-3">
-                            <label for="max_slots" class="form-label">Posti massimi *</label>
-                            <input type="number" class="form-control" id="max_slots" name="max_slots" value="2" min="1" max="100" required>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-success">
-                        <strong>✓</strong> Crea Evento
+            <div class="modal-body bg-42-black">
+                <p>Vuoi davvero rimuovere <strong class="text-42-cyan">{{ user.login }}</strong> dalla whitelist Baywatcher?</p>
+                <p class="text-muted small mb-0">⚠️ Questo utente non potrà più iscriversi agli eventi Baywatcher.</p>
+            </div>
+            <div class="modal-footer bg-42-black border-danger">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <form action="/admin/whitelist/remove/{{ user.id }}" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        ✕ Rimuovi dalla Whitelist
                     </button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 </div>
+{% endfor %}
 
 <script>
-// Funzione per preselezionare il giorno nel modal
-function setDay(day) {
-    document.getElementById('day').value = day;
-}
-
-// Mostra/nascondi campi personalizzati
-function toggleCustomFields() {
-    const eventType = document.getElementById('event_type').value;
-    const customFields = document.getElementById('custom-fields');
-    const compensationText = document.getElementById('compensation-text');
-    const customTitle = document.getElementById('custom_title');
-    const customCompensation = document.getElementById('custom_compensation');
-
-    if (eventType === 'custom') {
-        customFields.style.display = 'block';
-        compensationText.style.display = 'none';
-        customTitle.required = true;
-        customCompensation.required = true;
+// Abilita il bottone solo se viene digitato "CANCELLA TUTTO"
+document.getElementById('confirmDeleteAll').addEventListener('input', function(e) {
+    const btn = document.getElementById('confirmDeleteBtn');
+    if (e.target.value === 'PaSqUaLe FuTuRo PeLaTo') {
+        btn.disabled = false;
     } else {
-        customFields.style.display = 'none';
-        compensationText.style.display = 'block';
-        customTitle.required = false;
-        customCompensation.required = false;
+        btn.disabled = true;
     }
-}
-
-// Reset form quando si chiude il modal
-document.getElementById('addEventModal').addEventListener('hidden.bs.modal', function () {
-    document.querySelector('#addEventModal form').reset();
-    toggleCustomFields();
 });
+
+// Reset quando si chiude il modal
+document.getElementById('deleteAllEventsModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('confirmDeleteAll').value = '';
+    document.getElementById('confirmDeleteBtn').disabled = true;
+});
+
+// Mostra/nascondi header sticky durante lo scroll
+window.addEventListener('scroll', function() {
+    const tableContainer = document.getElementById('adminTableContainer');
+    const stickyHeader = document.getElementById('stickyDaysHeader');
+
+    if (tableContainer && stickyHeader) {
+        const containerRect = tableContainer.getBoundingClientRect();
+        const stickyTop = 50; // Top position dello sticky header
+
+        // Mostra l'header sticky quando il container della tabella è nascosto sopra
+        // Usiamo containerRect.top + altezza header (circa 58px) per sapere quando l'header è nascosto
+        if (containerRect.top + 58 <= stickyTop) {
+            stickyHeader.style.display = 'block';
+        } else {
+            stickyHeader.style.display = 'none';
+        }
+    }
+});
+
+// Sincronizza lo scroll orizzontale tra tabella e header sticky
+const tableContainer = document.getElementById('adminTableContainer');
+const stickyHeaderContent = document.getElementById('stickyHeaderContent');
+
+if (tableContainer && stickyHeaderContent) {
+    // Quando la tabella scrolla orizzontalmente, muovi il contenuto dell'header
+    tableContainer.addEventListener('scroll', function() {
+        const scrollLeft = tableContainer.scrollLeft;
+        stickyHeaderContent.style.transform = `translateX(-${scrollLeft}px)`;
+    });
+}
 </script>
 
-<!-- Modal per conferma attivazione settimana -->
-<div class="modal fade" id="activateWeekModal" tabindex="-1" aria-labelledby="activateWeekModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-42-black">
-            <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                <h5 class="modal-title text-warning fw-bold" id="activateWeekModalLabel">⚠️ Conferma Attivazione Settimana</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body bg-42-black">
-                <p>Vuoi davvero attivare <strong>Week {{ current_week }}</strong> per tutti gli utenti?</p>
-                <p class="text-muted small mb-0">Questa settimana diventerà visibile nel calendario pubblico.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                <form action="/set_active_week/{{ current_week }}" method="post" class="d-inline">
-                    <button type="submit" class="btn btn-warning">
-                        ✓ Attiva Week {{ current_week }}
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal per conferma eliminazione evento -->
-{% for day in ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'] %}
-    {% for event in events %}
-        {% if event.day == day %}
-            <div class="modal fade" id="deleteEventModal{{ event.id }}" tabindex="-1" aria-labelledby="deleteEventModalLabel{{ event.id }}" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content bg-42-black">
-                        <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                            <h5 class="modal-title text-danger fw-bold" id="deleteEventModalLabel{{ event.id }}">⚠️ Conferma Eliminazione</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body bg-42-black">
-                            <p>Vuoi davvero eliminare l'evento <strong>{{ event.title }}</strong>?</p>
-                            <p class="text-muted small mb-2">{{ event.day }} {{ (event.event_date|format_event_date) if event.event_date else '' }}, {{ event.start_time }} - {{ event.end_time }}</p>
-                            {% if event.participants_raw %}
-                                <div class="alert alert-warning">
-                                    <strong>⚠️ Attenzione:</strong> Ci sono {{ event.participants_raw|length }} iscritti a questo evento!
-                                </div>
-                            {% endif %}
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                            <form action="/delete_event/{{ event.id }}" method="post" class="d-inline">
-                                <button type="submit" class="btn btn-danger">
-                                    🗑️ Elimina Evento
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal per modifica evento -->
-            <div class="modal fade" id="editEventModal{{ event.id }}" tabindex="-1" aria-labelledby="editEventModalLabel{{ event.id }}" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header bg-info">
-                            <h5 class="modal-title text-dark fw-bold" id="editEventModalLabel{{ event.id }}">✏️ Modifica Evento</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form action="/edit_event/{{ event.id }}" method="post">
-                            <div class="modal-body">
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="edit_title_{{ event.id }}" class="form-label">Titolo *</label>
-                                        <input type="text" class="form-control" id="edit_title_{{ event.id }}" name="title" value="{{ event.title }}" required>
-                                    </div>
-
-                                    <div class="col-md-6 mb-3">
-                                        <label for="edit_day_{{ event.id }}" class="form-label">Giorno *</label>
-                                        <select class="form-select" id="edit_day_{{ event.id }}" name="day" required>
-                                            <option value="Lunedì" {% if event.day == 'Lunedì' %}selected{% endif %}>Lunedì</option>
-                                            <option value="Martedì" {% if event.day == 'Martedì' %}selected{% endif %}>Martedì</option>
-                                            <option value="Mercoledì" {% if event.day == 'Mercoledì' %}selected{% endif %}>Mercoledì</option>
-                                            <option value="Giovedì" {% if event.day == 'Giovedì' %}selected{% endif %}>Giovedì</option>
-                                            <option value="Venerdì" {% if event.day == 'Venerdì' %}selected{% endif %}>Venerdì</option>
-                                            <option value="Sabato" {% if event.day == 'Sabato' %}selected{% endif %}>Sabato</option>
-                                            <option value="Domenica" {% if event.day == 'Domenica' %}selected{% endif %}>Domenica</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label for="edit_start_time_{{ event.id }}" class="form-label">Ora inizio *</label>
-                                        <input type="text" class="form-control time-picker" id="edit_start_time_{{ event.id }}" name="start_time" value="{{ event.start_time }}" placeholder="09:00" required>
-                                    </div>
-
-                                    <div class="col-md-4 mb-3">
-                                        <label for="edit_end_time_{{ event.id }}" class="form-label">Ora fine *</label>
-                                        <input type="text" class="form-control time-picker" id="edit_end_time_{{ event.id }}" name="end_time" value="{{ event.end_time }}" placeholder="18:00" required>
-                                    </div>
-
-                                    <div class="col-md-4 mb-3">
-                                        <label for="edit_max_slots_{{ event.id }}" class="form-label">Posti massimi *</label>
-                                        <input type="number" class="form-control" id="edit_max_slots_{{ event.id }}" name="max_slots" value="{{ event.max_slots }}" min="1" max="100" required>
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="edit_compensation_{{ event.id }}" class="form-label">Compenso (₳) *</label>
-                                        <input type="number" class="form-control" id="edit_compensation_{{ event.id }}" name="compensation" value="{{ event.compensation }}" min="0" required>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="edit_description_{{ event.id }}" class="form-label">Descrizione</label>
-                                    <textarea class="form-control" id="edit_description_{{ event.id }}" name="description" rows="3">{{ event.description }}</textarea>
-                                </div>
-
-                                {% if event.participants_raw %}
-                                    <div class="alert alert-info">
-                                        <strong>ℹ️ Info:</strong> Questo evento ha {{ event.participants_raw|length }} iscritto/i. Le modifiche verranno applicate mantenendo le iscrizioni.
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                                <button type="submit" class="btn btn-success">
-                                    ✓ Salva Modifiche
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal per rimozione partecipanti di questo evento -->
-            {% for participant in event.participants_raw %}
-                <div class="modal fade" id="removeParticipantModal{{ event.id }}_{{ loop.index }}" tabindex="-1" aria-labelledby="removeParticipantModalLabel{{ event.id }}_{{ loop.index }}" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content bg-42-black">
-                            <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                                <h5 class="modal-title text-danger fw-bold" id="removeParticipantModalLabel{{ event.id }}_{{ loop.index }}">⚠️ Conferma Rimozione</h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body bg-42-black">
-                                <p>Vuoi davvero rimuovere <strong>{{ participant[0] }}</strong> dall'evento <strong>{{ event.title }}</strong>?</p>
-                                <p class="text-muted small mb-0">Iscritto il: {{ participant[1][:16] }}</p>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                                <form action="{{ url_for('admin_unregister', event_id=event.id, participant_name=participant[0]) }}" method="post" class="d-inline">
-                                    <button type="submit" class="btn btn-danger">
-                                        ✕ Rimuovi
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            {% endfor %}
-
-            <!-- Modal per segnare come non partecipato -->
-            {% for participant in event.participants_raw %}
-                {% if participant[2] == 1 %}
-                <div class="modal fade" id="markAbsentModal{{ event.id }}_{{ loop.index }}" tabindex="-1" aria-labelledby="markAbsentModalLabel{{ event.id }}_{{ loop.index }}" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content bg-42-black">
-                            <div class="modal-header bg-42-black border-warning" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                                <h5 class="modal-title text-warning fw-bold" id="markAbsentModalLabel{{ event.id }}_{{ loop.index }}">⏳ Conferma Non Partecipato</h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body bg-42-black">
-                                <p>Vuoi segnare <strong>{{ participant[0] }}</strong> come <strong class="text-warning">NON PARTECIPATO</strong> all'evento <strong>{{ event.title }}</strong>?</p>
-                                <p class="text-muted small mb-0">⚠️ Non riceverà compenso per questo evento.</p>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                                <form action="/admin/mark_absent/{{ event.id }}/{{ participant[0] }}" method="post" class="d-inline">
-                                    <button type="submit" class="btn btn-warning">
-                                        ⏳ Segna Non Partecipato
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-            {% endfor %}
-        {% endif %}
-    {% endfor %}
-{% endfor %}
-
-<!-- Modal per cancellare eventi di un giorno specifico -->
-{% for day in ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'] %}
-<div class="modal fade" id="deleteDayEventsModal{{ loop.index }}" tabindex="-1" aria-labelledby="deleteDayEventsModalLabel{{ loop.index }}" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-42-black">
-            <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                <h5 class="modal-title text-danger fw-bold" id="deleteDayEventsModalLabel{{ loop.index }}">⚠️ Conferma Cancellazione</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body bg-42-black">
-                <p>Vuoi davvero eliminare tutti gli eventi di <strong>{{ day }}</strong> (Week {{ current_week }})?</p>
-                <div class="alert alert-warning">
-                    <strong>⚠️ Attenzione:</strong> Verranno eliminate anche tutte le iscrizioni associate agli eventi di questo giorno.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                <form action="/admin/delete_day_events/{{ current_week }}/{{ day }}" method="post" class="d-inline">
-                    <button type="submit" class="btn btn-danger">
-                        🗑️ Sì, Cancella {{ day }}
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% endfor %}
-
-<!-- Modal per impostare pool date range -->
-<div class="modal fade" id="setPoolDatesModal" tabindex="-1" aria-labelledby="setPoolDatesModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-42-black">
-            <div class="modal-header bg-42-black border-info">
-                <h5 class="modal-title text-info fw-bold" id="setPoolDatesModalLabel">📆 Imposta Range Pool</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="/admin/set_pool_dates" method="post">
-                <div class="modal-body bg-42-black">
-                    <div class="mb-3">
-                        <label for="pool_start" class="form-label">Data Inizio (YYYY-MM-DD)</label>
-                        <input type="date" class="form-control" id="pool_start" name="pool_start">
-                    </div>
-                    <div class="mb-3">
-                        <label for="pool_end" class="form-label">Data Fine (opzionale)</label>
-                        <input type="date" class="form-control" id="pool_end" name="pool_end">
-                    </div>
-                    <div class="form-text small text-muted">Il sistema calcolerà automaticamente le date per le 4 settimane a partire da Data Inizio.</div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-info">Salva Range</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal per cancellare eventi della settimana corrente -->
-<div class="modal fade" id="deleteWeekEventsModal" tabindex="-1" aria-labelledby="deleteWeekEventsModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-42-black">
-            <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                <h5 class="modal-title text-danger fw-bold" id="deleteWeekEventsModalLabel">⚠️ Conferma Cancellazione</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body bg-42-black">
-                <p>Vuoi davvero eliminare <strong>TUTTI</strong> gli eventi della <strong>Week {{ current_week }}</strong>?</p>
-                <div class="alert alert-danger">
-                    <strong>⚠️ Attenzione:</strong> Questa azione è irreversibile!
-                    <br>Verranno eliminate anche tutte le iscrizioni associate.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                <form action="/admin/delete_week_events/{{ current_week }}" method="post" class="d-inline">
-                    <button type="submit" class="btn btn-danger">
-                        🗑️ Sì, Cancella Week {{ current_week }}
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal per aggiungere manualmente un partecipante -->
-{% for day, events in events_by_day.items() %}
-{% for event in events %}
-<div class="modal fade" id="addParticipantModal{{ event.id }}" tabindex="-1" aria-labelledby="addParticipantModalLabel{{ event.id }}" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-42-black">
-            <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                <h5 class="modal-title text-42-cyan fw-bold" id="addParticipantModalLabel{{ event.id }}">➕ Aggiungi Partecipante</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="/admin/add_participant/{{ event.id }}" method="post">
-                <div class="modal-body bg-42-black">
-                    <p>Evento: <strong>{{ event.title }}</strong></p>
-                    <p class="text-muted small">{{ event.day }} {{ (event.event_date|format_event_date) if event.event_date else '' }} • {{ event.start_time }}-{{ event.end_time }}</p>
-                    <div class="mb-3">
-                        <label for="intraLogin{{ event.id }}" class="form-label">Login Intra 42</label>
-                        <input type="text" class="form-control" id="intraLogin{{ event.id }}" name="intra_login" placeholder="Pasquale controlla bene il nome, NON SBAGLIARE!" required>
-                        <div class="form-text">Inserisci il login intra dell'utente da aggiungere</div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-success">➕ Aggiungi</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endfor %}
-{% endfor %}
-
-<!-- Modal per cancellare TUTTI gli eventi -->
-<div class="modal fade" id="deleteAllEventsModal" tabindex="-1" aria-labelledby="deleteAllEventsModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-42-black">
-            <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                <h5 class="modal-title text-danger fw-bold" id="deleteAllEventsModalLabel">🚨 CONFERMA CANCELLAZIONE TOTALE</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body bg-42-black">
-                <p class="fw-bold text-danger">Vuoi davvero eliminare <strong>TUTTI GLI EVENTI</strong> di <strong>TUTTE LE SETTIMANE</strong>?</p>
-                <div class="alert alert-danger">
-                    <strong>🚨 ATTENZIONE:</strong> Questa azione cancellerà:
-                    <ul class="mb-0 mt-2">
-                        <li>Tutti gli eventi di tutte e 4 le settimane</li>
-                        <li>Tutte le iscrizioni degli utenti</li>
-                    </ul>
-                    <p class="mb-0 mt-2"><strong>Questa azione NON può essere annullata!</strong></p>
-                </div>
-                <p class="text-muted small">Per confermare, digita "PaSqUaLe FuTuRo PeLaTo" nel campo sottostante:</p>
-                <input type="text" id="confirmDeleteAll" class="form-control" placeholder="PaSqUaLe FuTuRo PeLaTo">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                <form action="/admin/delete_all_events" method="post" class="d-inline" id="deleteAllForm">
-                    <button type="submit" class="btn btn-danger" id="confirmDeleteBtn" disabled>
-                        🚨 Sì, Cancella TUTTO
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Gestione Template Settimane -->
-<div class="modal fade" id="templatesModal" tabindex="-1" aria-labelledby="templatesModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content bg-42-black">
-            <div class="modal-header bg-42-black border-info" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                <h5 class="modal-title text-info fw-bold" id="templatesModalLabel">📋 Template Settimane</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body bg-42-black">
-                <p class="text-muted mb-3">I template permettono di creare una settimana intera di eventi in un colpo solo.</p>
-
-                <div class="row g-3">
-                    <!-- Card per creare nuovo template -->
-                    <div class="col-md-4">
-                        <div class="card template-card h-100 bg-42-gray border-success">
-                            <div class="card-header bg-success text-white border-bottom border-success">
-                                <strong>➕ Nuovo Template Settimana</strong>
-                            </div>
-                            <div class="card-body d-flex align-items-center justify-content-center">
-                                <div class="text-center">
-                                    <div class="display-1 text-success mb-3">+</div>
-                                    <p class="text-muted">Crea un template di settimana con tutti gli eventi</p>
-                                </div>
-                            </div>
-                            <div class="card-footer bg-42-black border-top border-success">
-                                <a href="/create_template" class="btn btn-sm btn-success w-100">
-                                    ✓ Crea Template
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Card per importare CSV -->
-                    <div class="col-md-4">
-                        <div class="card template-card h-100 bg-42-gray border-warning">
-                            <div class="card-header bg-warning text-dark border-bottom border-warning">
-                                <strong>📤 Import da CSV</strong>
-                            </div>
-                            <div class="card-body d-flex align-items-center justify-content-center">
-                                <div class="text-center">
-                                    <div class="display-1 text-warning mb-3">📄</div>
-                                    <p class="text-muted small">Carica un CSV per creare automaticamente i template</p>
-                                    <a href="/download_template_csv" class="btn btn-sm btn-outline-info">
-                                        📥 Scarica template
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="card-footer bg-42-black border-top border-warning">
-                                <form method="POST" action="/import_csv_templates" enctype="multipart/form-data" id="csvImportForm">
-                                    <input type="file" name="csv_file" id="csvFileInput" accept=".csv" class="d-none" onchange="document.getElementById('csvImportForm').submit();">
-                                    <button type="button" class="btn btn-sm btn-warning w-100" onclick="document.getElementById('csvFileInput').click();">
-                                        📂 Seleziona CSV
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Template esistenti dal database -->
-                    {% for template in templates %}
-                    <div class="col-md-4">
-                        <div class="card template-card h-100 bg-42-gray border-info">
-                            <div class="card-header bg-info text-white border-bottom border-info">
-                                <strong>{{ template.name }}</strong>
-                            </div>
-                            <div class="card-body bg-42-black">
-                                {% if template.description %}
-                                <p class="small text-muted mb-2">{{ template.description }}</p>
-                                {% endif %}
-                                <div class="small">
-                                    <strong>🎯 Target:</strong> Week {{ template.target_week }}<br>
-                                    <strong>📅 Eventi:</strong> {{ template.event_count }}<br>
-                                    <strong>📆 Creato:</strong> {{ template.created_at[:10] }}
-                                </div>
-                            </div>
-                            <div class="card-footer bg-42-black border-top border-info d-flex gap-2">
-                                <button type="button" class="btn btn-sm btn-success w-100 flex-grow-1"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#applyTemplateModal{{ template.id }}">
-                                    ✓ Applica
-                                </button>
-                                <button type="button" class="btn btn-sm btn-danger w-100 flex-grow-1"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#deleteTemplateModal{{ template.id }}">
-                                    🗑️ Elimina
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal di conferma per applicare template -->
-{% for template in templates %}
-<div class="modal fade" id="applyTemplateModal{{ template.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content bg-42-black border-success">
-            <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                <h5 class="modal-title text-success fw-bold">✓ Applica Template</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="POST" action="/apply_template/{{ template.id }}">
-                <div class="modal-body bg-42-black">
-                    <div class="text-center mb-3">
-                        <div class="display-1 text-success mb-3">📋</div>
-                        <h5 class="text-white mb-3">{{ template.name }}</h5>
-                        <p class="text-muted mb-3">Stai per applicare questo template alla <strong class="text-info">Week {{ template.target_week }}</strong></p>
-                        <div class="alert alert-info bg-42-gray border-info mb-0">
-                            <strong>📅 {{ template.event_count }} eventi</strong> verranno creati automaticamente
-                        </div>
-                    </div>
-
-                    <!-- Opzione di sovrascrittura -->
-                    <div class="form-check mt-3 p-3 bg-42-gray border border-warning rounded">
-                        <input class="form-check-input" type="checkbox" name="overwrite" value="true" id="overwrite{{ template.id }}">
-                        <label class="form-check-label text-warning" for="overwrite{{ template.id }}">
-                            <strong>⚠️ Sovrascrivi eventi esistenti</strong>
-                            <small class="d-block text-muted mt-1">
-                                Se attivato, eliminerà TUTTI gli eventi già presenti nella Week {{ template.target_week }} prima di applicare il template
-                            </small>
-                        </label>
-                    </div>
-                </div>
-                <div class="modal-footer bg-42-black border-success">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-success">
-                        ✓ Conferma e Applica
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal di conferma per eliminare template -->
-<div class="modal fade" id="deleteTemplateModal{{ template.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content bg-42-black border-danger">
-            <div class="modal-header bg-42-black border-danger" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                <h5 class="modal-title text-danger fw-bold">🗑️ Elimina Template</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body bg-42-black text-center">
-                <div class="display-1 text-danger mb-3">⚠️</div>
-                <h5 class="text-white mb-3">{{ template.name }}</h5>
-                <p class="text-muted mb-3">Sei sicuro di voler eliminare questo template?</p>
-                <div class="alert alert-warning bg-42-gray border-warning mb-0">
-                    <strong>Attenzione:</strong> Questa azione non può essere annullata
-                </div>
-            </div>
-            <div class="modal-footer bg-42-black border-danger">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                <form method="POST" action="/delete_template/{{ template.id }}" class="d-inline">
-                    <button type="submit" class="btn btn-danger">
-                        🗑️ Conferma Eliminazione
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% endfor %}
-
-<!-- Modal Whitelist Baywatcher -->
-<div class="modal fade" id="whitelistModal" tabindex="-1" aria-labelledby="whitelistModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content bg-42-black border-success">
-            <div class="modal-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
-                <h5 class="modal-title text-42-cyan fw-bold" id="whitelistModalLabel">👥 Whitelist Baywatcher</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body bg-42-black">
-                <p class="text-muted mb-3">Solo gli utenti in questa lista possono iscriversi agli eventi Baywatcher.</p>
-
-                <!-- Form per aggiungere utente -->
-                <div class="card mb-3 bg-42-gray border-success">
-                    <div class="card-body">
-                        <h6 class="text-success mb-3">➕ Aggiungi Utente/i</h6>
-                        <form action="/admin/whitelist/add" method="post">
-                            <div class="mb-2">
-                                <input type="text" name="intra_login" class="form-control" placeholder="es: igilani, user1, user2 (separa con virgola)" required>
-                                <small class="text-muted">💡 Puoi aggiungere più utenti separandoli con una virgola</small>
-                            </div>
-                            <button type="submit" class="btn btn-success w-100">Aggiungi alla Whitelist</button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Lista utenti autorizzati -->
-                <div class="card bg-42-gray border-info">
-                    <div class="card-body">
-                        <h6 class="text-info mb-3">✓ Utenti Autorizzati ({{ whitelist|length }})</h6>
-                        {% if whitelist %}
-                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                                <table class="table table-sm table-dark table-striped">
-                                    <thead class="sticky-top bg-dark">
-                                        <tr>
-                                            <th>Login Intra</th>
-                                            <th>Aggiunto il</th>
-                                            <th class="text-center">Azioni</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for user in whitelist %}
-                                            <tr>
-                                                <td><strong class="text-42-cyan">{{ user.login }}</strong></td>
-                                                <td><small class="text-muted">{{ user.added_at[:16] }}</small></td>
-                                                <td class="text-center">
-                                                    <form action="/admin/whitelist/remove/{{ user.id }}" method="post" class="d-inline" onsubmit="return confirm('Rimuovere {{ user.login }} dalla whitelist?');">
-                                                        <button type="submit" class="btn btn-outline-danger btn-sm">✕</button>
-                                                    </form>
-                                                </td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        {% else %}
-                            <p class="text-muted text-center mb-0 fst-italic">Nessun utente nella whitelist</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer bg-42-black border-success">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
-            </div>
-        </div>
-    </div>
-</div>
-
+<!-- Real-time updates with Socket.IO (caricato dopo tutti gli altri script) -->
 <script>
-// Abilita il bottone solo se viene digitato "CANCEL
+// Aspetta che Socket.IO sia caricato
+(function() {
+    function initSocketIO() {
+        if (typeof io === 'undefined') {
+            console.warn('⏳ Socket.IO not loaded yet, retrying...');
+            setTimeout(initSocketIO, 100);
+            return;
+        }
+
+        console.log('✅ Socket.IO loaded, connecting...');
+        const socket = io();
+
+        socket.on('connect', function() {
+            console.log('✅ Connected to real-time updates');
+        });
+
+        socket.on('event_update', function(data) {
+            console.log('📡 Received event update:', data);
+            // Ricarica la pagina per mostrare gli aggiornamenti
+            location.reload();
+        });
+
+        socket.on('week_activated', function(data) {
+            console.log('📅 Week activated:', data);
+            // Ricarica la pagina admin per aggiornare lo stato
+            location.reload();
+        });
+
+        socket.on('disconnect', function() {
+            console.log('❌ Disconnected from real-time updates');
+        });
+    }
+
+    // Inizia il tentativo di connessione
+    initSocketIO();
+})();
+</script>
+
+{% endblock %}

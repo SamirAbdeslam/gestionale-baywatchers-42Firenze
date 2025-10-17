@@ -1619,14 +1619,13 @@ input.time-picker.is-invalid {
 /* === STICKY DAYS HEADER === */
 .sticky-days-header {
     position: fixed;
-    top: 50px; /* Più in alto per coprire spazio */
+    top: 11px;
     left: 0;
     right: 0;
     z-index: 99;
     background-color: transparent;
-    overflow: hidden;
     padding: 0 var(--bs-gutter-x, 0.75rem); /* Stesso padding del container-fluid */
-    margin: 0;
+    margin: -12px;
 }
 
 .sticky-header-content {
@@ -1657,8 +1656,7 @@ input.time-picker.is-invalid {
 /* Responsive sticky header */
 @media (max-width: 768px) {
     .sticky-days-header {
-        top: 50px;
-        padding: 0; /* Rimuovi padding su mobile */
+        top: 11px;
     }
     
     /* Su mobile ripristina comportamento originale */
