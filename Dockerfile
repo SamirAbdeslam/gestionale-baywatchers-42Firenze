@@ -3,7 +3,11 @@ FROM python:3.10.19-alpine
 WORKDIR /app
 
 # Install curl for healthcheck
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl tzdata
+
+ENV TZ=Europe/Rome
+RUN ln -sf /usr/share/zoneinfo/Europe/Rome /etc/localtime && \
+    echo "Europe/Rome" > /etc/timezone
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
