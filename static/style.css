@@ -1681,5 +1681,38 @@ input.time-picker.is-invalid {
 }
 
 
+/* === LOG BADGE COLORS === */
+.badge.log-create {
+    background-color: #33c47f !important; /* Verde (Cluster) */
+    color: #000 !important;
+}
 
+.badge.log-update {
+    background-color: #f5bc39 !important; /* Giallo (Rush) */
+    color: #000 !important;
+}
 
+.badge.log-delete {
+    background-color: #e52a2d !important; /* Rosso (Esami) */
+    color: #fff !important;
+}
+
+.badge.log-register {
+    background-color: #3838e8 !important; /* Blu (Icebreaker) */
+    color: #fff !important;
+}
+
+.badge.log-setting {
+    background-color: #b73188 !important; /* Viola (Accoglienza) */
+    color: #fff !important;
+}
+
+.badge.log-other {
+    background-color: var(--42-cyan) !important; /* Ciano (Default) */
+    color: #000 !important;
+}
+
+.badge.log-security {
+    background-color: #ff8c00 !important; /* Arancione scuro */
+    color: #000 !important;
+}
