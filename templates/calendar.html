@@ -47,7 +47,7 @@
             <table class="table table-bordered user-calendar-table mb-0">
                 <thead class="table-dark">
                     <tr>
-                        {% for day in days %}
+                        {% for day in ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'] %}
                             <th class="text-center p-3">{{ day }} {% if day_dates and day in day_dates %}<br><small class="text-muted">{{ day_dates[day]|format_event_date }}</small>{% endif %}</th>
                         {% endfor %}
                     </tr>
@@ -60,14 +60,14 @@
         <table class="table table-bordered user-calendar-table">
             <thead class="table-dark">
                 <tr>
-                    {% for day in days %}
+                    {% for day in ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'] %}
                         <th class="text-center p-3">{{ day }} {% if day_dates and day in day_dates %}<br><small class="text-muted">{{ day_dates[day]|format_event_date }}</small>{% endif %}</th>
                     {% endfor %}
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    {% for d in days %}
+                    {% for d in ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'] %}
                         <td class="user-day-cell p-2 align-top">
                                 {% for event in calendar_grid[d] %}
                                     {% set is_registered = session.user and event.is_user_registered %}

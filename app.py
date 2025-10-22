@@ -315,12 +315,14 @@ def set_csp(response):
 # ------------------------------- 
 # Logging
 # -------------------------------
-def log_action(user_id, username, action_type, description=None, 
+def _log_action_db(c, user_id, username, action_type, description=None,
                resource_id=None, resource_type=None, 
                old_value=None, new_value=None):
     """
-    Log un'azione dell'utente
+    Funzione interna per inserire un log nel database usando un cursore esistente.
+    NON esegue il commit.
     
+    Restituisce l'ID del log inserito.
     action_type: tipo azione (es: 'CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT')
     description: descrizione leggibile (es: 'Creato nuovo evento')
     resource_id: ID della risorsa modificata
@@ -328,37 +330,69 @@ def log_action(user_id, username, action_type, description=None,
     old_value/new_value: valori prima/dopo (opzionale, per tracking modifiche)
     """
     try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        c = conn.cursor()
-        
         timestamp = datetime.now()
         ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
         user_agent = request.headers.get('User-Agent', '')[:200]  # Limita lunghezza
         
-        c.execute('''
+        c.execute(
+            '''
             INSERT INTO action_logs 
             (timestamp, user_id, username, action_type, action_description,
              ip_address, user_agent, resource_id, resource_type, old_value, new_value)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (timestamp, user_id, username, action_type, description,
-              ip_address, user_agent, resource_id, resource_type, 
-              old_value, new_value))
-        log_id = c.lastrowid
-        conn.commit()
-
-        # Dopo il commit, recupera il log appena inserito per trasmetterlo
-        c.execute("SELECT * FROM action_logs WHERE id = ?", (log_id,))
-        new_log_row = c.fetchone()
-        conn.close()
-
-        if new_log_row:
-            log_data = dict(new_log_row)
-            # Emetti l'evento con i dati del nuovo log
-            socketio.emit('new_log', log_data)
-
+            ''',
+            (
+                timestamp, user_id, username, action_type, description,
+                ip_address, user_agent, resource_id, resource_type,
+                old_value, new_value
+            )
+        )
+        return c.lastrowid
     except Exception as e:
         app.logger.error(f"Errore nel logging: {e}")
+        return None
+
+def log_action(user_id, username, action_type, description=None,
+               resource_id=None, resource_type=None, 
+               old_value=None, new_value=None, cursor=None):
+    """
+    Logga un'azione. Se viene passato un cursore, usa quello.
+    Altrimenti, apre una nuova connessione.
+    """
+    if cursor:
+        return _log_action_db(cursor, user_id, username, action_type, description, resource_id, resource_type, old_value, new_value)
+    else:
+        log_id = None
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            log_id = _log_action_db(c, user_id, username, action_type, description, resource_id, resource_type, old_value, new_value)
+            conn.commit()
+        except Exception as e:
+            app.logger.error(f"Errore nel logging con nuova connessione: {e}")
+        finally:
+            if conn:
+                conn.close()
+        
+        if log_id:
+            emit_log_update(log_id)
+        return log_id
+
+def emit_log_update(log_id):
+    """Recupera un log dal DB e lo emette via Socket.IO."""
+    if not log_id:
+        return
+    try:
+        read_conn = sqlite3.connect(DB_PATH)
+        read_conn.row_factory = sqlite3.Row
+        read_c = read_conn.cursor()
+        read_c.execute("SELECT * FROM action_logs WHERE id = ?", (log_id,))
+        new_log_row = read_c.fetchone()
+        read_conn.close()
+        if new_log_row:
+            socketio.emit('new_log', dict(new_log_row))
+    except Exception as e:
+        app.logger.error(f"Errore durante l'emissione del log Socket.IO: {e}")
 
 # -------------------------------
 # Admin Configuration
@@ -752,7 +786,7 @@ def home():
     conn.close()
     
     # Organizza eventi per giorno e ordina per orario
-    days = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica']
+    days = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì']
     calendar_grid = {day: [] for day in days}
     
     for event in events_with_participants:
@@ -833,7 +867,7 @@ def display_calendar():
     conn.close()
     
     # Organizza eventi per giorno e ordina per orario
-    days = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica']
+    days = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì']
     calendar_grid = {day: [] for day in days}
     
     for event in events_with_participants:
@@ -982,23 +1016,30 @@ def set_pool_dates():
         start_dt = datetime.strptime(pool_start, '%Y-%m-%d')
         pool_end_dt = start_dt + timedelta(days=27)  # 4 weeks (0-based)
         pool_end = pool_end_dt.strftime('%Y-%m-%d')
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    if pool_start:
-        c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('pool_start', ?)", (pool_start,))
-    if pool_end:
-        c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('pool_end', ?)", (pool_end,))
-    conn.commit()
-    conn.close()
     
-    # Log action
-    log_action(
-        user_id=session['user']['id'],
-        username=session['user']['login'],
-        action_type='UPDATE_SETTING',
-        description=f"Date pool impostate. Inizio: {pool_start}, Fine: {pool_end}",
-        resource_type='setting'
-    )
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        if pool_start:
+            c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('pool_start', ?)", (pool_start,))
+        if pool_end:
+            c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('pool_end', ?)", (pool_end,))
+    
+        log_id = log_action(
+            user_id=session['user']['id'],
+            username=session['user']['login'],
+            action_type='UPDATE_SETTING',
+            description=f"Date pool impostate. Inizio: {pool_start}, Fine: {pool_end}",
+            resource_type='setting',
+            cursor=c
+        )
+        conn.commit()
+        if log_id:
+            emit_log_update(log_id)
+    finally:
+        if conn:
+            conn.close()
+            
     flash('Date pool salvate con successo', 'success')
     return redirect(url_for('admin_panel'))
 
@@ -1009,23 +1050,27 @@ def set_active_week(week):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute("UPDATE settings SET value = ? WHERE key = 'active_week'", (str(week),))
+
+        # Log action
+        log_id = log_action(
+            user_id=session['user']['id'],
+            username=session['user']['login'],
+            action_type='ACTIVATE_WEEK',
+            description=f"Settimana {week} attivata",
+            resource_id=str(week),
+            cursor=c
+        )
         conn.commit()
         conn.close()
-        
+
+        if log_id:
+            emit_log_update(log_id)
+
         # Notifica tutti i client del cambio di settimana attiva
         socketio.emit('week_activated', {
             'week': week,
             'message': f'Week {week} è stata attivata!'
         })
-        
-        # Log action
-        log_action(
-            user_id=session['user']['id'],
-            username=session['user']['login'],
-            action_type='ACTIVATE_WEEK',
-        description=f"Settimana {week} attivata",
-            resource_id=str(week)
-        )
     return redirect(url_for('admin_panel'))
 
 @app.route('/set_max_events_per_user', methods=['POST'])
@@ -1036,17 +1081,21 @@ def set_max_events_per_user():
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute("UPDATE settings SET value = ? WHERE key = 'max_events_per_user'", (str(max_events),))
-        conn.commit()
-        conn.close()
-        
+
         # Log action
-        log_action(
+        log_id = log_action(
             user_id=session['user']['id'],
             username=session['user']['login'],
             action_type='UPDATE_SETTING',
-        description=f"Impostato il numero massimo di eventi per utente a {max_events}",
-            resource_type='setting'
+            description=f"Impostato il numero massimo di eventi per utente a {max_events}",
+            resource_type='setting',
+            cursor=c
         )
+        conn.commit()
+        conn.close()
+
+        if log_id:
+            emit_log_update(log_id)
     return redirect(url_for('admin_panel'))
 
 @app.route('/add_event', methods=['POST'])
@@ -1101,22 +1150,26 @@ def add_event():
         (capitalize_event_title(event_info['title']), capitalize_event_title(event_info['description']), day, start_time, end_time, max_slots, event_info['compensation'], week, event_date)
     )
     event_id = c.lastrowid
-    conn.commit()
-    conn.close()
-    
-    # Emetti aggiornamento live
-    emit_event_update(event_id, 'create')
-    
+
     # Log action
-    log_action(
+    log_id = log_action(
         user_id=session['user']['id'],
         username=session['user']['login'],
         action_type='CREATE_EVENT',
         description=f"Creato evento '{event_info['title']}' ({day}, {start_time}-{end_time}) per la settimana {week}.",
         resource_id=str(event_id),
         resource_type='event',
-        new_value=json.dumps(event_info)
+        new_value=json.dumps(event_info),
+        cursor=c
     )
+    conn.commit()
+    conn.close()
+
+    if log_id:
+        emit_log_update(log_id)
+
+    # Emetti aggiornamento live
+    emit_event_update(event_id, 'create')
     
     return redirect(url_for('admin_panel', week=week))
 
@@ -1203,20 +1256,24 @@ def register(event_id):
                   (event_id, participant_name))
         # Aggiorna contatore
         c.execute("UPDATE events SET registered = registered + 1 WHERE id = ?", (event_id,))
-        conn.commit()
-        
-        # Emetti aggiornamento live
-        emit_event_update(event_id, 'update')
         
         log_description = f"Utente '{participant_name}' registrato all'evento '{event_title}' ({event_day}, {start_time}-{end_time}, ID: {event_id})."
         # Log action
-        log_action(
+        log_id = log_action(
             user_id=session['user']['id'],
             username=participant_name,
             action_type='REGISTER_EVENT',
             description=log_description,
             resource_id=str(event_id),
+            cursor=c
         )
+        conn.commit()
+
+        if log_id:
+            emit_log_update(log_id)
+
+        # Emetti aggiornamento live
+        emit_event_update(event_id, 'update')
     
     conn.close()
     return redirect(url_for('home'))
@@ -1262,20 +1319,24 @@ def unregister(event_id):
     if c.rowcount > 0:
         # Aggiorna contatore solo se è stata rimossa una registrazione
         c.execute("UPDATE events SET registered = registered - 1 WHERE id = ? AND registered > 0", (event_id,))
-        conn.commit()
-        
-        # Emetti aggiornamento live
-        emit_event_update(event_id, 'update')
         
         log_description = f"Utente '{participant_name}' disiscritto dall'evento '{event_title}' ({event_day}, {start_time}-{end_time}, ID: {event_id})."
         # Log action
-        log_action(
+        log_id = log_action(
             user_id=session['user']['id'],
             username=participant_name,
             action_type='UNREGISTER_EVENT',
             description=log_description,
-            resource_id=str(event_id)
+            resource_id=str(event_id),
+            cursor=c
         )
+        conn.commit()
+
+        if log_id:
+            emit_log_update(log_id)
+
+        # Emetti aggiornamento live
+        emit_event_update(event_id, 'update')
     
     conn.close()
     return redirect(url_for('home'))
@@ -1283,27 +1344,35 @@ def unregister(event_id):
 @app.route('/delete_event/<int:event_id>', methods=['POST'])
 def delete_event(event_id):
     # Admin elimina un evento
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    # Log action before deleting
-    c.execute("SELECT title, week FROM events WHERE id = ?", (event_id,))
-    event_info = c.fetchone()
-    log_action(
-        user_id=session['user']['id'],
-        username=session['user']['login'],
-        action_type='DELETE_EVENT',
-        description=f"Eliminato evento '{event_info[0]}' (ID: {event_id}) dalla settimana {event_info[1]}.",
-        resource_id=str(event_id)
-    )
-    # Elimina prima le registrazioni associate
-    c.execute("DELETE FROM registrations WHERE event_id = ?", (event_id,))
-    # Poi elimina l'evento
-    c.execute("DELETE FROM events WHERE id = ?", (event_id,))
-    
-    conn.commit()
-    conn.close()
-    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        # Ottieni info per il log prima di cancellare
+        c.execute("SELECT title, week FROM events WHERE id = ?", (event_id,))
+        event_info = c.fetchone()
+        
+        # Elimina prima le registrazioni associate
+        c.execute("DELETE FROM registrations WHERE event_id = ?", (event_id,))
+        # Poi elimina l'evento
+        c.execute("DELETE FROM events WHERE id = ?", (event_id,))
+
+        log_id = log_action(
+            user_id=session['user']['id'],
+            username=session['user']['login'],
+            action_type='DELETE_EVENT',
+            description=f"Eliminato evento '{event_info[0]}' (ID: {event_id}) dalla settimana {event_info[1]}.",
+            resource_id=str(event_id),
+            cursor=c
+        )
+        conn.commit()
+
+        if log_id:
+            emit_log_update(log_id)
+    finally:
+        if conn:
+            conn.close()
+            
     # Emetti aggiornamento live (delete)
     socketio.emit('event_update', {'id': event_id, 'action': 'delete'})
     
@@ -1350,7 +1419,7 @@ def edit_event(event_id):
     # Log action
     c.execute("SELECT * FROM events WHERE id = ?", (event_id,))
     old_event_data = c.fetchone()
-    log_action(
+    log_id = log_action(
         user_id=session['user']['id'],
         username=session['user']['login'],
         action_type='UPDATE_EVENT',
@@ -1358,7 +1427,8 @@ def edit_event(event_id):
         resource_id=str(event_id),
         resource_type='event',
         old_value=str(old_event_data),
-        new_value=str(request.form.to_dict())
+        new_value=str(request.form.to_dict()),
+        cursor=c
     )
     # Aggiorna l'evento
     c.execute("""
@@ -1369,6 +1439,8 @@ def edit_event(event_id):
     """, (capitalize_event_title(title), capitalize_event_title(description), day, start_time, end_time, max_slots, compensation, event_id))
     
     conn.commit()
+    if log_id:
+        emit_log_update(log_id)
     conn.close()
     
     # Emetti aggiornamento live
@@ -1440,17 +1512,19 @@ def save_template():
             event.get('compensation', 0)
         ))
     
-    # Log action
-    log_action(
+    # Log action e commit
+    log_id = log_action(
         user_id=session['user']['id'],
         username=session['user']['login'],
         action_type='CREATE_TEMPLATE',
         description=f"Creato template '{template_name}' per la settimana {target_week}.",
         resource_id=str(template_id),
-        resource_type='template'
+        resource_type='template',
+        cursor=c
     )
-    
     conn.commit()
+    if log_id:
+        emit_log_update(log_id)
     conn.close()
     
     flash(f'Template "{template_name}" creato con successo con {len(events_data)} eventi!', 'success')
@@ -1514,18 +1588,20 @@ def apply_template(template_id):
             VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
         """, (capitalize_event_title(title), capitalize_event_title(description), day, start_time, end_time, max_slots, compensation, target_week))
         created_count += 1
-    
+
     # Log action
-    log_action(
+    log_id = log_action(
         user_id=session['user']['id'],
         username=session['user']['login'],
         action_type='APPLY_TEMPLATE',
         description=f"Applicato template '{template_name}' alla settimana {target_week}. Sovrascrittura: {overwrite}.",
         resource_id=str(template_id),
-        resource_type='template'
+        resource_type='template',
+        cursor=c
     )
-    
     conn.commit()
+    if log_id:
+        emit_log_update(log_id)
     conn.close()
     
     if overwrite and existing_events_count > 0:
@@ -1547,16 +1623,19 @@ def delete_template(template_id):
     template_name = result[0] if result else 'Template'
     
     c.execute("DELETE FROM week_templates WHERE id = ?", (template_id,))
-    
+
     # Log action
-    log_action(
+    log_id = log_action(
         user_id=session['user']['id'],
         username=session['user']['login'],
         action_type='DELETE_TEMPLATE',
         description=f"Eliminato template '{template_name}' (ID: {template_id}).",
-        resource_id=str(template_id)
+        resource_id=str(template_id),
+        cursor=c
     )
     conn.commit()
+    if log_id:
+        emit_log_update(log_id)
     conn.close()
     
     flash(f'Template "{template_name}" eliminato', 'success')
@@ -1719,17 +1798,19 @@ def import_csv_templates():
             
             created_templates += 1
         
-        # Log action
-        log_action(
+        # Log action e commit
+        log_id = log_action(
             user_id=session['user']['id'],
             username=session['user']['login'],
             action_type='IMPORT_TEMPLATES',
-        description=f"Importati {created_templates} template da CSV '{file.filename}'.",
+            description=f"Importati {created_templates} template da CSV '{file.filename}'.",
             resource_type='template',
-            new_value=f"{total_events} events created"
+            new_value=f"{total_events} events created",
+            cursor=c
         )
-        
         conn.commit()
+        if log_id:
+            emit_log_update(log_id)
         conn.close()
         
         flash(f'Import completato! Creati {created_templates} template con {total_events} eventi totali', 'success')
@@ -1759,20 +1840,24 @@ def admin_unregister(event_id, participant_name):
     if c.rowcount > 0:
         # Aggiorna contatore
         c.execute("UPDATE events SET registered = registered - 1 WHERE id = ? AND registered > 0", (event_id,))
-        conn.commit()
-        
-        # Emetti aggiornamento live
-        emit_event_update(event_id, 'update')
         
         log_description = f"Admin ha disiscritto '{participant_name}' dall'evento '{event_info[0]}' ({event_info[1]}, {event_info[2]}-{event_info[3]}, ID: {event_id})."
         # Log action
-        log_action(
+        log_id = log_action(
             user_id=session['user']['id'],
             username=session['user']['login'],
             action_type='ADMIN_UNREGISTER',
             description=log_description,
-            resource_id=str(event_id)
+            resource_id=str(event_id),
+            cursor=c
         )
+        conn.commit()
+
+        if log_id:
+            emit_log_update(log_id)
+
+        # Emetti aggiornamento live
+        emit_event_update(event_id, 'update')
     
     conn.close()
     return redirect(url_for('admin_panel'))
@@ -1815,22 +1900,25 @@ def admin_add_participant(event_id):
     # Aggiorna il contatore
     c.execute("UPDATE events SET registered = registered + 1 WHERE id = ?", (event_id,))
     
-    conn.commit()
-    conn.close()
-    
-    # Emetti aggiornamento live
-    emit_event_update(event_id, 'update')
-    
     log_description = f"Admin ha aggiunto '{intra_login}' all'evento '{event_title}' ({event_day}, {start_time}-{end_time}, ID: {event_id})."
     # Log action
-    log_action(
+    log_id = log_action(
         user_id=session['user']['id'],
         username=session['user']['login'],
         action_type='ADMIN_ADD_PARTICIPANT',
         description=log_description,
         resource_id=str(event_id),
-        resource_type='event'
+        resource_type='event',
+        cursor=c
     )
+    conn.commit()
+    conn.close()
+
+    if log_id:
+        emit_log_update(log_id)
+
+    # Emetti aggiornamento live
+    emit_event_update(event_id, 'update')
     
     return redirect(url_for('admin_panel', week=week))
 
@@ -1852,18 +1940,21 @@ def mark_absent(event_id, participant_name):
         WHERE event_id = ? AND participant_name = ?
     """, (event_id, participant_name))
     
-    conn.commit()
-    conn.close()
-    
     log_description = f"Segnato '{participant_name}' come assente per l'evento '{event_info[0]}' ({event_info[1]}, {event_info[2]}-{event_info[3]}, ID: {event_id})."
     # Log action
-    log_action(
+    log_id = log_action(
         user_id=session['user']['id'],
         username=session['user']['login'],
         action_type='MARK_ABSENT',
         description=log_description,
-        resource_id=str(event_id)
+        resource_id=str(event_id),
+        cursor=c
     )
+    conn.commit()
+    conn.close()
+
+    if log_id:
+        emit_log_update(log_id)
     
     flash(f'{participant_name} segnato come NON PARTECIPATO', 'warning')
     
@@ -1890,18 +1981,21 @@ def mark_present(event_id, participant_name):
         WHERE event_id = ? AND participant_name = ?
     """, (event_id, participant_name))
     
-    conn.commit()
-    conn.close()
-    
     log_description = f"Segnato '{participant_name}' come presente per l'evento '{event_info[0]}' ({event_info[1]}, {event_info[2]}-{event_info[3]}, ID: {event_id})."
     # Log action
-    log_action(
+    log_id = log_action(
         user_id=session['user']['id'],
         username=session['user']['login'],
         action_type='MARK_PRESENT',
         description=log_description,
-        resource_id=str(event_id)
+        resource_id=str(event_id),
+        cursor=c
     )
+    conn.commit()
+    conn.close()
+
+    if log_id:
+        emit_log_update(log_id)
     
     flash(f'{participant_name} segnato come PARTECIPATO', 'success')
     
@@ -1914,90 +2008,105 @@ def mark_present(event_id, participant_name):
 @admin_required
 def delete_day_events(week, day):
     """Elimina tutti gli eventi di un giorno specifico in una settimana"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    # Ottieni tutti gli ID degli eventi del giorno nella settimana
-    c.execute("SELECT id FROM events WHERE week = ? AND day = ?", (week, day))
-    event_ids = [row[0] for row in c.fetchall()]
-    
-    # Elimina tutte le registrazioni associate agli eventi del giorno
-    for event_id in event_ids:
-        c.execute("DELETE FROM registrations WHERE event_id = ?", (event_id,))
-    
-    # Elimina tutti gli eventi del giorno
-    c.execute("DELETE FROM events WHERE week = ? AND day = ?", (week, day))
-    
-    # Log action
-    log_action(
-        user_id=session['user']['id'],
-        username=session['user']['login'],
-        action_type='DELETE_DAY_EVENTS',
-        description=f"Eliminati tutti gli eventi del giorno '{day}' della settimana {week}.",
-        resource_id=f"{week}-{day}"
-    )
-    
-    conn.commit()
-    conn.close()
-    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        # Ottieni tutti gli ID degli eventi del giorno
+        c.execute("SELECT id FROM events WHERE week = ? AND day = ?", (week, day))
+        event_ids = [row[0] for row in c.fetchall()]
+        
+        # Elimina tutte le registrazioni associate agli eventi del giorno
+        if event_ids:
+            c.execute(f"DELETE FROM registrations WHERE event_id IN ({','.join('?' for _ in event_ids)})", event_ids)
+        
+        # Elimina tutti gli eventi del giorno
+        c.execute("DELETE FROM events WHERE week = ? AND day = ?", (week, day))
+
+        log_id = log_action(
+            user_id=session['user']['id'],
+            username=session['user']['login'],
+            action_type='DELETE_DAY_EVENTS',
+            description=f"Eliminati tutti gli eventi del giorno '{day}' della settimana {week}.",
+            resource_id=f"{week}-{day}",
+            cursor=c
+        )
+        conn.commit()
+
+        if log_id:
+            emit_log_update(log_id)
+    finally:
+        if conn:
+            conn.close()
+            
     return redirect(url_for('admin_panel', week=week))
 
 @app.route('/admin/delete_week_events/<int:week>', methods=['POST'])
 @admin_required
 def delete_week_events(week):
     """Elimina tutti gli eventi di una settimana specifica"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    # Ottieni tutti gli ID degli eventi della settimana
-    c.execute("SELECT id FROM events WHERE week = ?", (week,))
-    event_ids = [row[0] for row in c.fetchall()]
-    
-    # Elimina tutte le registrazioni associate agli eventi della settimana
-    for event_id in event_ids:
-        c.execute("DELETE FROM registrations WHERE event_id = ?", (event_id,))
-    
-    # Elimina tutti gli eventi della settimana
-    c.execute("DELETE FROM events WHERE week = ?", (week,))
-    
-    # Log action
-    log_action(
-        user_id=session['user']['id'],
-        username=session['user']['login'],
-        action_type='DELETE_WEEK_EVENTS',
-        description=f"Eliminati tutti gli eventi della settimana {week}.",
-        resource_id=str(week)
-    )
-    
-    conn.commit()
-    conn.close()
-    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        # Ottieni tutti gli ID degli eventi della settimana
+        c.execute("SELECT id FROM events WHERE week = ?", (week,))
+        event_ids = [row[0] for row in c.fetchall()]
+        
+        # Elimina tutte le registrazioni associate agli eventi della settimana
+        if event_ids:
+            c.execute(f"DELETE FROM registrations WHERE event_id IN ({','.join('?' for _ in event_ids)})", event_ids)
+        
+        # Elimina tutti gli eventi della settimana
+        c.execute("DELETE FROM events WHERE week = ?", (week,))
+
+        log_id = log_action(
+            user_id=session['user']['id'],
+            username=session['user']['login'],
+            action_type='DELETE_WEEK_EVENTS',
+            description=f"Eliminati tutti gli eventi della settimana {week}.",
+            resource_id=str(week),
+            cursor=c
+        )
+        conn.commit()
+
+        if log_id:
+            emit_log_update(log_id)
+    finally:
+        if conn:
+            conn.close()
+            
     return redirect(url_for('admin_panel', week=week))
 
 @app.route('/admin/delete_all_events', methods=['POST'])
 @admin_required
 def delete_all_events():
     """Elimina TUTTI gli eventi di tutte le settimane"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    # Elimina tutte le registrazioni
-    c.execute("DELETE FROM registrations")
-    
-    # Elimina tutti gli eventi
-    c.execute("DELETE FROM events")
-    
-    # Log action
-    log_action(
-        user_id=session['user']['id'],
-        username=session['user']['login'],
-        action_type='DELETE_ALL_EVENTS',
-        description="Eliminati TUTTI gli eventi da TUTTE le settimane."
-    )
-    
-    conn.commit()
-    conn.close()
-    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        # Elimina tutte le registrazioni
+        c.execute("DELETE FROM registrations")
+        
+        # Elimina tutti gli eventi
+        c.execute("DELETE FROM events")
+
+        log_id = log_action(
+            user_id=session['user']['id'],
+            username=session['user']['login'],
+            action_type='DELETE_ALL_EVENTS',
+            description="Eliminati TUTTI gli eventi da TUTTE le settimane.",
+            cursor=c
+        )
+        conn.commit()
+
+        if log_id:
+            emit_log_update(log_id)
+    finally:
+        if conn:
+            conn.close()
+            
     return redirect(url_for('admin_panel'))
 
 @app.route('/admin/participants_summary')
@@ -2037,7 +2146,7 @@ def participants_summary():
         # Calcola ore totali e compenso totale (solo eventi partecipati)
         total_hours = 0
         total_compensation = 0
-        events_details = []
+        events_by_week = {}
         # Load global pool_start once
         c.execute("SELECT value FROM settings WHERE key = 'pool_start'")
         pool_row = c.fetchone()
@@ -2045,10 +2154,6 @@ def participants_summary():
 
         for event in events:
             title, day, start_time, end_time, compensation, reg_date, attended, event_date, event_week = event
-            # If event_date not set, compute from pool_start / week mapping
-            if not event_date:
-                computed = compute_week_day_dates(pool_start, event_week)
-                event_date = computed.get(day)
             # Calcola durata in ore
             # Skip events with missing times
             if not start_time or not end_time or ':' not in start_time or ':' not in end_time:
@@ -2062,7 +2167,14 @@ def participants_summary():
                 total_hours += duration
                 total_compensation += compensation if compensation else 0
 
-            events_details.append({
+            # If event_date not set, compute from pool_start / week mapping
+            if not event_date:
+                computed = compute_week_day_dates(pool_start, event_week)
+                event_date = computed.get(day)
+
+            if event_week not in events_by_week:
+                events_by_week[event_week] = []
+            events_by_week[event_week].append({
                 'title': title,
                 'day': day,
                 'event_date': event_date,
@@ -2079,7 +2191,7 @@ def participants_summary():
             'num_events': num_events,
             'total_hours': round(total_hours, 2),
             'total_compensation': total_compensation,
-            'events': events_details
+            'events_by_week': events_by_week
         })
     
     conn.close()
@@ -2460,32 +2572,37 @@ def add_to_whitelist():
     if not logins:
         flash('Nessun login valido fornito', 'danger')
         return redirect(url_for('admin_panel'))
-    
-    # Log action
-    log_action(
-        user_id=session['user']['id'],
-        username=session['user']['login'],
-        action_type='WHITELIST_ADD',
-        description=f"Tentativo di aggiungere alla whitelist: {', '.join(logins)}.",
-        resource_type='whitelist',
-        new_value=intra_logins_input
-    )
-    
+
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
     added = []
     already_exists = []
+    log_ids = []
     
     for login in logins:
         try:
             c.execute("INSERT INTO baywatcher_whitelist (intra_login) VALUES (?)", (login,))
             added.append(login)
+            log_id = log_action(
+                user_id=session['user']['id'],
+                username=session['user']['login'],
+                action_type='WHITELIST_ADD',
+                description=f"Aggiunto '{login}' alla whitelist.",
+                resource_type='whitelist',
+                new_value=login,
+                cursor=c
+            )
+            if log_id:
+                log_ids.append(log_id)
         except sqlite3.IntegrityError:
             already_exists.append(login)
     
     conn.commit()
     conn.close()
+
+    for log_id in log_ids:
+        emit_log_update(log_id)
     
     # Messaggi di feedback
     if added:
@@ -2499,26 +2616,34 @@ def add_to_whitelist():
 @admin_required
 def remove_from_whitelist(whitelist_id):
     """Rimuovi un utente dalla whitelist"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    # Ottieni il login per il log prima di cancellare
-    c.execute("SELECT intra_login FROM baywatcher_whitelist WHERE id = ?", (whitelist_id,))
-    user_to_remove = c.fetchone()
-    
-    c.execute("DELETE FROM baywatcher_whitelist WHERE id = ?", (whitelist_id,))
-    
-    # Log action
-    log_action(
-        user_id=session['user']['id'],
-        username=session['user']['login'],
-        action_type='WHITELIST_REMOVE',
-        description=f"Rimosso '{user_to_remove[0] if user_to_remove else 'ID:'+str(whitelist_id)}' dalla whitelist.",
-        resource_id=str(whitelist_id)
-    )
-    conn.commit()
-    conn.close()
-    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        # Ottieni il login per il log prima di cancellare
+        c.execute("SELECT intra_login FROM baywatcher_whitelist WHERE id = ?", (whitelist_id,))
+        user_to_remove = c.fetchone()
+        
+        # Esegui la cancellazione
+        c.execute("DELETE FROM baywatcher_whitelist WHERE id = ?", (whitelist_id,))
+        
+        # Log action (usa la stessa connessione)
+        log_id = log_action(
+            user_id=session['user']['id'],
+            username=session['user']['login'],
+            action_type='WHITELIST_REMOVE',
+            description=f"Rimosso '{user_to_remove[0] if user_to_remove else 'ID:'+str(whitelist_id)}' dalla whitelist.",
+            resource_id=str(whitelist_id),
+            cursor=c
+        )
+        conn.commit()
+
+        if log_id:
+            emit_log_update(log_id)
+    finally:
+        if conn:
+            conn.close()
+            
     flash('Utente rimosso dalla whitelist', 'success')
     return redirect(url_for('admin_panel'))
 
@@ -2597,6 +2722,52 @@ def view_logs():
                          action_filter=action_filter,
                          all_users=all_users,
                          all_actions=all_actions)
+
+@app.route('/admin/logs/download')
+@admin_required
+def download_logs_csv():
+    """
+    Scarica i log filtrati in formato CSV.
+    """
+    date_filter = request.args.get('date')
+    user_filter = request.args.get('user')
+    action_filter = request.args.get('action')
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+
+    query = "SELECT id, timestamp, user_id, username, action_type, action_description, ip_address, user_agent, resource_id, resource_type, old_value, new_value FROM action_logs WHERE 1=1"
+    params = []
+
+    if date_filter:
+        query += " AND DATE(timestamp) = ?"
+        params.append(date_filter)
+    if user_filter:
+        query += " AND username = ?"
+        params.append(user_filter)
+    if action_filter:
+        query += " AND action_type = ?"
+        params.append(action_filter)
+
+    query += " ORDER BY timestamp DESC"
+    
+    c.execute(query, params)
+    logs = c.fetchall()
+    conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    if logs:
+        writer.writerow(logs[0].keys())
+        for log in logs:
+            writer.writerow(log)
+
+    response = make_response(output.getvalue())
+    response.headers["Content-Disposition"] = "attachment; filename=action_logs.csv"
+    response.headers["Content-Type"] = "text/csv; charset=utf-8"
+    return response
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
