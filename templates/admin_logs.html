@@ -1,0 +1,334 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4 mb-5">
+    <h2 class="text-center fw-bold text-42-cyan mb-4">📜 Logs</h2>
+
+    <!-- Filter Form -->
+    <div class="card mb-4 bg-42-black border-success">
+        <div class="card-header bg-42-black border-success" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
+            <h5 class="mb-0 text-42-cyan">🔍 Filtra Log</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" action="{{ url_for('view_logs') }}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="date" class="form-label">Data</label>
+                        <input type="date" class="form-control" id="date" name="date" value="{{ date_filter or '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="user" class="form-label">Utente</label>
+                        <select class="form-select" id="user" name="user">
+                            <option value="">Tutti gli utenti</option>
+                            {% for user in all_users %}
+                                <option value="{{ user }}" {% if user == user_filter %}selected{% endif %}>{{ user }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="action" class="form-label">Tipo Azione</label>
+                        <select class="form-select" id="action" name="action">
+                            <option value="">Tutte le azioni</option>
+                            {% for action in all_actions %}
+                                <option value="{{ action }}" {% if action == action_filter %}selected{% endif %}>{{ action }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-grid d-md-flex gap-2">
+                        <button type="submit" class="btn btn-success">Filtra</button>
+                        <a href="{{ url_for('view_logs') }}" class="btn btn-secondary">Reset</a>
+                        <a href="{{ url_for('download_logs_csv', date=date_filter, user=user_filter, action=action_filter) }}" class="btn btn-success" title="Esporta i risultati filtrati in formato CSV">
+                            Esporta CSV
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Real-time update notification -->
+    <div id="newLogNotification" class="alert alert-info text-center" style="display: none; cursor: pointer;" onclick="location.reload();">
+        ⚡ Nuovi log disponibili. Clicca qui per aggiornare la vista.
+    </div>
+
+
+    <!-- Logs Table -->
+    <div class="card bg-42-black border-info">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-dark table-striped table-hover" style="font-size: 0.9rem;">
+                    <thead>
+                        <tr>
+                            <th style="width: 15%;">Timestamp</th>
+                            <th style="width: 10%;">Utente</th>
+                            <th style="width: 15%;">Azione</th>
+                            <th style="width: 45%;">Descrizione</th>
+                            <th style="width: 10%;">IP Address</th>
+                            <th style="width: 5%;">Dettagli</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.timestamp[:19] }}</td>
+                            <td><strong class="text-42-cyan">{{ log.username }}</strong></td>
+                            <td>
+                                {% set action_lower = log.action_type.lower() %}
+                                {% if 'create' in action_lower or 'add' in action_lower or 'import' in action_lower or 'apply' in action_lower %}
+                                    {% set log_class = 'log-create' %}
+                                {% elif 'update' in action_lower or 'set' in action_lower or 'edit' in action_lower or 'mark' in action_lower or 'activate' in action_lower %}
+                                    {% set log_class = 'log-update' %}
+                                {% elif 'delete' in action_lower or 'remove' in action_lower or 'unregister' in action_lower %}
+                                    {% set log_class = 'log-delete' %}
+                                {% elif 'register' in action_lower %}
+                                    {% set log_class = 'log-register' %}
+                                {% elif 'setting' in action_lower %}
+                                    {% set log_class = 'log-setting' %}
+                                {% else %}
+                                    {% set log_class = 'log-other' %}
+                                {% endif %}
+                                <span class="badge {{ log_class }}">{{ log.action_type }}</span>
+                            </td>
+                            <td>{{ log.action_description }}</td>
+                            <td>{{ log.ip_address }}</td>
+                            <td>
+                                {% if log.old_value or log.new_value or log.resource_id %}
+                                <button type="button" class="btn btn-outline-light btn-sm py-0 px-2" data-bs-toggle="modal" data-bs-target="#logModal{{ log.id }}">👁️</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center fst-italic py-4">Nessun log trovato con i filtri correnti.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mt-3">
+                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('view_logs', page=page-1, date=date_filter, user=user_filter, action=action_filter) }}">Precedente</a>
+                    </li>
+                    {% for p in range(1, total_pages + 1) %}
+                        <li class="page-item {% if p == page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('view_logs', page=p, date=date_filter, user=user_filter, action=action_filter) }}">{{ p }}</a>
+                        </li>
+                    {% endfor %}
+                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('view_logs', page=page+1, date=date_filter, user=user_filter, action=action_filter) }}">Successiva</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+            <div class="text-center text-muted small mt-2">
+                Mostrando <span id="displayedLogsCount">{{ logs|length }}</span> di <span id="totalLogsCount">{{ total_logs }}</span> log totali.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals for Log Details -->
+{% for log in logs %}
+{% if log.old_value or log.new_value or log.resource_id %}
+<div class="modal fade" id="logModal{{ log.id }}" tabindex="-1" aria-labelledby="logModalLabel{{ log.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-42-black border-info">
+            <div class="modal-header bg-42-black border-info" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
+                <h5 class="modal-title text-info fw-bold" id="logModalLabel{{ log.id }}">Dettagli Log #{{ log.id }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item bg-transparent"><strong>Timestamp:</strong> {{ log.timestamp }}</li>
+                    <li class="list-group-item bg-transparent"><strong>Utente:</strong> {{ log.username }} (ID: {{ log.user_id }})</li>
+                    <li class="list-group-item bg-transparent"><strong>Azione:</strong> {{ log.action_type }}</li>
+                    <li class="list-group-item bg-transparent"><strong>Descrizione:</strong> {{ log.action_description }}</li>
+                    <li class="list-group-item bg-transparent"><strong>IP / User Agent:</strong> {{ log.ip_address }} / {{ log.user_agent }}</li>
+                    {% if log.resource_type or log.resource_id %}
+                    <li class="list-group-item bg-transparent">
+                        <strong>Risorsa:</strong> 
+                        {% if log.resource_type %}<span class="badge bg-secondary">{{ log.resource_type }}</span>{% endif %}
+                        {% if log.resource_id %} ID: {{ log.resource_id }}{% endif %}
+                    </li>
+                    {% endif %}
+                </ul>
+
+                {% if log.old_value or log.new_value %}
+                <div class="mt-3">
+                    <h6 class="text-info">Dettagli Modifica</h6>
+                    <div class="row">
+                        {% if log.old_value %}
+                        <div class="col-md-6">
+                            <div class="card bg-42-gray h-100">
+                                <div class="card-header bg-danger text-white">Valore Precedente</div>
+                                <div class="card-body">
+                                    <pre class="small" style="white-space: pre-wrap; word-break: break-all;"><code>{{ log.old_value }}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if log.new_value %}
+                        <div class="col-md-6">
+                            <div class="card bg-42-gray h-100">
+                                <div class="card-header bg-success text-white">Nuovo Valore</div>
+                                <div class="card-body">
+                                    <pre class="small" style="white-space: pre-wrap; word-break: break-all;"><code>{{ log.new_value }}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Funzione per creare una riga della tabella da un oggetto log
+    function createLogRow(log) {
+        const action_lower = log.action_type.toLowerCase();
+        let log_class = 'log-other';
+
+        if (action_lower.includes('create') || action_lower.includes('add') || action_lower.includes('import') || action_lower.includes('apply')) {
+            log_class = 'log-create';
+        } else if (action_lower.includes('update') || action_lower.includes('set') || action_lower.includes('edit') || action_lower.includes('mark') || action_lower.includes('activate')) {
+            log_class = 'log-update';
+        } else if (action_lower.includes('delete') || action_lower.includes('remove') || action_lower.includes('unregister')) {
+            log_class = 'log-delete';
+        } else if (action_lower.includes('register')) {
+            log_class = 'log-register';
+        } else if (action_lower.includes('setting')) {
+            log_class = 'log-setting';
+        }
+
+        const tr = document.createElement('tr');
+        tr.style.backgroundColor = 'rgba(0, 186, 188, 0.1)'; // Evidenzia la nuova riga
+        tr.innerHTML = `
+            <td>${log.timestamp.substring(0, 19)}</td>
+            <td><strong class="text-42-cyan">${log.username}</strong></td>
+            <td><span class="badge ${log_class}">${log.action_type}</span></td>
+            <td>${log.action_description || ''}</td>
+            <td>${log.ip_address}</td>
+            <td>
+                ${(log.old_value || log.new_value || log.resource_id) ? 
+                `<button type="button" class="btn btn-outline-light btn-sm py-0 px-2" data-bs-toggle="modal" data-bs-target="#logModal${log.id}">👁️</button>` : ''}
+            </td>
+        `;
+        return tr;
+    }
+
+    // Funzione per creare il modal dei dettagli di un log
+    function createLogModal(log) {
+        if (!log.old_value && !log.new_value && !log.resource_id) {
+            return null;
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.id = `logModal${log.id}`;
+        modal.tabIndex = -1;
+        modal.setAttribute('aria-labelledby', `logModalLabel${log.id}`);
+        modal.setAttribute('aria-hidden', 'true');
+
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content bg-42-black border-info">
+                    <div class="modal-header bg-42-black border-info" style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
+                        <h5 class="modal-title text-info fw-bold" id="logModalLabel${log.id}">Dettagli Log #${log.id}</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item bg-transparent"><strong>Timestamp:</strong> ${log.timestamp}</li>
+                            <li class="list-group-item bg-transparent"><strong>Utente:</strong> ${log.username} (ID: ${log.user_id})</li>
+                            <li class="list-group-item bg-transparent"><strong>Azione:</strong> ${log.action_type}</li>
+                            <li class="list-group-item bg-transparent"><strong>Descrizione:</strong> ${log.action_description}</li>
+                            <li class="list-group-item bg-transparent"><strong>IP / User Agent:</strong> ${log.ip_address} / ${log.user_agent}</li>
+                            ${(log.resource_type || log.resource_id) ? `
+                            <li class="list-group-item bg-transparent">
+                                <strong>Risorsa:</strong> 
+                                ${log.resource_type ? `<span class="badge bg-secondary">${log.resource_type}</span>` : ''}
+                                ${log.resource_id ? ` ID: ${log.resource_id}` : ''}
+                            </li>` : ''}
+                        </ul>
+                        ${(log.old_value || log.new_value) ? `
+                        <div class="mt-3">
+                            <h6 class="text-info">Dettagli Modifica</h6>
+                            <div class="row">
+                                ${log.old_value ? `<div class="col-md-6"><div class="card bg-42-gray h-100"><div class="card-header bg-danger text-white">Valore Precedente</div><div class="card-body"><pre class="small" style="white-space: pre-wrap; word-break: break-all;"><code>${log.old_value}</code></pre></div></div></div>` : ''}
+                                ${log.new_value ? `<div class="col-md-6"><div class="card bg-42-gray h-100"><div class="card-header bg-success text-white">Nuovo Valore</div><div class="card-body"><pre class="small" style="white-space: pre-wrap; word-break: break-all;"><code>${log.new_value}</code></pre></div></div></div>` : ''}
+                            </div>
+                        </div>` : ''}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        return modal;
+    }
+
+    // Funzione per gestire la connessione a Socket.IO
+    function initSocketIO() {
+        if (typeof io === 'undefined') {
+            setTimeout(initSocketIO, 100);
+            return;
+        }
+
+        const socket = io();
+
+        socket.on('connect', function() {
+            console.log('✅ Connesso al server per aggiornamenti real-time dei log.');
+        });
+
+        socket.on('new_log', function(log) {
+            console.log('📡 Nuovo log ricevuto:', log);
+
+            // Se la pagina ha filtri attivi, mostra solo una notifica
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('date') || urlParams.get('user') || urlParams.get('action')) {
+                document.getElementById('newLogNotification').style.display = 'block';
+                return;
+            }
+
+            const tableBody = document.getElementById('logsTableBody');
+            const noLogsRow = tableBody.querySelector('td[colspan="6"]');
+
+            // Rimuovi il messaggio "Nessun log trovato" se presente
+            if (noLogsRow) {
+                noLogsRow.parentElement.remove();
+            }
+
+            const newRow = createLogRow(log);
+            tableBody.prepend(newRow);
+
+            // Crea e aggiungi il modal corrispondente al corpo della pagina
+            const newModal = createLogModal(log);
+            if (newModal) {
+                document.body.appendChild(newModal);
+            }
+
+            // Aggiorna i contatori
+            document.getElementById('displayedLogsCount').textContent = parseInt(document.getElementById('displayedLogsCount').textContent) + 1;
+            document.getElementById('totalLogsCount').textContent = parseInt(document.getElementById('totalLogsCount').textContent) + 1;
+        });
+    }
+
+    initSocketIO();
+});
+</script>
+
+{% endblock %}

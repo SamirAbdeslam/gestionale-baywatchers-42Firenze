@@ -137,33 +137,49 @@
                 </div>
 
                 <h6 class="mb-3 fw-bold text-42-cyan">📅 Eventi a cui ha partecipato:</h6>
-                <div class="list-group">
-                    {% for event in participant.events %}
-                    <div class="list-group-item bg-42-gray border-success {% if event.attended == 0 %}bg-warning bg-opacity-10{% endif %}">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1 fw-bold text-42-cyan">
-                                    {{ event.title }}
-                                    {% if event.attended == 0 %}
-                                        <span class="badge bg-warning text-dark ms-2">NON PARTECIPATO</span>
-                                    {% endif %}
+                {% if participant.events_by_week %}
+                    {% for week, events in participant.events_by_week.items()|sort %}
+                        <div class="mb-3">
+                            <div class="px-2 py-2 bg-42-black border-bottom border-top border-success">
+                                <h6 class="text-42-cyan mb-0 fw-bold">
+                                    Week {{ week }}
+                                    <span class="badge bg-success ms-2">{{ events|length }} eventi</span>
                                 </h6>
-                                <p class="mb-1">
-                                    <span class="badge bg-primary">{{ event.day }} {{ (event.event_date|format_event_date) if event.event_date else '' }}</span>
-                                    <span class="badge bg-info text-dark">{{ event.start_time }} - {{ event.end_time }}</span>
-                                    <span class="badge bg-success">{{ event.duration }} ore</span>
-                                    {% if event.attended == 1 %}
-                                        <span class="badge bg-warning text-dark">💰 {{ event.compensation }}</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary text-decoration-line-through">💰 {{ event.compensation }}</span>
-                                    {% endif %}
-                                </p>
-                                <small class="text-muted">Iscritto il: {{ event.registration_date[:16] }}</small>
+                            </div>
+                            <div class="list-group list-group-flush">
+                                {% for event in events %}
+                                <div class="list-group-item bg-42-gray border-success {% if event.attended == 0 %}bg-warning bg-opacity-10{% endif %}">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1 fw-bold text-42-cyan">
+                                                {{ event.title }}
+                                                {% if event.attended == 0 %}
+                                                    <span class="badge bg-warning text-dark ms-2">NON PARTECIPATO</span>
+                                                {% endif %}
+                                            </h6>
+                                            <p class="mb-1">
+                                                <span class="badge bg-primary">{{ event.day }} {{ (event.event_date|format_event_date) if event.event_date else '' }}</span>
+                                                <span class="badge bg-info text-dark">{{ event.start_time }} - {{ event.end_time }}</span>
+                                                <span class="badge bg-success">{{ event.duration }} ore</span>
+                                                {% if event.attended == 1 %}
+                                                    <span class="badge bg-warning text-dark">💰 {{ event.compensation }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary text-decoration-line-through">💰 {{ event.compensation }}</span>
+                                                {% endif %}
+                                            </p>
+                                            <small class="text-muted">Iscritto il: {{ event.registration_date[:16] }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
                             </div>
                         </div>
-                    </div>
                     {% endfor %}
-                </div>
+                {% else %}
+                    <div class="alert alert-info mb-0">
+                        Nessun evento trovato per questo partecipante.
+                    </div>
+                {% endif %}
             </div>
             <div class="modal-footer bg-42-black border-success d-flex justify-content-between">
                 <a href="{{ url_for('download_participant_csv', participant_name=participant.name) }}" class="btn btn-outline-success">
