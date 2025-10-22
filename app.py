@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, session, make_response, flash, g
+from flask import Flask, render_template, request, redirect, url_for, session, make_response, flash, g, jsonify
+from icalendar import Calendar, Event, Alarm
 import sqlite3
 import os
 import csv
@@ -10,7 +11,7 @@ from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from functools import wraps
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit 
 
 # -------------------------------
 # Helper Functions
@@ -1276,7 +1277,7 @@ def register(event_id):
         emit_event_update(event_id, 'update')
     
     conn.close()
-    return redirect(url_for('home'))
+    return redirect(url_for('home', registered_event_id=event_id))
 
 @app.route('/unregister/<int:event_id>', methods=['POST'])
 @login_required
@@ -2530,7 +2531,8 @@ def user_profile():
             'start_time': event[3],
             'end_time': event[4],
             'compensation': event[5],
-            'attended': event[7]
+            'attended': event[7],
+            'concrete_date': event_date  # Aggiungi concrete_date
         })
     
     return render_template('user_profile.html',
@@ -2803,6 +2805,94 @@ def webhook():
     except Exception as e:
         app.logger.error(f"Errore durante la gestione del webhook: {e}")
         return f"Webhook error: {str(e)}", 500
+
+@app.route('/event/<int:event_id>/calendar.ics')
+@login_required
+def download_ics(event_id):
+    """Genera un file iCalendar (.ics) per un singolo evento."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+
+    # Ottieni dettagli evento
+    c.execute("SELECT title, description, day, start_time, end_time, week, event_date FROM events WHERE id = ?", (event_id,))
+    event_data = c.fetchone()
+
+    if not event_data:
+        conn.close()
+        return "Evento non trovato", 404
+
+    title, description, day, start_time, end_time, week, event_date = event_data
+
+    # Calcola la data concreta dell'evento
+    concrete_date_str = event_date
+    if not concrete_date_str:
+        c.execute("SELECT value FROM settings WHERE key = 'pool_start'")
+        pool_start_row = c.fetchone()
+        pool_start = pool_start_row[0] if pool_start_row else None
+        day_dates = compute_week_day_dates(pool_start, week)
+        concrete_date_str = day_dates.get(day)
+
+    conn.close()
+
+    if not concrete_date_str:
+        return "Impossibile determinare la data dell'evento. Impostare la data di inizio pool.", 500
+
+    try:
+        # Crea oggetti datetime per inizio e fine
+        event_dt_obj = datetime.strptime(concrete_date_str, '%Y-%m-%d')
+        start_h, start_m = map(int, start_time.split(':'))
+        end_h, end_m = map(int, end_time.split(':'))
+
+        start_datetime = event_dt_obj.replace(hour=start_h, minute=start_m)
+        end_datetime = event_dt_obj.replace(hour=end_h, minute=end_m)
+
+        # Crea l'evento iCalendar
+        cal = Calendar()
+        cal.add('prodid', '-//GestionaleBaywatchers//42Firenze//IT')
+        cal.add('version', '2.0')
+
+        event = Event()
+        event.add('summary', title)
+        event.add('dtstart', start_datetime)
+        event.add('dtend', end_datetime)
+        event.add('dtstamp', datetime.now())
+        event.add('description', description or '')
+        event.add('uid', f'event-{event_id}-{start_datetime.isoformat()}@baywatchers.42firenze.it')
+
+        # Aggiungi notifiche preimpostate
+        from datetime import timedelta
+
+        # Notifica 1 giorno prima
+        alarm1 = Alarm()
+        alarm1.add('action', 'DISPLAY')
+        alarm1.add('description', f'Ricorda: {title}')
+        alarm1.add('trigger', timedelta(minutes=-1440))
+        event.add_component(alarm1)
+
+        # Notifica 2 ore prima
+        alarm2 = Alarm()
+        alarm2.add('action', 'DISPLAY')
+        alarm2.add('description', f'Ricorda: {title}')
+        alarm2.add('trigger', timedelta(minutes=-120))
+        event.add_component(alarm2)
+
+        # Notifica 1 ora prima
+        alarm3 = Alarm()
+        alarm3.add('action', 'DISPLAY')
+        alarm3.add('description', f'Ricorda: {title}')
+        alarm3.add('trigger', timedelta(minutes=-60))
+        event.add_component(alarm3)
+
+        cal.add_component(event)
+
+        response = make_response(cal.to_ical())
+        response.headers['Content-Disposition'] = f'attachment; filename="evento_{event_id}.ics"'
+        response.headers['Content-Type'] = 'text/calendar; charset=utf-8'
+        return response
+
+    except Exception as e:
+        app.logger.error(f"Errore durante la creazione del file ICS: {e}")
+        return "Errore interno del server", 500
 
 if __name__ == '__main__':
     # Run with SocketIO for real-time updates
