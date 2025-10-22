@@ -80,10 +80,11 @@
                                 <div class="table-responsive">
                                     <table class="table table-hover mb-0 participants-table" style="table-layout: fixed; width: 100%;">
                                         <colgroup>
-                                            <col style="width: 36.67%;">
-                                            <col style="width: 21.11%;">
-                                            <col style="width: 21.11%;">
-                                            <col style="width: 21.11%;">
+                                            <col style="width: 30%;">
+                                            <col style="width: 18%;">
+                                            <col style="width: 18%;">
+                                            <col style="width: 18%;">
+                                            <col style="width: 16%;">
                                         </colgroup>
                                         <thead class="table-dark">
                                             <tr>
@@ -91,6 +92,7 @@
                                                 <th class="text-center">Giorno</th>
                                                 <th class="text-center">Orario</th>
                                                 <th class="text-center">Altarian</th>
+                                                <th class="text-center">Azioni</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -119,10 +121,24 @@
                                                         </span>
                                                     {% endif %}
                                                 </td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                            title="Aggiungi al calendario" 
+                                                            onclick="openCalendarModal(this)"
+                                                            data-event-id="{{ event.id }}"
+                                                            data-title="{{ event.title }}"
+                                                            data-description="{{ event.description or '' }}"
+                                                            data-day="{{ event.day }}"
+                                                            data-start-time="{{ event.start_time }}"
+                                                            data-end-time="{{ event.end_time }}"
+                                                            data-concrete-date="{{ event.concrete_date or '' }}">
+                                                        📅
+                                                    </button>
+                                                </td>
                                             </tr>
                                             {% endfor %}
                                             <tr class="table-active">
-                                                <td colspan="3" class="text-end fw-bold">Totale Week {{ week }}:</td>
+                                                <td colspan="4" class="text-end fw-bold">Totale Week {{ week }}:</td>
                                                 <td class="text-center">
                                                     <span class="badge bg-warning text-dark fs-6">
                                                         {{ events_by_week[week]|selectattr('attended', 'equalto', 1)|sum(attribute='compensation') }} 💰
@@ -146,4 +162,95 @@
 
     </div>
 </div>
+
+<!-- Modale "Aggiungi al Calendario" -->
+<div class="modal fade" id="addToCalendarModal" tabindex="-1" aria-labelledby="addToCalendarModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-42-black border-success">
+            <div class="modal-header bg-42-black border-success"
+                style="background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);">
+                <h5 class="modal-title text-success fw-bold" id="addToCalendarModalLabel">✓ Iscrizione Completata!</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-42-black text-center">
+                <div class="display-1 text-success mb-3">📅</div>
+                <h5 class="text-white mb-3">Aggiungi al tuo calendario</h5>
+                <p class="text-muted mb-4">
+                    Non perderti l'evento! Aggiungilo subito al tuo calendario personale.
+                </p>
+                <div class="d-grid gap-2">
+                    <a id="googleCalendarLink" href="#" target="_blank" class="btn btn-primary">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg"
+                            alt="Google Calendar" width="20" height="20" class="me-2">
+                        Aggiungi a Google Calendar
+                    </a>
+                    <a id="icsLink" href="#" class="btn btn-light">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
+                            class="bi bi-calendar-plus me-2" viewBox="0 0 16 16">
+                            <path
+                                d="M8 7a.5.5 0 0 1 .5.5V9H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V10H6a.5.5 0 0 1 0-1h1.5V7.5A.5.5 0 0 1 8 7" />
+                            <path
+                                d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z" />
+                        </svg>
+                        Apple, Outlook, Altro (.ics)
+                    </a>
+                </div>
+            </div>
+            <div class="modal-footer bg-42-black border-success">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openCalendarModal(button) {
+        const eventId = button.getAttribute('data-event-id');
+        const title = button.getAttribute('data-title');
+        const description = button.getAttribute('data-description');
+        const day = button.getAttribute('data-day');
+        const startTime = button.getAttribute('data-start-time');
+        const endTime = button.getAttribute('data-end-time');
+        const concreteDate = button.getAttribute('data-concrete-date');
+
+        // Popola i link del modale
+        const googleLink = document.getElementById('googleCalendarLink');
+        const icsLink = document.getElementById('icsLink');
+
+        if (concreteDate) {
+            const [startH, startM] = startTime.split(':');
+            const [endH, endM] = endTime.split(':');
+
+            const startDate = new Date(`${concreteDate}T${startTime}:00`);
+            const endDate = new Date(`${concreteDate}T${endTime}:00`);
+
+            // Formato per Google: YYYYMMDDTHHMMSS/YYYYMMDDTHHMMSS (in UTC)
+            const toGoogleFormat = (date) => date.toISOString().replace(/-|:|\.\d{3}/g, '');
+            const googleDates = `${toGoogleFormat(startDate)}/${toGoogleFormat(endDate)}`;
+
+            const googleUrl = new URL('https://www.google.com/calendar/render');
+            googleUrl.searchParams.append('action', 'TEMPLATE');
+            googleUrl.searchParams.append('text', title);
+            googleUrl.searchParams.append('dates', googleDates);
+            googleUrl.searchParams.append('details', description || `Evento Baywatcher: ${title}`);
+            googleUrl.searchParams.append('location', '42 Firenze');
+            googleUrl.searchParams.append('ctz', 'Europe/Rome');
+
+            googleLink.href = googleUrl.toString();
+        } else {
+            // Nascondi il link se non possiamo calcolare la data
+            googleLink.style.display = 'none';
+        }
+
+        // Link per il file .ics
+        icsLink.href = `/event/${eventId}/calendar.ics`;
+
+        // Mostra il modale
+        const modal = new bootstrap.Modal(document.getElementById('addToCalendarModal'));
+        modal.show();
+    }
+</script>
+
 {% endblock %}

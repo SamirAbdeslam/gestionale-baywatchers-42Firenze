@@ -2531,7 +2531,8 @@ def user_profile():
             'start_time': event[3],
             'end_time': event[4],
             'compensation': event[5],
-            'attended': event[7]
+            'attended': event[7],
+            'concrete_date': event_date  # Aggiungi concrete_date
         })
     
     return render_template('user_profile.html',
