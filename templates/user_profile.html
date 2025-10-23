@@ -60,6 +60,59 @@
             </div>
         </div>
 
+        <!-- Notification Preferences -->
+        <div class="col-12 mt-3">
+            <div class="card shadow bg-42-black border-success">
+                <div class="card-header bg-info text-white py-3">
+                    <h4 class="mb-0">🔔 Preferenze Notifiche</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">Gestisci le notifiche browser per i tuoi eventi. Riceverai promemoria prima degli eventi a cui ti iscrivi.</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="notificationsEnabled" checked>
+                                <label class="form-check-label" for="notificationsEnabled">
+                                    <strong>Abilita Notifiche</strong>
+                                    <small class="d-block text-muted">Attiva o disattiva tutte le notifiche</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <button type="button" class="btn btn-sm btn-outline-info" id="testNotificationBtn">
+                                📬 Prova Notifica
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="notificationSettings">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="notify24h" checked>
+                            <label class="form-check-label" for="notify24h">
+                                Notifica 24 ore prima dell'evento
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="notify1h" checked>
+                            <label class="form-check-label" for="notify1h">
+                                Notifica 1 ora prima dell'evento
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3" id="notificationStatus">
+                        <small>Caricamento preferenze...</small>
+                    </div>
+                    
+                    <button type="button" class="btn btn-success" id="savePreferences">
+                        💾 Salva Preferenze
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Riepilogo Eventi per Settimana -->
         <div class="col-12 mt-3">
             <div class="card shadow bg-42-black border-success">
@@ -251,6 +304,120 @@
         const modal = new bootstrap.Modal(document.getElementById('addToCalendarModal'));
         modal.show();
     }
+</script>
+
+<!-- Notification Preferences Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const notificationsEnabled = document.getElementById('notificationsEnabled');
+        const notify24h = document.getElementById('notify24h');
+        const notify1h = document.getElementById('notify1h');
+        const notificationSettings = document.getElementById('notificationSettings');
+        const notificationStatus = document.getElementById('notificationStatus');
+        const savePreferencesBtn = document.getElementById('savePreferences');
+        const testNotificationBtn = document.getElementById('testNotificationBtn');
+
+        // Load current preferences
+        async function loadPreferences() {
+            try {
+                const response = await fetch('/api/notifications/preferences');
+                if (response.ok) {
+                    const prefs = await response.json();
+                    notificationsEnabled.checked = prefs.notifications_enabled;
+                    notify24h.checked = prefs.notify_24h_before;
+                    notify1h.checked = prefs.notify_1h_before;
+                    updateSettingsVisibility();
+                    updateStatus('Preferenze caricate');
+                } else {
+                    updateStatus('Errore nel caricamento delle preferenze', 'danger');
+                }
+            } catch (error) {
+                console.error('Error loading preferences:', error);
+                updateStatus('Errore di connessione', 'danger');
+            }
+        }
+
+        // Save preferences
+        async function savePreferences() {
+            const prefs = {
+                notifications_enabled: notificationsEnabled.checked,
+                notify_24h_before: notify24h.checked,
+                notify_1h_before: notify1h.checked
+            };
+
+            try {
+                const response = await fetch('/api/notifications/preferences', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(prefs)
+                });
+
+                if (response.ok) {
+                    updateStatus('✅ Preferenze salvate con successo!', 'success');
+                    
+                    // If enabling notifications, request permission and subscribe
+                    if (prefs.notifications_enabled) {
+                        const isSubscribed = await window.pushManager.checkSubscription();
+                        if (!isSubscribed) {
+                            const subscribed = await window.pushManager.subscribe();
+                            if (subscribed) {
+                                updateStatus('✅ Notifiche attivate!', 'success');
+                            }
+                        }
+                    }
+                } else {
+                    updateStatus('❌ Errore nel salvataggio', 'danger');
+                }
+            } catch (error) {
+                console.error('Error saving preferences:', error);
+                updateStatus('❌ Errore di connessione', 'danger');
+            }
+        }
+
+        // Test notification
+        async function testNotification() {
+            if (Notification.permission !== 'granted') {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    updateStatus('⚠️ Permesso notifiche negato', 'warning');
+                    return;
+                }
+            }
+
+            // Show local notification
+            const registration = await navigator.serviceWorker.ready;
+            registration.showNotification('Test Notifica Baywatchers', {
+                body: 'Questa è una notifica di prova! Riceverai promemoria simili prima dei tuoi eventi.',
+                icon: '/static/42_Logo.svg.png',
+                badge: '/static/badge.png',
+                vibrate: [200, 100, 200],
+                tag: 'test-notification'
+            });
+
+            updateStatus('📬 Notifica di prova inviata!', 'info');
+        }
+
+        // Update settings visibility
+        function updateSettingsVisibility() {
+            notificationSettings.style.display = notificationsEnabled.checked ? 'block' : 'none';
+        }
+
+        // Update status message
+        function updateStatus(message, type = 'info') {
+            notificationStatus.className = `alert alert-${type} mt-3`;
+            notificationStatus.innerHTML = `<small>${message}</small>`;
+        }
+
+        // Event listeners
+        notificationsEnabled.addEventListener('change', updateSettingsVisibility);
+        savePreferencesBtn.addEventListener('click', savePreferences);
+        testNotificationBtn.addEventListener('click', testNotification);
+
+        // Load preferences on page load
+        await loadPreferences();
+    });
 </script>
 
 {% endblock %}

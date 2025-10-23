@@ -311,5 +311,10 @@
             }
         });
     </script>
+    
+    <!-- Push Notifications Script (only for logged in users) -->
+    {% if session.user %}
+    <script src="{{ url_for('static', filename='push-notifications.js') }}"></script>
+    {% endif %}
 </body>
 </html>

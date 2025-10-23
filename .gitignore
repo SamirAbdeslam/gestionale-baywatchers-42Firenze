@@ -11,3 +11,5 @@ personal.txt
 *.csv
 quick_import.sh
 import_baywatch_participants.py
+venv/*
+.env.test

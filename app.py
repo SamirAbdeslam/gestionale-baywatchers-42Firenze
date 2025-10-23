@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from functools import wraps
 from flask_socketio import SocketIO, emit 
+from notifications import NotificationManager
 
 # -------------------------------
 # Helper Functions
@@ -259,7 +260,7 @@ def event_type_class(title):
 app.jinja_env.filters['format_event_date'] = format_event_date
 
 # Database path - uses volume for persistence in Docker
-DB_DIR = os.getenv('DB_DIR', '/app/calendar_data')
+DB_DIR = os.getenv('DB_DIR', './calendar_data')
 os.makedirs(DB_DIR, exist_ok=True)
 
 app.logger.info(f"📁 Ambiente caricato da: {env_file}")
@@ -273,6 +274,30 @@ def before_request_timing():
     g.start_time = time.time()
 
 DB_PATH = os.path.join(DB_DIR, "calendar.db")
+
+# -------------------------------
+# Initialize Notification Manager
+# -------------------------------
+notification_manager = None
+
+# Only initialize if VAPID keys are configured
+vapid_private_key = os.getenv('VAPID_PRIVATE_KEY')
+vapid_public_key = os.getenv('VAPID_PUBLIC_KEY')
+vapid_email = os.getenv('VAPID_EMAIL')
+
+if vapid_private_key and vapid_public_key and vapid_email:
+    try:
+        notification_manager = NotificationManager(
+            db_path=DB_PATH,
+            vapid_private_key=vapid_private_key,
+            vapid_public_key=vapid_public_key,
+            vapid_claims={'sub': f'mailto:{vapid_email}'}
+        )
+        app.logger.info("✅ Notification system initialized")
+    except Exception as e:
+        app.logger.error(f"❌ Failed to initialize notification system: {e}")
+else:
+    app.logger.warning("⚠️ VAPID keys not configured - push notifications disabled")
 
 # Configurazione OAuth 42
 oauth = OAuth(app)
@@ -545,6 +570,64 @@ def init_db():
     c.execute('''
         CREATE INDEX IF NOT EXISTS idx_logs_user 
         ON action_logs(user_id)
+    ''')
+    
+    # Tabella per le preferenze notifiche utente
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_notification_preferences (
+            user_id INTEGER PRIMARY KEY,
+            notifications_enabled BOOLEAN DEFAULT 1,
+            notify_24h_before BOOLEAN DEFAULT 1,
+            notify_1h_before BOOLEAN DEFAULT 1,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    # Tabella per le push subscriptions (browser)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            endpoint TEXT NOT NULL UNIQUE,
+            p256dh TEXT NOT NULL,
+            auth TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    # Tabella per le notifiche programmate
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS scheduled_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            event_id INTEGER NOT NULL,
+            registration_id INTEGER NOT NULL,
+            notification_type TEXT NOT NULL,
+            scheduled_time DATETIME NOT NULL,
+            sent BOOLEAN DEFAULT 0,
+            sent_at DATETIME,
+            error_message TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (event_id) REFERENCES events(id),
+            FOREIGN KEY (registration_id) REFERENCES registrations(id)
+        )
+    ''')
+    
+    # Indici per le notifiche
+    c.execute('''
+        CREATE INDEX IF NOT EXISTS idx_notifications_scheduled 
+        ON scheduled_notifications(scheduled_time, sent)
+    ''')
+    
+    c.execute('''
+        CREATE INDEX IF NOT EXISTS idx_notifications_user 
+        ON scheduled_notifications(user_id)
+    ''')
+    
+    c.execute('''
+        CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user 
+        ON push_subscriptions(user_id)
     ''')
     
     # Migrazione: aggiungi colonna week se non esiste
@@ -1255,6 +1338,8 @@ def register(event_id):
         # Aggiungi registrazione
         c.execute("INSERT INTO registrations (event_id, participant_name) VALUES (?, ?)", 
                   (event_id, participant_name))
+        registration_id = c.lastrowid
+        
         # Aggiorna contatore
         c.execute("UPDATE events SET registered = registered + 1 WHERE id = ?", (event_id,))
         
@@ -1269,6 +1354,24 @@ def register(event_id):
             cursor=c
         )
         conn.commit()
+
+        # Schedule push notifications for this registration
+        if notification_manager and event_date_db:
+            try:
+                # Parse event date and time to create full datetime
+                event_date_obj = datetime.strptime(event_date_db, '%Y-%m-%d')
+                start_h, start_m = map(int, start_time.split(':'))
+                event_datetime = event_date_obj.replace(hour=start_h, minute=start_m)
+                
+                notification_manager.schedule_event_notifications(
+                    user_id=session['user']['id'],
+                    event_id=event_id,
+                    registration_id=registration_id,
+                    event_datetime=event_datetime
+                )
+                app.logger.info(f"📅 Scheduled notifications for user {session['user']['id']}, event {event_id}")
+            except Exception as e:
+                app.logger.error(f"❌ Failed to schedule notifications: {e}")
 
         if log_id:
             emit_log_update(log_id)
@@ -1311,6 +1414,11 @@ def unregister(event_id):
             return redirect(url_for('home'))
     
     # Trova e rimuovi solo la propria registrazione (usando ROWID per rimuovere solo una)
+    c.execute("SELECT id FROM registrations WHERE event_id = ? AND participant_name = ? LIMIT 1", 
+              (event_id, participant_name))
+    reg_row = c.fetchone()
+    registration_id = reg_row[0] if reg_row else None
+    
     c.execute("""DELETE FROM registrations WHERE rowid = (
         SELECT rowid FROM registrations 
         WHERE event_id = ? AND participant_name = ? 
@@ -1332,6 +1440,14 @@ def unregister(event_id):
             cursor=c
         )
         conn.commit()
+
+        # Cancel scheduled notifications for this registration
+        if notification_manager and registration_id:
+            try:
+                notification_manager.cancel_event_notifications(registration_id)
+                app.logger.info(f"🗑️ Cancelled notifications for registration {registration_id}")
+            except Exception as e:
+                app.logger.error(f"❌ Failed to cancel notifications: {e}")
 
         if log_id:
             emit_log_update(log_id)
@@ -2893,6 +3009,155 @@ def download_ics(event_id):
     except Exception as e:
         app.logger.error(f"Errore durante la creazione del file ICS: {e}")
         return "Errore interno del server", 500
+
+# -------------------------------
+# Push Notification Routes
+# -------------------------------
+
+@app.route('/api/vapid-public-key')
+@login_required
+def get_vapid_public_key():
+    """Return the VAPID public key for push subscription."""
+    vapid_public_key = os.getenv('VAPID_PUBLIC_KEY')
+    if vapid_public_key:
+        return jsonify({'publicKey': vapid_public_key})
+    return jsonify({'error': 'Push notifications not configured'}), 503
+
+@app.route('/api/push/subscribe', methods=['POST'])
+@login_required
+def push_subscribe():
+    """Subscribe user to push notifications."""
+    try:
+        subscription = request.json
+        
+        if not subscription or 'endpoint' not in subscription:
+            return jsonify({'error': 'Invalid subscription data'}), 400
+        
+        endpoint = subscription['endpoint']
+        p256dh = subscription.get('keys', {}).get('p256dh')
+        auth = subscription.get('keys', {}).get('auth')
+        
+        if not p256dh or not auth:
+            return jsonify({'error': 'Missing encryption keys'}), 400
+        
+        user_id = session['user']['id']
+        
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        # Check if subscription already exists
+        c.execute("SELECT id FROM push_subscriptions WHERE endpoint = ?", (endpoint,))
+        existing = c.fetchone()
+        
+        if existing:
+            # Update existing subscription
+            c.execute("""
+                UPDATE push_subscriptions 
+                SET p256dh = ?, auth = ?
+                WHERE endpoint = ?
+            """, (p256dh, auth, endpoint))
+        else:
+            # Insert new subscription
+            c.execute("""
+                INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, endpoint, p256dh, auth))
+        
+        conn.commit()
+        conn.close()
+        
+        app.logger.info(f"✅ Push subscription registered for user {user_id}")
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        app.logger.error(f"❌ Error subscribing to push: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/push/unsubscribe', methods=['POST'])
+@login_required
+def push_unsubscribe():
+    """Unsubscribe user from push notifications."""
+    try:
+        subscription = request.json
+        
+        if not subscription or 'endpoint' not in subscription:
+            return jsonify({'error': 'Invalid subscription data'}), 400
+        
+        endpoint = subscription['endpoint']
+        
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("DELETE FROM push_subscriptions WHERE endpoint = ?", (endpoint,))
+        conn.commit()
+        conn.close()
+        
+        app.logger.info(f"🗑️ Push subscription removed for endpoint {endpoint[:50]}...")
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        app.logger.error(f"❌ Error unsubscribing from push: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/notifications/preferences', methods=['GET', 'POST'])
+@login_required
+def notification_preferences():
+    """Get or update user notification preferences."""
+    user_id = session['user']['id']
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    if request.method == 'POST':
+        # Update preferences
+        try:
+            data = request.json
+            notifications_enabled = data.get('notifications_enabled', True)
+            notify_24h = data.get('notify_24h_before', True)
+            notify_1h = data.get('notify_1h_before', True)
+            
+            c.execute("""
+                INSERT INTO user_notification_preferences (user_id, notifications_enabled, notify_24h_before, notify_1h_before)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    notifications_enabled = excluded.notifications_enabled,
+                    notify_24h_before = excluded.notify_24h_before,
+                    notify_1h_before = excluded.notify_1h_before
+            """, (user_id, notifications_enabled, notify_24h, notify_1h))
+            
+            conn.commit()
+            conn.close()
+            
+            app.logger.info(f"✅ Updated notification preferences for user {user_id}")
+            return jsonify({'success': True})
+            
+        except Exception as e:
+            conn.close()
+            app.logger.error(f"❌ Error updating preferences: {e}")
+            return jsonify({'error': str(e)}), 500
+    
+    else:
+        # Get preferences
+        c.execute("""
+            SELECT notifications_enabled, notify_24h_before, notify_1h_before
+            FROM user_notification_preferences
+            WHERE user_id = ?
+        """, (user_id,))
+        
+        result = c.fetchone()
+        conn.close()
+        
+        if result:
+            return jsonify({
+                'notifications_enabled': bool(result[0]),
+                'notify_24h_before': bool(result[1]),
+                'notify_1h_before': bool(result[2])
+            })
+        else:
+            # Return defaults
+            return jsonify({
+                'notifications_enabled': True,
+                'notify_24h_before': True,
+                'notify_1h_before': True
+            })
 
 if __name__ == '__main__':
     # Run with SocketIO for real-time updates
