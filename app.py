@@ -694,7 +694,7 @@ def health_check():
         conn.close()
         return {'status': 'healthy', 'database': 'connected'}, 200
     except Exception as e:
-        return {'status': 'unhealthy', 'error': str(e)}, 503
+        return {'status': 'unhealthy', 'error': "Internal Server Error"}, 503
 
 @app.route('/')
 def index():
@@ -3071,7 +3071,7 @@ def push_subscribe():
         
     except Exception as e:
         app.logger.error(f"❌ Error subscribing to push: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': "Internal Server Error"}), 500
 
 @app.route('/api/push/unsubscribe', methods=['POST'])
 @login_required
@@ -3096,7 +3096,7 @@ def push_unsubscribe():
         
     except Exception as e:
         app.logger.error(f"❌ Error unsubscribing from push: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': "Internal Server Error"}), 500
 
 @app.route('/api/notifications/preferences', methods=['GET', 'POST'])
 @login_required
@@ -3132,7 +3132,7 @@ def notification_preferences():
         except Exception as e:
             conn.close()
             app.logger.error(f"❌ Error updating preferences: {e}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({'error': "Internal Server Error"}), 500
     
     else:
         # Get preferences

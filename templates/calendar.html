@@ -381,9 +381,10 @@
                     // Nascondi il link se non possiamo calcolare la data
                     googleLink.style.display = 'none';
                 }
+				const sani = sanitizeInput(targetEvent.id);
 
                 // Link per il file .ics
-                icsLink.href = `/event/${targetEvent.id}/calendar.ics`;
+                icsLink.href = `/event/${sani}/calendar.ics`;
 
                 // Mostra il modale
                 const modal = new bootstrap.Modal(document.getElementById('addToCalendarModal'));
@@ -392,6 +393,18 @@
             }
         }
     });
+</script>
+<script>
+	// Funzione per rimuovere xss
+	function sanitizeInput(input) {
+		let output = input.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#x27;")
+			.replace(/\//g, "&#x2F;");
+		return output;
+	}
 </script>
 
 <!-- Real-time updates with Socket.IO (caricato dopo tutti gli altri script) -->
