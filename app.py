@@ -2920,7 +2920,7 @@ def webhook():
             
     except Exception as e:
         app.logger.error(f"Errore durante la gestione del webhook: {e}")
-        return f"Webhook error: {str(e)}", 500
+        return f"Webhook error: Internal Server Error", 500
 
 @app.route('/event/<int:event_id>/calendar.ics')
 @login_required

@@ -17,7 +17,8 @@ def webhook():
 
         return "Updated and rebuilt!", 200
     except subprocess.CalledProcessError as e:
-        return f"Error: {e}", 500
+		print(f"❌ Error during webhook processing: {e}")
+        return f"Error: Internal Server Error", 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=9000)
