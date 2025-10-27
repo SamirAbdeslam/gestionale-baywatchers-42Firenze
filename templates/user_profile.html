@@ -391,25 +391,41 @@
 
         // Test notification
         async function testNotification() {
-            if (Notification.permission !== 'granted') {
-                const permission = await Notification.requestPermission();
-                if (permission !== 'granted') {
-                    updateStatus('⚠️ Permesso notifiche negato', 'warning');
+            try {
+                // Check if service worker is supported
+                if (!('serviceWorker' in navigator)) {
+                    updateStatus('⚠️ Il tuo browser non supporta le notifiche', 'warning');
                     return;
                 }
+
+                // Request permission if needed
+                if (Notification.permission === 'default') {
+                    updateStatus('🔔 Richiesta permesso notifiche...', 'info');
+                }
+
+                const permission = await Notification.requestPermission();
+                
+                if (permission !== 'granted') {
+                    updateStatus('⚠️ Permesso notifiche negato. Controlla le impostazioni del browser.', 'warning');
+                    return;
+                }
+
+                // Show local notification via service worker
+                const registration = await navigator.serviceWorker.ready;
+                await registration.showNotification('Test Notifica Baywatchers 🎉', {
+                    body: 'Questa è una notifica di prova! Riceverai promemoria simili prima dei tuoi eventi.',
+                    icon: '/static/42_Logo.svg.png',
+                    badge: '/static/badge.png',
+                    vibrate: [200, 100, 200],
+                    tag: 'test-notification',
+                    requireInteraction: false
+                });
+
+                updateStatus('📬 Notifica di prova inviata! Controlla le notifiche del browser.', 'success');
+            } catch (error) {
+                console.error('Error showing test notification:', error);
+                updateStatus('❌ Errore nell\'invio della notifica: ' + error.message, 'danger');
             }
-
-            // Show local notification
-            const registration = await navigator.serviceWorker.ready;
-            registration.showNotification('Test Notifica Baywatchers', {
-                body: 'Questa è una notifica di prova! Riceverai promemoria simili prima dei tuoi eventi.',
-                icon: '/static/42_Logo.svg.png',
-                badge: '/static/badge.png',
-                vibrate: [200, 100, 200],
-                tag: 'test-notification'
-            });
-
-            updateStatus('📬 Notifica di prova inviata!', 'info');
         }
 
         // Update settings visibility
@@ -426,7 +442,19 @@
         // Event listeners
         notificationsEnabled.addEventListener('change', updateSettingsVisibility);
         savePreferencesBtn.addEventListener('click', savePreferences);
-        testNotificationBtn.addEventListener('click', testNotification);
+        testNotificationBtn.addEventListener('click', () => {
+            console.log('Test notification button clicked');
+            testNotification();
+        });
+
+        // Check notification support on load
+        if ('serviceWorker' in navigator && 'Notification' in window) {
+            console.log('✅ Notifications are supported');
+            console.log('Current permission:', Notification.permission);
+        } else {
+            console.warn('⚠️ Notifications not supported');
+            updateStatus('⚠️ Il tuo browser non supporta le notifiche push', 'warning');
+        }
 
         // Load preferences on page load
         await loadPreferences();

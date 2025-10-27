@@ -21,8 +21,8 @@ class PushNotificationManager {
         }
 
         try {
-            // Register service worker
-            this.swRegistration = await navigator.serviceWorker.register('/static/sw.js');
+            // Register service worker from root for proper scope
+            this.swRegistration = await navigator.serviceWorker.register('/sw.js');
             console.log('Service Worker registered:', this.swRegistration);
 
             // Get VAPID public key from server
