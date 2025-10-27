@@ -3159,6 +3159,20 @@ def notification_preferences():
                 'notify_1h_before': True
             })
 
+# -------------------------------
+# Service Worker Route
+# -------------------------------
+
+@app.route('/sw.js')
+def service_worker():
+    """Serve the service worker from root path for proper scope."""
+    response = make_response(
+        open(os.path.join(app.root_path, 'static', 'sw.js')).read()
+    )
+    response.headers['Content-Type'] = 'application/javascript'
+    response.headers['Service-Worker-Allowed'] = '/'
+    return response
+
 if __name__ == '__main__':
     # Run with SocketIO for real-time updates
     socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)
