@@ -297,13 +297,26 @@
             googleLink.style.display = 'none';
         }
 
+		let sani = sanitizeInput(eventId);
         // Link per il file .ics
-        icsLink.href = `/event/${eventId}/calendar.ics`;
+        icsLink.href = `/event/${sani}/calendar.ics`;
 
         // Mostra il modale
         const modal = new bootstrap.Modal(document.getElementById('addToCalendarModal'));
         modal.show();
     }
+</script>
+<script>
+	// Funzione per rimuovere xss
+	function sanitizeInput(input) {
+		let output = input.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#x27;")
+			.replace(/\//g, "&#x2F;");
+		return output;
+	}
 </script>
 
 <!-- Notification Preferences Script -->
