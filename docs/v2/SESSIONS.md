@@ -34,7 +34,7 @@ Regole e piano: `docs/v2/PLAN.md`.
 
 Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, priorità, permessi). L'agent le legge a inizio sessione.
 
-- 2026-10-16: confermate D1, D3, D4, D5 di `PLAN.md` §3. D2 ancora da confermare.
+- 2026-10-16: confermate tutte le decisioni D1–D5 di `PLAN.md` §3.
 
 ---
 

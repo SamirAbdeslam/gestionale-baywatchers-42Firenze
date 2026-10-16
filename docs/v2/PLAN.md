@@ -90,7 +90,7 @@ Ismail deve confermare queste decisioni prima del modulo indicato. Finché lo st
 | ID | Decisione | Motivo / note | Serve per | Stato |
 |---|---|---|---|---|
 | D1 | La capienza di un evento conta **tutte** le iscrizioni, anche quelle segnate assenti. Il badge "iscritti/posti" mostra lo stesso numero (es. 5/5 anche con un assente). | Quando un utente viene segnato assente l'evento è già iniziato; la sostituzione si gestisce fuori dal sito. Il legacy mostrava solo i presenti e creava un'incoerenza tra badge e controllo del server. | M5 | CONFERMATA |
-| D2 | Il weekend viene eliminato del tutto: `weekday` ammesso solo 1–5 (Lunedì–Venerdì) in eventi, template, import CSV e form admin. | Non esistono eventi il sabato e la domenica. Il legacy permetteva di crearli dall'admin ma non li mostrava a utenti e display. | M1, M4, M7, M8, M10 | DA CONFERMARE |
+| D2 | `weekday` ammesso 1–7 come oggi (l'admin può creare eventi nel weekend). Calendario utente e display mostrano sempre Lunedì–Venerdì e aggiungono le colonne Sabato e/o Domenica **solo se** la settimana visualizzata ha eventi in quel giorno. Il pannello admin mostra sempre tutti e 7 i giorni. | Oggi non ci sono eventi nel weekend, ma se l'admin ne crea uno deve essere visibile (il legacy lo nascondeva). | M7, M8 | CONFERMATA |
 | D3 | La pagina `/participants/<id>` viene eliminata. | Era pubblica senza login, nessun link dell'app ci portava, e i dati sono già nel calendario. | M7 | CONFERMATA |
 | D4 | Il display `/display` resta in sola lettura e mostra i login dei presenti. Se la variabile `DISPLAY_TOKEN` è impostata, l'URL deve contenere `?token=<valore>` (così la TV funziona con un link unico e chi non ha il link non vede nulla); se è vuota, il display è pubblico. | Pensato per la TV della scuola con accesso via URL. | M8 | CONFERMATA |
 | D5 | Admin = utente con `staff? = true` nel profilo `/v2/me` dell'API 42 **oppure** login presente nell'array `ADMIN_LOGINS` del file `src/lib/server/admins.ts` (valore iniziale `['igilani']`). L'array è volutamente nel codice e non in una variabile d'ambiente o nella UI: solo chi modifica il codice può aggiungere admin. Il ruolo si ricalcola a ogni login e si legge dal DB a ogni richiesta. | Il legacy aveva la stessa lista (`ADMIN_WHITELIST`) dentro `app.py`; ora sta in un file dedicato, facile da trovare. | M2 | CONFERMATA |
@@ -430,7 +430,7 @@ Riferimento: `legacy/app.py:790`, `legacy/templates/calendar.html`.
 
 - Query `week` facoltativa. Senza `week` si mostra `active_week`. Con `week` si mostra `clamp(week, 1, active_week)`: l'utente non vede settimane future.
 - Navigazione "settimana precedente" visibile se `week > 1`, "successiva" se `week < active_week`.
-- Colonne: i giorni ammessi da D2. Ogni colonna mostra la data concreta, se calcolabile.
+- Colonne: Lunedì–Venerdì, più Sabato e/o Domenica solo se la settimana ha eventi in quel giorno (D2). Ogni colonna mostra la data concreta, se calcolabile.
 - Eventi di ogni giorno ordinati per `start_time`.
 - Ogni evento mostra: titolo, orario `HH:MM–HH:MM`, compenso `N ₳`, badge "iscritti/posti" (conteggio secondo D1, rosso se pieno, verde altrimenti), lista dei login iscritti.
   - Utente normale: vede solo gli iscritti con `attended = true`. Il proprio login è evidenziato.
@@ -487,7 +487,7 @@ Riferimento: `legacy/app.py:87` e `:895`, `legacy/templates/display.html`.
   1. Se `pool_start` è null → non fare nulla.
   2. Se la settimana `display_week` non ha eventi: se `display_week < 4`, `display_week += 1`. Fine (un solo passo per richiesta, come il legacy).
   3. Se **tutti** gli eventi di `display_week` con data concreta non null sono passati, e `display_week < 4`, e la settimana successiva ha almeno un evento: `display_week += 1`.
-- Mostra gli eventi di `display_week`, colonne con i giorni ammessi da D2, con data concreta.
+- Mostra gli eventi di `display_week`, colonne come nel calendario utente (D2), con data concreta.
 - Per ogni evento: titolo, orario, compenso, posti liberi `max_slots - iscritti` (D1), stato "Passato" / "N posti liberi" / "Completo", login dei presenti (D4).
 - Nessun login, nessun pulsante, layout pensato per uno schermo TV orizzontale (testo grande), ma usabile anche su mobile.
 - Se `DISPLAY_REDIRECT_URL` è impostata: dopo `DISPLAY_REDIRECT_SECONDS` il browser va a quell'URL (`<meta http-equiv="refresh">`, come il legacy, `legacy/templates/display.html:9`).
@@ -889,7 +889,7 @@ Ogni modulo termina con: controlli locali verdi (`pnpm ci:local`), push, CI verd
 8. Copia `static/42_Logo.svg.png` e `static/badge.png` dal legacy in `static/`.
 **Fatto quando**: `docker compose up` mostra la landing su `http://localhost`, `/healthz` risponde 200, CI verde.
 
-### M1 — Database, dati fittizi e import (5 g) — dipende da D2
+### M1 — Database, dati fittizi e import (5 g)
 Schema §7 e prima migrazione; `db/index.ts`; `legacy-schema.sql`; `make-fake-db.ts`; `import-legacy.ts`; `verify-legacy-import.ts`; `seed.ts`; `domain/dates.ts` e `domain/kinds.ts` (servono all'import e al verify) con i loro test unit; job CI `integration` e `legacy-import`.
 **Fatto quando**: `legacy:fake-db` → `legacy:import` → `legacy:verify` passa in locale e in CI; `db:seed` produce un DB utilizzabile.
 
@@ -900,7 +900,7 @@ Schema §7 e prima migrazione; `db/index.ts`; `legacy-schema.sql`; `make-fake-db
 ### M3 — Impostazioni e settimane (2 g)
 `domain/settings.ts`; su `/admin`: date pool, settimana attiva, limite eventi, reset display week; log e `week_activated`.
 
-### M4 — Eventi admin (4 g) — dipende da D2
+### M4 — Eventi admin (4 g)
 §8.7 (vista settimana e eliminazioni in massa) e §8.8 (crea/modifica/elimina con preset e custom).
 
 ### M5 — Iscrizioni e presenze (4 g) — dipende da D1
@@ -918,7 +918,7 @@ Schema §7 e prima migrazione; `db/index.ts`; `legacy-schema.sql`; `make-fake-db
 ### M9 — Real-time (1.5 g)
 §10: endpoint, helper client, collegamento a calendario, display, admin e log (il banner log si completa in M13).
 
-### M10 — Template e import CSV (4 g) — dipende da D2
+### M10 — Template e import CSV (4 g)
 §8.9.
 
 ### M11 — Riepilogo partecipanti ed export (2.5 g)
@@ -959,7 +959,7 @@ Il lavoro di test (§13) è incluso nella stima di ogni modulo, non è una fase 
 | 10 | Export CSV vanno in errore se un evento ha orari non validi. | Orari validati in ingresso e tipo `time` nel DB. |
 | 11 | L'evento `event_update` via Socket.IO invia i login dei partecipanti a tutti i client, anche anonimi; `new_log` a tutti i client connessi. | Payload SSE senza dati personali; `log_created` solo agli admin. |
 | 12 | `X-Forwarded-For` usato senza fidarsi del proxy (IP falsificabile nei log). | adapter-node `ADDRESS_HEADER` + nginx che sovrascrive l'header. |
-| 13 | L'admin può creare eventi nel weekend, invisibili agli utenti. | D2. |
+| 13 | Eventi nel weekend creati dall'admin ma invisibili agli utenti. | Colonne weekend mostrate quando hanno eventi (D2). |
 | 14 | Messaggi di errore con il testo dell'eccezione mostrati all'utente (`legacy/app.py:1937`). | Messaggi i18n, dettagli solo nei log del server. |
 | 15 | Valori `old_value`/`new_value` salvati come `repr` Python. | JSON. |
 | 16 | Connessioni SQLite aperte e mai chiuse (`legacy/app.py:860`, `:1286`). | Pool postgres.js unico. |
