@@ -328,3 +328,29 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 **Verifica stack locale**
 - `docker compose up -d --build --wait`: verde, app/Postgres/nginx healthy. Migrazione applicata automaticamente al DB dello stack completo: nove tabelle applicative e riga unica impostazioni verificati con SQL.
 - Landing HTTPS e `/healthz` a 200 con certificato locale usato come CA esplicita; redirect 308 dalla 8080 alla 8443 preserva percorso e query. Stack completo lasciato avviato; nessun volume eliminato.
+
+
+## 2026-10-16 — M1 — chiusura
+
+**Fatto**
+- Completato M1 sul branch `v2.0.0`, dopo i controlli locali e la CI remota. Aggiornata solo la colonna Stato di §19, indicando il commit funzionale `c65209e`.
+- Conservate le note di Ismail e tutte le voci precedenti del diario, inclusa la registrazione del blocco poi risolto.
+
+**Commit**
+- `1594387`, `324a642`, `c65209e`: dipendenze, schema/dominio e strumenti M1.
+- `f50fb03` `docs: record M1 implementation and local validation`.
+
+**Controlli**
+- CI [run 38905446472](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/38905446472), verde su `f50fb03`: lint/check, unit, integration, e2e, legacy-import e docker completati con successo. `gh run watch --exit-status` terminato con exit code 0.
+- `pnpm ci:local` verde: 50 unit, 11 integration, quattro e2e e build. Generazione/import/verifica CLI e seed reali verificati come registrato sopra.
+- Stack completo lasciato avviato: app e Postgres healthy, nginx running (senza healthcheck dedicato); HTTPS 8443 e redirect HTTP 8080 verificati. Precisazione rispetto alla voce precedente: per nginx il controllo Compose attesta l'avvio, non un healthcheck.
+- Working tree pulito dopo i commit di implementazione e prima di questa registrazione finale; nessuna modifica al legacy.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione.
+
+**Domande / blocchi**
+- Nessuno per M1. Il file SQLite di produzione rimane indisponibile e non è stato verificato; l'import è coperto con fixture deterministiche e anomalie simulate.
+
+**Prossimo passo**
+- M2: auth 42, sessioni, guard e layout. Non iniziato in questa sessione; rileggere piano e diario prima di procedere.
