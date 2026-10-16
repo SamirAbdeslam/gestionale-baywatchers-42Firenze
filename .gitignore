@@ -13,3 +13,6 @@ quick_import.sh
 import_baywatch_participants.py
 venv/*
 .env.test
+
+# graphify
+graphify-out/
