@@ -57,6 +57,7 @@
 	},
 	"packageManager": "pnpm@10.34.7",
 	"dependencies": {
+		"arctic": "3.7.0",
 		"drizzle-orm": "0.45.4",
 		"postgres": "3.4.9",
 		"zod": "4.6.7"
