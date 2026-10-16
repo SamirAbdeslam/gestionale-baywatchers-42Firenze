@@ -1,0 +1,15 @@
+node_modules
+build
+.svelte-kit
+.git
+.env*
+legacy
+graphify-out
+playwright-report
+test-results
+src/lib/paraglide
+project.inlang/cache
+project.inlang/.lix
+project.inlang/.meta.json
+project.inlang/README.md
+.vscode
