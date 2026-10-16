@@ -106,8 +106,8 @@ Le altre differenze rispetto al legacy sono correzioni di bug (§18) e non richi
 |---|---|---|
 | Runtime | Node.js 24 LTS | Fissato in `.nvmrc` e `package.json#engines`. |
 | Package manager | pnpm 10 via Corepack | `packageManager` in `package.json`. Lockfile committato. |
-| Framework | SvelteKit 2 + Svelte 5 (runes) | `adapter-node`. |
-| Linguaggio | TypeScript strict | |
+| Framework | SvelteKit 3 + Svelte 5 (runes) | `@sveltejs/adapter-node` 6. |
+| Linguaggio | TypeScript 6.0.x, strict | Non TypeScript 7: SvelteKit 3, `svelte-check` e `typescript-eslint` supportano al massimo la 6 (`typescript-eslint` richiede `<6.1.0`). |
 | DB | PostgreSQL 17 | Container `postgres:17-alpine`. |
 | ORM e migrazioni | Drizzle ORM + drizzle-kit | Driver `postgres` (postgres.js). Migrazioni SQL generate e committate in `drizzle/`. |
 | Validazione | Zod 4 | Per form action, query string e import. |
@@ -120,7 +120,7 @@ Le altre differenze rispetto al legacy sono correzioni di bug (§18) e non richi
 | Lettura SQLite legacy | `better-sqlite3` | Solo in `scripts/`, devDependency. |
 
 ### 4.2 Versioni
-Al bootstrap (M0) installa con `pnpm add -E` (versioni esatte) l'ultima release stabile di ogni pacchetto. Annota le versioni in `SESSIONS.md`. Gli aggiornamenti successivi si fanno solo con un commit dedicato `chore(deps): ...`.
+Al bootstrap (M0) installa con `pnpm add -E` (versioni esatte) ogni pacchetto alla **major indicata in §4.1**, con l'ultima minor/patch stabile di quella major che rispetta le peer dependency degli altri pacchetti dello stack. Per i pacchetti senza major indicata usa l'ultima release stabile (mai `next`, `beta`, `rc`, `canary`). Annota le versioni in `SESSIONS.md`. Gli aggiornamenti successivi si fanno solo con un commit dedicato `chore(deps): ...`; il passaggio a una major diversa da quella di §4.1 richiede conferma di Ismail.
 
 ### 4.3 Dipendenze consentite
 Solo quelle elencate in §4.1, più i loro plugin ufficiali (`@sveltejs/*`, `@types/*`, `@playwright/test`, `drizzle-kit`, `tsx`). Qualunque altra dipendenza richiede conferma di Ismail (§1.2). In particolare **non** usare: framework CSS (Bootstrap, Tailwind), librerie di componenti UI, librerie per toast/modali/date picker, `moment`, `lodash`, Socket.IO.
@@ -973,7 +973,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 
 | Modulo | Stato |
 |---|---|
-| M0 Bootstrap | da fare |
+| M0 Bootstrap | bloccato (vedi SESSIONS) |
 | M1 Database, dati fittizi e import | da fare |
 | M2 Auth, sessioni, guard, layout | da fare |
 | M3 Impostazioni e settimane | da fare |
