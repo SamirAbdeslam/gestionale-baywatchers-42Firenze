@@ -104,3 +104,97 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Dopo la risposta di Ismail, allineare lo scheletro allo stack consentito, fissare tutte le versioni esatte e proseguire M0 dal punto 2. Non fare push prima dei controlli locali verdi e del completamento di M0.
+
+## 2026-10-16 — M0 — bloccato
+
+**Fatto**
+- Riletti integralmente piano e diario. Applicate le nuove indicazioni di Ismail: SvelteKit 3, adapter-node 6, TypeScript 6.0.x e pnpm 10 tramite Corepack.
+- Installate e fissate le versioni esatte delle dipendenze necessarie a M0; aggiunti lockfile, `.nvmrc`, engines, configurazione strict, lint e formattazione. Ripristinate le esclusioni richieste in `.gitignore`.
+- Rimossi gli esempi generati; aggiunti landing italiana, header provvisorio, token CSS, stili accessibili e copie verificate dei due asset originali. Paraglide usa solo italiano e le strategie cookie, preferredLanguage, baseLocale.
+- Aggiunti `src/lib/server/env.ts` con validazione Zod e vincolo localhost per il login di sviluppo, connessione Postgres e `/healthz` con risposte 200/503 prive di dettagli interni.
+- Aggiunti stack Docker/nginx, workflow con i sei job richiesti e test unit, integration ed e2e. Con SvelteKit 3 la CSP è configurata in `vite.config.ts`, dove il framework colloca la configurazione.
+- Migrazioni avviate nell'hook init; journal Drizzle vuoto e schema applicativo rinviato a M1. I comandi seed/import sono segnaposto espliciti per M1, senza simulare importazioni riuscite.
+- File aggiuntivi necessari: `.dockerignore` esclude segreti, legacy e output generati dall'immagine; `scripts/init-dev-db.sql` crea il DB separato `baywatchers_test`; `scripts/bootstrap.ts` centralizza i segnaposto temporanei; configurazioni standard prodotte dagli add-on ufficiali.
+- Sostituita la sola `.env` segnaposto generata dalla CLI con i valori locali di `.env.example`; per la prova dello stack completo il database punta al servizio `db`. Nessuna credenziale OAuth reale richiesta o inserita.
+- Arrestato il servizio di sviluppo senza eliminare volumi e avviato lo stack completo. Nessuna modifica al legacy dopo lo spostamento.
+
+**Commit**
+- Nessun nuovo commit in questa ripresa. Rimane `e6cfa29` per lo spostamento Flask; il bootstrap è nel working tree.
+
+**Controlli**
+- `pnpm ci:local`: verde con 18 unit test, 1 integration su Postgres reale, build e 4 e2e su Chromium desktop e mobile; lint e svelte-check senza errori.
+- Dopo l'aggiunta del caso ORIGIN malformata: `pnpm test:unit` verde con 19 test. Il gate completo va ripetuto dopo la risoluzione dell'healthcheck.
+- Copie dei due asset identiche al legacy; versioni esatte verificate; `git diff --check` verde.
+- Build Docker riuscita anche escludendo i file generati locali. Il runtime gira come utente `node` (uid 1000).
+- Via nginx: `/` e `/healthz` rispondono 200, HTML italiano, CSP e header di sicurezza presenti.
+- `docker compose up -d --build --wait`: fallito perché il container app risulta unhealthy. Il wget dell'healthcheck su localhost restituisce connection refused.
+- Diagnostica nel container: localhost risolve prima a `::1` e poi a `127.0.0.1`; IPv4 risponde 200, `::1` restituisce ECONNREFUSED. Node fetch riesce anche con localhost grazie al fallback, mentre il wget di Alpine fallisce.
+- Accesso GitHub già configurato e verificato; nessun login eseguito.
+- CI su GitHub: non eseguita (nessun push).
+
+**Decisioni prese dentro il perimetro del piano**
+- Dipendenze dei moduli successivi non ancora aggiunte. Schema, seed e import applicativi restano a M1.
+- Rimosso lo stile inline generato nel documento HTML per rispettare la CSP senza unsafe-inline.
+- Database di test verificato come `baywatchers_test` prima di aprire connessioni e prima di avviare l'app e2e.
+- Nessuna modifica autonoma all'URL dell'healthcheck prescritto in §15.1.
+
+**Domande / blocchi**
+- §15.1 prescrive `wget -qO- http://localhost:3000/healthz`, che fallisce nell'immagine Alpine per la risoluzione IPv6 mentre il server ascolta su IPv4. Serve conferma di Ismail per cambiare soltanto l'URL in `http://127.0.0.1:3000/healthz`.
+- Lo stack è lasciato avviato: landing disponibile su `http://localhost`, ma container app unhealthy. Nessun push finché il controllo non passa.
+
+**Prossimo passo**
+- Dopo la conferma, correggere l'URL dell'healthcheck, ricostruire e verificare lo stack, ripetere `pnpm ci:local`, committare il bootstrap e completare push e verifica CI. Non iniziare M1 prima di completare M0.
+
+**Versioni installate**
+- Node.js `24.15.0`; Corepack `0.34.6`; pnpm `10.34.7`.
+- `drizzle-orm` `0.45.4`.
+- `postgres` `3.4.9`.
+- `zod` `4.6.7`.
+- `@eslint/js` `10.0.1`.
+- `@inlang/paraglide-js` `2.29.0`.
+- `@playwright/test` `1.64.1`.
+- `@sveltejs/adapter-node` `6.0.0`.
+- `@sveltejs/kit` `3.1.0`.
+- `@sveltejs/vite-plugin-svelte` `7.3.1`.
+- `@types/node` `24.19.2`.
+- `drizzle-kit` `0.31.11`.
+- `eslint` `10.12.0`.
+- `eslint-config-prettier` `10.1.8`.
+- `eslint-plugin-svelte` `3.23.1`.
+- `globals` `17.13.0`.
+- `prettier` `3.9.10`.
+- `prettier-plugin-svelte` `4.1.1`.
+- `svelte` `5.57.2`.
+- `svelte-check` `4.7.6`.
+- `tsx` `4.23.15`.
+- `typescript` `6.0.3`.
+- `typescript-eslint` `8.71.2`.
+- `vite` `8.3.4`.
+- `vitest` `5.0.5`.
+
+## 2026-10-16 — M0 — in corso
+
+**Fatto**
+- Ismail ha approvato in chat il solo cambio dell'healthcheck da localhost a `127.0.0.1`. Applicata la correzione nel Dockerfile senza modificare le altre prescrizioni del piano.
+- Completata l'implementazione locale di M0; restano push e verifica della CI prima di segnare il modulo completato.
+
+**Commit**
+- `7f52fb0` `feat: bootstrap sveltekit application`
+- `4084e73` `chore: add local docker stack and ci checks`
+
+**Controlli**
+- `pnpm ci:local`: verde con 19 unit test, 1 integration su `baywatchers_test`, build e 4 e2e desktop/mobile. Lint e svelte-check verdi.
+- `docker compose up -d --build --wait`: verde; app e database healthy. `/` e `/healthz` rispondono 200 via nginx.
+- `db:migrate` verificato sul database di test con il journal iniziale vuoto.
+- Legacy invariato dal commit di spostamento; copie dei due asset identiche.
+- CI su GitHub: non ancora eseguita (push successivo a questa voce).
+
+**Decisioni prese dentro il perimetro del piano**
+- URL IPv4 nell'healthcheck, con autorizzazione esplicita di Ismail.
+- Stack completo e stack di sviluppo verificati in sequenza, preservando entrambi i volumi. La `.env` locale è configurata per lo stack completo con host DB `db`.
+
+**Domande / blocchi**
+- Nessuno. Seed e import restano segnaposto espliciti fino a M1, come consentito per il bootstrap.
+
+**Prossimo passo**
+- Push dei commit di M0, verifica della CI con `gh run watch --exit-status`, registrazione dell'esito e aggiornamento dello stato del modulo. Non iniziare M1 in questa sessione.
