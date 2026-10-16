@@ -71,7 +71,7 @@ Fermati, scrivi il problema in `SESSIONS.md` e chiedi a Ismail, **senza** cercar
 Riscrivere il gestionale Flask (`legacy/app.py`, ~3200 righe) in **SvelteKit + Postgres**, con parità funzionale (§8), sicurezza corretta (§9) e una UI responsive web e mobile nella stessa web app (§12).
 
 ### 2.1 Dentro il perimetro
-Login 42, calendario utente, iscrizioni/disiscrizioni, display pubblico, pannello admin (eventi, settimane, date pool, limite eventi), presenze, whitelist, template settimane (builder, applicazione, import CSV), riepilogo partecipanti ed export CSV, profilo utente, log di audit con aggiornamento live, download `.ics` per evento, aggiornamenti real-time, i18n it/en/fr (en/fr alla fine).
+HTTPS locale su porta 8443 con certificato autofirmato e redirect HTTP da porta 8080 (§15). Login 42, calendario utente, iscrizioni/disiscrizioni, display pubblico, pannello admin (eventi, settimane, date pool, limite eventi), presenze, whitelist, template settimane (builder, applicazione, import CSV), riepilogo partecipanti ed export CSV, profilo utente, log di audit con aggiornamento live, download `.ics` per evento, aggiornamenti real-time, i18n it/en/fr (en/fr alla fine).
 
 ### 2.2 Fuori dal perimetro (rimossi)
 - Notifiche push (VAPID, service worker, `notifications.py`, APScheduler, tabelle `push_subscriptions`, `scheduled_notifications`, `user_notification_preferences`, route `/api/push/*`, `/api/vapid-public-key`, `/api/notifications/preferences`, `/sw.js`).
@@ -79,7 +79,6 @@ Login 42, calendario utente, iscrizioni/disiscrizioni, display pubblico, pannell
 - Cloudflare Tunnel (`cloudflared`).
 - `reset_display_week.py`: la logica vive nell'app (§8.6).
 - Feed `.ics` personale descritto in `legacy/CALENDAR_SETUP.md`: non è mai stato implementato e resta fuori.
-- TLS/certificati: l'app gira in locale su HTTP dietro nginx (§15).
 
 ---
 
@@ -195,7 +194,7 @@ Tutte lette e validate in `src/lib/server/env.ts` con Zod all'avvio. Se una vari
 | Variabile | Obbligatoria | Esempio | Uso |
 |---|---|---|---|
 | `DATABASE_URL` | sì | `postgres://bay:bay@localhost:5432/baywatchers` | Connessione Postgres. |
-| `ORIGIN` | sì | `http://localhost` | Origine pubblica (adapter-node, CSRF, redirect OAuth). |
+| `ORIGIN` | sì | `https://localhost:8443` | Origine pubblica (adapter-node, CSRF, redirect OAuth). |
 | `FT_CLIENT_ID` | sì in produzione | | App OAuth 42. |
 | `FT_CLIENT_SECRET` | sì in produzione | | App OAuth 42. |
 | `AUTH_DEV_LOGIN` | no | `true` | Abilita il login di sviluppo (§9.3). Vietato fuori da localhost. |
@@ -759,7 +758,7 @@ Solo `postgres:17-alpine` con porta `5432` esposta su `127.0.0.1`, volume `pgdat
 Servizi:
 - `db`: `postgres:17-alpine`, volume `pgdata`, **nessuna porta esposta**, healthcheck `pg_isready`.
 - `app`: build locale, `env_file: .env`, `depends_on: db (service_healthy)`, `ADDRESS_HEADER=X-Forwarded-For`, `XFF_DEPTH=1`, nessuna porta esposta, `restart: unless-stopped`.
-- `nginx`: `nginx:1.27-alpine`, porta `80:80`, monta `./nginx/nginx.conf:/etc/nginx/nginx.conf:ro`, `depends_on: app`.
+- `nginx`: `nginx:1.27-alpine`, porte `8080:8080` e `8443:8443`, monta `./nginx/nginx.conf:/etc/nginx/nginx.conf:ro` e `./nginx/certs:/etc/nginx/certs:ro`, `depends_on: app`.
 
 Contenuto di `nginx/nginx.conf` (da usare così com'è):
 
@@ -784,8 +783,18 @@ http {
     }
 
     server {
-        listen 80 default_server;
+        listen 8080 default_server;
         server_name _;
+        return 308 https://localhost:8443$request_uri;
+    }
+
+    server {
+        listen 8443 ssl default_server;
+        server_name localhost;
+
+        ssl_certificate /etc/nginx/certs/localhost.crt;
+        ssl_certificate_key /etc/nginx/certs/localhost.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
 
         client_max_body_size 2m;
 
@@ -795,7 +804,7 @@ http {
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 
         proxy_http_version 1.1;
-        proxy_set_header Host              $host;
+        proxy_set_header Host              $http_host;
         proxy_set_header X-Real-IP         $remote_addr;
         proxy_set_header X-Forwarded-For   $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -820,12 +829,12 @@ http {
 }
 ```
 
-Nota: `X-Forwarded-For` viene **sovrascritto** con l'IP reale (non concatenato), così un client non può falsificarlo. TLS non è previsto in questa fase.
+Nota: `X-Forwarded-For` viene **sovrascritto** con l'IP reale (non concatenato), così un client non può falsificarlo. TLS termina su nginx con un certificato locale autofirmato per `localhost`, `127.0.0.1` e `::1`. Certificato e chiave sono generati localmente in `nginx/certs/`, esclusi da Git e dal contesto Docker e montati in sola lettura. HTTP su porta 8080 reindirizza a `https://localhost:8443`, preservando percorso e query. La porta 80 non viene utilizzata.
 
 ### 15.4 Uso locale
 - Sviluppo: `docker compose -f compose.dev.yaml up -d`, `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev` con `AUTH_DEV_LOGIN=true` e `ORIGIN=http://localhost:5173`.
-- Stack completo: `cp .env.example .env`, compila i valori, `docker compose up -d --build`, apri `http://localhost`.
-- Per il login 42 reale, Ismail deve registrare nell'app 42 il redirect URI `http://localhost/auth/callback` (azione manuale, non dell'agent).
+- Stack completo: `cp .env.example .env`, compila i valori (`DATABASE_URL` con host `db`, `ORIGIN=https://localhost:8443`), genera il certificato locale con il comando nel `README.md`, poi `docker compose up -d --build` e apri `https://localhost:8443`. Il browser mostra l'avviso previsto per il certificato autofirmato.
+- Per il login 42 reale, Ismail deve registrare nell'app 42 il redirect URI `https://localhost:8443/auth/callback` (azione manuale, non dell'agent).
 
 ---
 
@@ -887,7 +896,7 @@ Ogni modulo termina con: controlli locali verdi (`pnpm ci:local`), push, CI verd
 6. Paraglide con solo `it`.
 7. Script `package.json` (§14.2) e `ci.yml` (§14.1). I job senza test ancora scritti passano con test segnaposto minimi (un test vero su `/healthz` in e2e).
 8. Copia `static/42_Logo.svg.png` e `static/badge.png` dal legacy in `static/`.
-**Fatto quando**: `docker compose up` mostra la landing su `http://localhost`, `/healthz` risponde 200, CI verde.
+**Fatto quando**: `docker compose up` mostra la landing su `https://localhost:8443`, `/healthz` risponde 200, CI verde.
 
 ### M1 — Database, dati fittizi e import (5 g)
 Schema §7 e prima migrazione; `db/index.ts`; `legacy-schema.sql`; `make-fake-db.ts`; `import-legacy.ts`; `verify-legacy-import.ts`; `seed.ts`; `domain/dates.ts` e `domain/kinds.ts` (servono all'import e al verify) con i loro test unit; job CI `integration` e `legacy-import`.

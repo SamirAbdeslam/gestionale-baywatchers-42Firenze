@@ -13,3 +13,4 @@ project.inlang/.lix
 project.inlang/.meta.json
 project.inlang/README.md
 .vscode
+nginx/certs/
