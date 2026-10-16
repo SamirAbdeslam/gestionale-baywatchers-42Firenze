@@ -5,7 +5,7 @@ build/
 src/lib/paraglide/
 project.inlang/cache/
 graphify-out/
-legacy/
+/legacy/
 docs/
 playwright-report/
 test-results/

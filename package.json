@@ -16,11 +16,11 @@
 		"test:e2e": "playwright test",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "node --env-file-if-exists=.env --import tsx node_modules/drizzle-kit/bin.cjs migrate",
-		"db:seed": "tsx scripts/bootstrap.ts db:seed",
-		"legacy:fake-db": "tsx scripts/bootstrap.ts legacy:fake-db",
-		"legacy:import": "tsx scripts/bootstrap.ts legacy:import",
-		"legacy:verify": "tsx scripts/bootstrap.ts legacy:verify",
-		"ci:local": "docker compose -f compose.dev.yaml up -d --wait && corepack pnpm lint && corepack pnpm check && corepack pnpm test:unit && corepack pnpm test:integration && corepack pnpm build && corepack pnpm test:e2e"
+		"db:seed": "node --env-file-if-exists=.env --import tsx scripts/seed.ts",
+		"legacy:fake-db": "node --env-file-if-exists=.env --import tsx scripts/legacy/make-fake-db.ts",
+		"legacy:import": "node --env-file-if-exists=.env --import tsx scripts/import-legacy.ts",
+		"legacy:verify": "node --env-file-if-exists=.env --import tsx scripts/verify-legacy-import.ts",
+		"ci:local": "docker compose -f compose.dev.yaml up -d --wait && DATABASE_URL=postgres://bay:bay@localhost:5432/baywatchers_test ORIGIN=http://localhost:4173 TZ=Europe/Rome corepack pnpm db:migrate && corepack pnpm lint && corepack pnpm check && corepack pnpm test:unit && corepack pnpm test:integration && DATABASE_URL=postgres://bay:bay@localhost:5432/baywatchers_test ORIGIN=http://localhost:4173 TZ=Europe/Rome corepack pnpm db:seed && corepack pnpm build && corepack pnpm test:e2e"
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
