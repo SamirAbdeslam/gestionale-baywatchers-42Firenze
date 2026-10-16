@@ -973,7 +973,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 
 | Modulo | Stato |
 |---|---|
-| M0 Bootstrap | in corso |
+| M0 Bootstrap | completato (1537ce2) |
 | M1 Database, dati fittizi e import | da fare |
 | M2 Auth, sessioni, guard, layout | da fare |
 | M3 Impostazioni e settimane | da fare |

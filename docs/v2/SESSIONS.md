@@ -198,3 +198,31 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Push dei commit di M0, verifica della CI con `gh run watch --exit-status`, registrazione dell'esito e aggiornamento dello stato del modulo. Non iniziare M1 in questa sessione.
+
+## 2026-10-16 — M0 — completato
+
+**Fatto**
+- Completato M0 sul branch `v2.0.0`, con push e CI verde. Aggiornato esclusivamente lo stato di M0 nella tabella §19.
+- Stack completo lasciato avviato su `http://localhost`, con app e Postgres healthy e `/healthz` a 200.
+- Nessun modulo successivo iniziato; legacy preservato.
+
+**Commit**
+- `e6cfa29` `chore: move flask app to legacy/`
+- `7f52fb0` `feat: bootstrap sveltekit application`
+- `4084e73` `chore: add local docker stack and ci checks`
+- `1537ce2` `docs: record M0 bootstrap validation`
+
+**Controlli**
+- `pnpm ci:local`: verde, 19 unit test, 1 integration con Postgres reale, build e 4 e2e Chromium desktop/mobile.
+- `docker compose up -d --build --wait`: verde dopo la correzione IPv4 approvata da Ismail. Runtime non root, asset originali verificati, header di sicurezza presenti.
+- CI su GitHub: [run 38899952445](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/38899952445), verde su `1537ce2`; tutti i sei job completati con successo. `gh run watch --exit-status` terminato con exit code 0.
+- Il job legacy-import verifica il collegamento dei comandi di bootstrap: generazione, import e verifica dei dati sono ancora segnaposto espliciti, da sostituire in M1.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore scelta rispetto alle voci precedenti e all'autorizzazione per l'healthcheck IPv4.
+
+**Domande / blocchi**
+- Nessuno per M0. Login OAuth e funzionalità applicative restano nei moduli previsti.
+
+**Prossimo passo**
+- M1: schema Postgres, prima migrazione applicativa, dati fittizi, import/verifica legacy, seed, dominio dates/kinds e relativi test. Rileggere piano e ultima voce del diario prima di iniziare.
