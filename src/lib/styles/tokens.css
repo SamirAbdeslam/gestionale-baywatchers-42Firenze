@@ -1,0 +1,24 @@
+:root {
+	--color-brand: #00babc;
+	--color-text: #1c1c1c;
+	--color-background: #ffffff;
+	--color-focus: #005f61;
+	--color-exam: #b91c1c;
+	--color-icebreaker: #005f61;
+	--color-rush: #854d0e;
+	--color-cluster: #1d4ed8;
+	--color-welcome: #6b21a8;
+	--color-custom: #374151;
+	--space-sm: 0.5rem;
+	--space-md: 1rem;
+	--space-lg: 2rem;
+	--radius: 0.5rem;
+	--font-body: system-ui, sans-serif;
+	--line-height: 1.5;
+	--font-title: 2rem;
+	--logo-size: 3rem;
+	--content-width: 75rem;
+	--focus-width: 3px;
+	--bp-md: 768px;
+	--bp-lg: 1200px;
+}

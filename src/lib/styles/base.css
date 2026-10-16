@@ -1,0 +1,45 @@
+@import './tokens.css';
+
+* {
+	box-sizing: border-box;
+}
+body {
+	margin: 0;
+	background: var(--color-background);
+	color: var(--color-text);
+	font-family: var(--font-body);
+	line-height: var(--line-height);
+	overflow-wrap: anywhere;
+}
+header {
+	display: flex;
+	align-items: center;
+	gap: var(--space-md);
+	padding: var(--space-md);
+	background: var(--color-brand);
+}
+header img {
+	width: var(--logo-size);
+	height: auto;
+}
+main {
+	max-width: var(--content-width);
+	margin-inline: auto;
+	padding: var(--space-lg) var(--space-md);
+}
+h1 {
+	font-size: var(--font-title);
+}
+:focus-visible {
+	outline: var(--focus-width) solid var(--color-focus);
+	outline-offset: var(--focus-width);
+}
+.skip-link {
+	position: absolute;
+	padding: var(--space-sm);
+	background: var(--color-background);
+	transform: translateY(-100%);
+}
+.skip-link:focus {
+	transform: translateY(0);
+}
