@@ -549,6 +549,7 @@ Riferimento: `legacy/app.py:1569`–`1938`, `legacy/templates/create_template.ht
 - Tipi di azione (costante `ACTION_TYPES` in `audit.ts`, nessun altro valore ammesso):
   `CREATE_EVENT`, `UPDATE_EVENT`, `DELETE_EVENT`, `DELETE_DAY_EVENTS`, `DELETE_WEEK_EVENTS`, `DELETE_ALL_EVENTS`, `REGISTER_EVENT`, `UNREGISTER_EVENT`, `ADMIN_UNREGISTER`, `ADMIN_ADD_PARTICIPANT`, `MARK_PRESENT`, `MARK_ABSENT`, `ACTIVATE_WEEK`, `UPDATE_SETTING`, `CREATE_TEMPLATE`, `APPLY_TEMPLATE`, `DELETE_TEMPLATE`, `IMPORT_TEMPLATES`, `WHITELIST_ADD`, `WHITELIST_REMOVE`, `LOGIN`.
   `LOGIN` è nuovo: si registra a ogni login riuscito.
+- Per `UPDATE_SETTING` e `ACTIVATE_WEEK`, `old_value` e `new_value` contengono in JSON solo i campi di `settings` modificati, con il valore prima e dopo (es. `{"activeWeek": 2}` → `{"activeWeek": 3}`). Il valore precedente si legge nella stessa transazione con `SELECT ... FOR UPDATE` sulla riga `settings`.
 - Le descrizioni restano in italiano come nel legacy (sono dati storici, non UI). Esempi: `Utente 'x' registrato all'evento 'T' (Lunedì, 09:00-11:00, ID: 5).`
 - Pagina `/admin/logs`:
   - filtri: data (`YYYY-MM-DD`, giorno in Europe/Rome), utente (`actor_login` esatto, select con i valori distinti), tipo azione (select con i valori distinti);
@@ -648,6 +649,7 @@ In `hooks.server.ts`, prima di ogni route:
   - `// ponytail: in-process bus, works only with one app instance; switch to Postgres LISTEN/NOTIFY if we ever run more than one.`
 - Eventi (nessun dato personale nel payload, i client ricaricano i dati con `invalidate`):
   - `event_changed` `{ eventId: number | null, week: number | null, action: 'create' | 'update' | 'delete' | 'bulk_delete' }`;
+    anche il cambio delle date del pool (`setPoolDates`) pubblica `event_changed` con `{ eventId: null, week: null, action: 'update' }`, perché cambiano le date concrete mostrate da calendario e display;
   - `week_activated` `{ week: number }`;
   - `log_created` `{ id: number }` — inviato **solo** ai client con ruolo admin.
 - Endpoint `GET /api/stream`: `text/event-stream`, header `Cache-Control: no-cache`, `X-Accel-Buffering: no`. Heartbeat (commento `: ping`) ogni 25 s. Su chiusura della richiesta, `unsubscribe`. Il ruolo si legge da `locals.user` all'apertura dello stream.

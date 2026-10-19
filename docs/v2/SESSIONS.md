@@ -50,6 +50,22 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
   - `pnpm remove arctic`, lockfile aggiornato, nessun riferimento rimasto (`grep -r arctic src` vuoto).
   - Un commit `refactor(auth): replace arctic with built-in oauth client`, `pnpm ci:local` verde, push, CI verde. Solo dopo inizia M3.
   - `PLAN.md` §4.1 e §9.2 sono già aggiornati.
+- 2026-10-19: correzioni dalla revisione di M3. **Da fare solo dopo aver chiuso M4** (commit, CI verde e voce di chiusura nel diario), **prima di iniziare M5**. Durante M4 potresti aver già sistemato alcuni punti: per ognuno verifica prima lo stato attuale del codice, salta quelli già risolti e scrivi nel diario quali erano già a posto. Un commit `fix(settings): address M3 review findings` (o più commit piccoli con lo stesso prefisso), poi `pnpm ci:local` verde, push, CI verde. Riferimenti di riga al commit `6999dea`.
+  - **S1 (media)** `src/lib/server/realtime/bus.ts`: `publish()` chiama gli ascoltatori in modo sincrono, quindi un ascoltatore che lancia un'eccezione fa fallire l'azione dopo il commit e blocca gli altri ascoltatori. Isola ogni ascoltatore (`listeners()` + try/catch + `console.error` senza dati personali). Test unit: un ascoltatore che lancia non impedisce agli altri di ricevere l'evento e `publish()` non lancia.
+  - **S2 (bassa)** date del pool: limita `start` e `end` agli anni 2000–2100 nello schema di `setPoolDates` (oggi `9999-12-31` produce un 500 al calcolo della fine). Test integration con `1999-12-31`, `2101-01-01` e `9999-12-31` → 400, nessuna scrittura.
+  - **S3 (bassa)** `settings.ts` L11-18: settimana e limite accettano solo cifre (`/^\d{1,5}$/` prima della conversione). Oggi passano `"0x2"`, `"1e0"`, `" 2 "`. Test integration con questi valori → rifiutati.
+  - **S4 (bassa)** `oauth42.ts` L82-85: aggiungi `redirect: 'error'` alla richiesta del profilo, come per lo scambio del token. Test unit: la richiesta del profilo ha `redirect === 'error'`.
+  - **S5 (bassa)** `settings.ts` L45-59: per `UPDATE_SETTING` e `ACTIVATE_WEEK` salva `old_value`/`new_value` come descritto in `PLAN.md` §8.10 (aggiornato). Test integration sui valori registrati per ognuna delle quattro azioni.
+  - **P1** §8.15: le form di M3 (date pool, settimana attiva, limite, reset display) usano `use:enhance` e la struttura `{ ok, messages }` con toast, come le form di M4. Funzionano anche senza JavaScript.
+  - **P2** fine pool prima dell'inizio: messaggio specifico (nuova chiave i18n, es. `error_pool_end_before_start`) invece del generico "Dati non validi". Aggiorna l'e2e che oggi si aspetta "Dati non validi".
+  - **P3** `setPoolDates` pubblica anche `event_changed` `{ eventId: null, week: null, action: 'update' }` dopo il commit, come descritto in `PLAN.md` §10 (aggiornato). Aggiorna il test integration sugli eventi pubblicati.
+  - **T1** `playwright.config.ts`: togli `workers: 1` globale. Esegui in sequenza solo i test che modificano o confrontano la riga `settings` (`test.describe.configure({ mode: 'serial' })` o un progetto Playwright dedicato con `dependencies`), il resto torna parallelo. Il controllo di non modifica nella matrice dei permessi deve restare affidabile: se serve, escludi `settings.updated_at` dall'hash solo per i test che girano in parallelo e spiega la scelta nel diario.
+  - **T2** e2e: POST da origine estranea (`origin: https://evil.example`) su `/admin?/setActiveWeek` con un admin loggato → 403 e nessuna scrittura né log.
+  - **Ponytail 1** `settings.ts` L55, L58: non dedurre tipo di log e `resourceId` da `changes.activeWeek === undefined`; passali esplicitamente da chi chiama.
+  - **Ponytail 2** `settings.ts` L22, L128: elimina `resetSchema`; `resetDisplayWeek` non legge input.
+  - **Ponytail 3** `admin/+page.server.ts` L22 e `+page.svelte` L43: restituisci solo le date già formattate (`null` se assenti) invece di `dayDates` + `formattedDayDates`.
+  - **Ponytail 4** `oauth42.ts` L21-31: sostituisci `createAuthorizationURL(endpoint, state, scopes)` con `authorizationUrl(state)` che usa internamente `AUTHORIZE_URL` e lo scope `public`; aggiorna chiamante e test.
+  - Nessun cambiamento di comportamento oltre a quelli elencati. `PLAN.md` §8.10 e §10 sono già aggiornati.
 
 ---
 
