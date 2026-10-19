@@ -110,7 +110,7 @@ Le altre differenze rispetto al legacy sono correzioni di bug (§18) e non richi
 | DB | PostgreSQL 17 | Container `postgres:17-alpine`. |
 | ORM e migrazioni | Drizzle ORM + drizzle-kit | Driver `postgres` (postgres.js). Migrazioni SQL generate e committate in `drizzle/`. |
 | Validazione | Zod 4 | Per form action, query string e import. |
-| OAuth | `arctic` (`OAuth2Client` generico) | Sessioni scritte a mano (§9.2). Nessuna libreria auth "tutto incluso". |
+| OAuth | Client scritto a mano con `fetch` e `node:crypto`, nessuna libreria | `arctic` è stato rimosso: deprecato su npm il 2026-07 ("Package no longer supported"), nessuna versione successiva. Sessioni scritte a mano (§9.2). Nessuna libreria auth "tutto incluso". |
 | i18n | Paraglide JS 2 (inlang) | Locale base `it`. |
 | `.ics` | `ical-generator` | |
 | Test | Vitest, Playwright | |
@@ -615,7 +615,7 @@ In `hooks.server.ts`, prima di ogni route:
 - `/auth/dev` è pubblica solo se `AUTH_DEV_LOGIN=true`; altrimenti risponde 404.
 
 ### 9.2 Sessioni e OAuth 42
-- Login: `GET /auth/login` genera `state` casuale (`arctic.generateState()`), lo salva in un cookie `oauth_state` (HttpOnly, SameSite=Lax, 10 minuti) e redirige a 42.
+- Login: `GET /auth/login` genera `state` casuale (`crypto.randomBytes(32).toString('base64url')`), lo salva in un cookie `oauth_state` (HttpOnly, SameSite=Lax, 10 minuti) e redirige a 42.
 - Callback: confronta `state`; scambia il codice; chiama `/v2/me`; upsert in `users` per `intra_id` (login, email, display_name, image_url, wallet); calcola il ruolo (D5); crea la sessione; log `LOGIN`; redirect a `/calendar`. Qualunque errore → redirect a `/?error=login_failed` e log applicativo senza token.
 - Sessione: token casuale di 20 byte (base32), nel DB solo `sha256(token)`. Durata 30 giorni; se mancano meno di 15 giorni alla scadenza, si estende a 30. Cookie `session`: HttpOnly, SameSite=Lax, Path=/, `Secure` se `ORIGIN` inizia con `https://`.
 - Ogni richiesta: `hooks.server.ts` legge il cookie, carica sessione + utente con una query, popola `event.locals.user` (`id`, `login`, `displayName`, `imageUrl`, `wallet`, `role`). Il ruolo viene **sempre** dal DB.

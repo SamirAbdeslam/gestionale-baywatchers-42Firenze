@@ -41,6 +41,15 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
   - pnpm 10 via Corepack, come hai già impostato.
   - `.gitignore`: oltre alle voci SvelteKit deve contenere `graphify-out/`, `*.db`, `*.csv`, `playwright-report/`, `test-results/`, `src/lib/paraglide/` (vedi M0 punto 3).
 - 2026-10-16: §16.2 "attended come stringa '1'": approvata la proposta dell'agent. Schema SQLite fedele al legacy, il generatore inserisce '1' accettando la conversione a INTEGER, la normalizzazione dell'import (1, '1', true → true; altro → false) è coperta da un test unit. Il requisito di §16.2 va letto così.
+- 2026-10-19: risposta al blocco Arctic. Rimuovi `arctic` prima di iniziare M3.
+  - Sostituisci le due sole funzioni usate con codice scritto a mano, senza nuove dipendenze:
+    - `generateState()` → `crypto.randomBytes(32).toString('base64url')` (da `node:crypto`);
+    - URL di autorizzazione → `new URL(authorizeUrl)` con `URLSearchParams`: `client_id`, `redirect_uri`, `response_type=code`, `scope=public`, `state`;
+    - scambio del codice → `fetch` POST su `https://api.intra.42.fr/oauth/token`, corpo `application/x-www-form-urlencoded` con `grant_type=authorization_code`, `code`, `redirect_uri`, `client_id`, `client_secret`; risposta non 2xx = errore; corpo validato con Zod (`access_token` stringa non vuota obbligatoria, altri campi ignorati).
+  - Nessun cambiamento di comportamento: stesse route, stesso cookie `oauth_state`, stessi redirect e stessi errori. I test esistenti con risposte 42 simulate devono passare senza modifiche alle aspettative; aggiungi un test unit per `state` (lunghezza, alfabeto base64url, valori diversi a ogni chiamata) e uno per la risposta token non valida.
+  - `pnpm remove arctic`, lockfile aggiornato, nessun riferimento rimasto (`grep -r arctic src` vuoto).
+  - Un commit `refactor(auth): replace arctic with built-in oauth client`, `pnpm ci:local` verde, push, CI verde. Solo dopo inizia M3.
+  - `PLAN.md` §4.1 e §9.2 sono già aggiornati.
 
 ---
 
@@ -515,3 +524,26 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M3: impostazioni, settimane, date pool, limite eventi, reset display week e relativo audit. Rileggere piano e diario prima di procedere.
+
+## 2026-10-19 — Verifica aggiornamento Arctic — bloccato in attesa di scelta
+
+**Fatto**
+- Su richiesta di Ismail, verificata la disponibilità di un aggiornamento Arctic prima di iniziare M3.
+- Branch `v2.0.0` con working tree inizialmente pulito. Nessuna dipendenza modificata; M3 non iniziato e stato del piano lasciato `da fare`.
+
+**Commit**
+- Nessuno; nessun push.
+
+**Controlli**
+- `pnpm view arctic version deprecated dist-tags --json`: riuscito. Versione stabile corrente e tag latest entrambi `3.7.0`, già fissata in package.json e lockfile.
+- Il campo deprecated del registro riporta `Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.` Non è disponibile una versione stabile successiva alla dipendenza installata.
+- Test e CI non eseguiti: nessuna modifica al codice o alle dipendenze.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessun downgrade, prerelease o cambio libreria. Non cercate alternative senza una scelta di Ismail, come richiesto da §1.2.
+
+**Domande / blocchi**
+- Confermare se mantenere Arctic 3.7.0 e procedere con M3, oppure autorizzare la valutazione di una sostituzione e la relativa modifica della dipendenza prevista dal piano.
+
+**Prossimo passo**
+- Dopo la risposta di Ismail, gestire la scelta su Arctic e avviare M3 se confermato; rileggere piano e diario prima dell'implementazione.
