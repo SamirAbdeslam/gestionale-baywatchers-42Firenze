@@ -704,3 +704,48 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M5: iscrizioni e presenze. Rileggere piano e diario prima di iniziare.
+
+## 2026-10-19 — Revisione M3 dopo M4 — controlli locali completati
+
+**Fatto**
+- Applicata la nota di Ismail del 2026-10-19 soltanto dopo la chiusura M4 e la sua CI verde. Verificato lo stato di tutti i 14 punti prima delle modifiche: P1 era già implementato in M4; gli altri 13 richiedevano interventi. M5 non iniziato.
+- **S1:** `publish()` invoca ogni ascoltatore separatamente con try/catch. Un errore non interrompe gli altri ascoltatori o l'azione già committata; il log contiene soltanto un messaggio statico, senza evento o eccezione potenzialmente personale.
+- **S2:** validazione delle date del pool negli anni 2000–2100, inclusa la fine calcolata automaticamente. Le action respingono con status 400 inizio o fine `1999-12-31`, `2101-01-01` e `9999-12-31`, senza scritture, log o notifiche.
+- **S3:** settimana, query settimana e limite accettano soltanto stringhe di 1–5 cifre decimali prima della conversione. Conservati gli input numerici interi del dominio; rifiutati anche `0x2`, `1e0`, spazi, decimali testuali e stringhe troppo lunghe.
+- **S4:** richiesta del profilo 42 con `redirect: 'error'`; test della proprietà redirect della richiesta costruita dai parametri di fetch.
+- **S5:** lettura della riga settings con `FOR UPDATE` nella stessa transazione della modifica e dell'audit; `old_value` e `new_value` JSON contengono soltanto i campi richiesti, senza id o timestamp. Coperti tutti e quattro i tipi di modifica e due modifiche concorrenti della stessa impostazione.
+- **P1, già a posto:** conservati `use:enhance`, contratto `{ ok, messages }` e toast introdotti in M4. Aggiunta verifica browser delle quattro impostazioni con JavaScript disabilitato, senza riscrivere la funzionalità.
+- **P2:** nuova chiave `error_pool_end_before_start` e messaggio italiano specifico per date valide ma invertite; aggiornato l'e2e. Altri errori di validazione conservano il messaggio generico.
+- **P3:** `setPoolDates` pubblica dopo il commit anche `event_changed` con eventId/week null e action update. Aggiornate le aspettative integration; verificata l'assenza di notifiche in caso di rollback dell'audit.
+- **T1:** rimosso il limite globale di un worker. Progetti chromium-shared e mobile-shared in sequenza tramite dependencies e con serializzazione locale; progetti chromium/mobile indipendenti in parallelo. Il limite seriale include gli eventi perché le eliminazioni globali e il loro ripristino interferiscono con gli hash di tutte le tabelle nella matrice. Nessun campo, incluso settings.updated_at, escluso dagli hash. Client Postgres dei test aperti nel beforeAll e chiusi nel relativo afterAll, compatibilmente con i gruppi di esecuzione paralleli.
+- **T2:** nuovo e2e con admin autenticato, POST `/admin?/setActiveWeek` da `https://evil.example`: 403, riga settings e intero audit invariati.
+- **Ponytail 1:** tipo di audit e resourceId espliciti nei chiamanti, senza dedurli da activeWeek. Pubblicazione di week_activated nel relativo chiamante.
+- **Ponytail 2:** eliminato resetSchema e rimosso il parametro input da resetDisplayWeek. La matrice verifica ancora il rifiuto di anonimi e utenti normali; il successo admin, anche con campi irrilevanti, è coperto dal test impostazioni.
+- **Ponytail 3:** il caricamento admin restituisce un solo array di date settimanali già formattate, con null se assenti; eliminato il doppio payload dayDates/formattedDayDates.
+- **Ponytail 4:** sostituito createAuthorizationURL con authorizationUrl(state), endpoint e scope public interni; aggiornati chiamante e test.
+
+**Commit**
+- `8d6a68d` `fix(settings): address M3 review findings`.
+- `b43b948` `fix(settings): restore parallel browser coverage`.
+
+**Controlli**
+- `pnpm ci:local`: verde, 92 unit, 101 integration e 30 e2e; lint/check e build verdi, svelte-check senza errori o warning.
+- Browser: 16 controlli dei dati condivisi eseguiti in sequenza fra desktop e mobile, poi 14 indipendenti in parallelo; esecuzione locale con 6 worker disponibili. Copertura desktop/mobile conservata per ogni test, senza raddoppio dei casi fra i progetti dedicati e ordinari.
+- Test unit dell'ascoltatore che lancia: publish non lancia, l'altro ascoltatore riceve l'evento e nessun dettaglio privato compare nel log. Test OAuth senza chiamate reali all'API 42.
+- Integration con database reale: status 400 delle action per date fuori intervallo, valori audit esatti per le quattro azioni, precedente snapshot corretto sotto concorrenza, rollback e nessuna notifica su fallimento.
+- `git diff --check`: verde. Nessuna modifica a legacy, dipendenze, schema o piano; preservate integralmente le note di Ismail e le voci precedenti.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna esclusione dagli hash per aggirare le corse: la serializzazione interessa soltanto i test che condividono mutazioni o snapshot, mentre il resto è parallelo. Gli hook ricreano la connessione del test per ogni gruppo, evitando di riutilizzarla dopo afterAll.
+- Il limite 2000–2100 si applica anche alla fine automatica: `2100-12-04` produce `2100-12-31`; un inizio successivo senza fine esplicita è rifiutato se produce una fine nel 2101.
+- Graphify consultato ma senza corrispondenze per i simboli TypeScript correnti; verificati direttamente sorgenti e chiamanti. Applicati Ponytail e Caveman; nessuna ricostruzione del grafo o dipendenza aggiunta.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Login 42 reale rimane la verifica manuale di Ismail già prevista.
+
+**Prossimo passo**
+- Terminare la ricostruzione dello stack HTTPS, push, verificare la CI e registrare la chiusura della revisione. M5 resta da iniziare.
+
+**Verifica stack HTTPS dopo la ricostruzione**
+- `docker compose up -d --build --wait`: verde; app/Postgres healthy, nginx running, porte 8080/8443. Nessun volume eliminato.
+- Con certificato locale come CA esplicita e verifica TLS attiva: health HTTPS 200, admin anonimo 303 e redirect HTTP 8080 verso HTTPS 8443 con 308. Nessuna scrittura sul database applicativo durante questa prova.
