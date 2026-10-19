@@ -354,3 +354,138 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M2: auth 42, sessioni, guard e layout. Non iniziato in questa sessione; rileggere piano e diario prima di procedere.
+
+
+## 2026-10-16 — M2 — bloccato
+
+**Fatto**
+- Riletti piano, note di Ismail e chiusura M1. Confermata D5; branch `v2.0.0` inizialmente pulito e allineato al remoto su `e6c310c`.
+- Consultato Graphify per login, callback e guard legacy; verificati i riferimenti in `legacy/app.py` e lette le parti del bootstrap coinvolte in M2.
+- Esaminati i tipi locali di SvelteKit per distinguere pagine ed endpoint nella guard globale e consultata la documentazione ufficiale degli hook.
+- Nessuna implementazione M2 o installazione avviata. Aggiornata solo la colonna Stato del piano.
+
+**Commit**
+- Nessuno; nessun push.
+
+**Controlli**
+- Lettura della documentazione Arctic `https://arcticjs.dev/guides/oauth2/`: fallita. Il tool web segnala un redirect verso `https://arctic.pilcrowonpaper.com/guides/oauth2/`, dominio non accessibile dal tool, con errore non ripetibile.
+- `pnpm ci:local`: non eseguito, nessuna modifica al codice.
+- CI remota: non eseguita, nessun push.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna alternativa tentata dopo l'errore di accesso, in applicazione di §1.2 e delle regole di Ismail.
+
+**Domande / blocchi**
+- Confermare se proseguire verificando l'API sul codice e sui tipi del pacchetto npm ufficiale `arctic`, la cui installazione è già prevista da §4 per M2, al posto della pagina web non accessibile.
+
+**Prossimo passo**
+- Dopo la risposta di Ismail, riprendere M2: sessioni e OAuth, guard default-deny, login dev, audit/bus, layout e matrice di autorizzazione.
+
+
+## 2026-10-16 — M2 — bloccato su origine e CSRF con adapter-node 6
+
+**Fatto**
+- Ripreso M2 dopo il consenso di Ismail a verificare Arctic dal pacchetto npm ufficiale. Installato `arctic` 3.7.0, versione stabile corrente richiesta dal piano; npm lo dichiara deprecato. Nessuna libreria alternativa introdotta.
+- Verificati sorgente e tipi di `OAuth2Client` nel pacchetto installato, senza ulteriori accessi alla pagina web non disponibile.
+- Implementati, ancora da consolidare, sessioni con token base32 di 20 byte e hash SHA256, scadenza/rinnovo, cookie, OAuth/state, login dev, upsert profili/ruoli, audit LOGIN e bus in memoria.
+- Aggiunti guard default-deny tramite manifest SvelteKit, locals.user, gestione errori compatibile con SvelteKit 3, layout/menu mobile, messaggi italiani e segnaposto per pagine, endpoint e action del piano. I segnaposto non modificano dati e restituiscono 501 per le operazioni future.
+- Aggiunti test unit, integration e matrice e2e con scansione delle route e action admin. Estesa l'eccezione Git per le directory route `.csv`, altrimenti escluse dal pattern dei dati CSV; centralizzata ACTION_TYPES nel dominio audit. Integration eseguite senza parallelismo fra file perché condividono il DB isolato.
+- Stack completo temporaneamente fermato per utilizzare compose.dev con il DB dei test. Nessun volume eliminato. Interruzione prima di modificare configurazione dell'origine o protezione CSRF.
+
+**Commit**
+- `17dccad` `chore(deps): add arctic oauth client` (solo locale).
+- Implementazione M2 ancora non committata; nessun push.
+
+**Controlli**
+- `pnpm check`: verde, nessun errore o warning.
+- `pnpm lint`: verde.
+- `pnpm test:unit`: verde, 82 test, compresi callback OAuth simulati e gestione errori senza token nei log.
+- `pnpm test:integration`: verde, 16 test, comprese sessioni, cambio ruolo immediato, audit transazionale e rollback senza pubblicazione.
+- Seed e build: verdi. `pnpm test:e2e`: rosso, 6 passati e 14 falliti. Causa comune dei fallimenti: POST same-origin su HTTP rifiutati con 403 `Cross-site POST form submissions are forbidden`, incluso il form reale nel browser.
+- Trace verificata: Origin della richiesta `http://localhost:4173`, URL del test sulla stessa origine. Nessun errore di rete o DB: rifiuto del controllo CSRF nativo.
+- Sorgente installato: `@sveltejs/adapter-node/src/env.js` non include più ORIGIN; `src/handler.js` legge l'origine dalla configurazione del build oppure usa `get_origin`, il cui protocollo di fallback è HTTPS. `@sveltejs/kit/src/runtime/server/csrf.js:get_self_origin` dà precedenza a `kit.paths.origin`; il plugin Vite lo incorpora nel build tramite `__SVELTEKIT_PATHS_ORIGIN__`.
+- `pnpm ci:local`: non eseguito fino al completamento, essendo gli e2e rossi. CI remota non eseguita, nessun push.
+
+**Decisioni prese dentro il perimetro del piano**
+- Connessione DB caricata solo nelle richieste runtime, affinché la build non richieda credenziali o un DB.
+- Test OAuth con fetch simulato; nessuna chiamata reale all'API 42 e nessuna credenziale richiesta.
+- Nessuna disattivazione del CSRF e nessuna origine aggiunta a trustedOrigins.
+
+**Domande / blocchi**
+- Il piano §6 considera ORIGIN una variabile runtime di adapter-node; ciò non corrisponde ad adapter-node 6, approvato nelle note. Serve autorizzazione per aggiornare il piano e usare `kit.paths.origin` con ORIGIN in fase di build, propagandola coerentemente a build locale, test, Docker e CI. Questa soluzione richiede di ricostruire l'immagine quando cambia l'origine pubblica.
+- Alternativa non applicata: fidarsi degli header del proxy; richiederebbe dichiarare e testare tale configurazione anche nel server HTTP diretto degli e2e. Nessuna alternativa tentata dopo la diagnosi.
+- Login 42 reale resta il passo manuale di Ismail previsto da M2 e non blocca il push; il blocco attuale è il rifiuto dei form locali.
+
+**Prossimo passo**
+- Dopo la scelta di Ismail, correggere la configurazione dell'origine, completare i test e2e, eseguire ci:local, ripristinare lo stack HTTPS e concludere M2 con push e CI verde.
+
+**Ripristino ambiente prima della richiesta di conferma**
+- Fermato compose.dev e riavviato lo stack completo con l'immagine M1 già esistente, senza build: app e Postgres healthy, nginx avviato sulle porte 8080/8443. Nessun volume eliminato. Il codice M2 resta nel working tree, non nell'immagine in esecuzione.
+
+
+## 2026-10-19 — M2 — bloccato su Docker WSL
+
+**Fatto**
+- Ripreso M2 dopo il comando esplicito di Ismail, che autorizza l'aggiornamento del piano e della configurazione per `kit.paths.origin` con ORIGIN in fase di build.
+- Configurato Vite/SvelteKit per leggere ORIGIN dall'ambiente o da `.env` e validarla tramite uno schema Zod condiviso con la configurazione runtime. Aggiornati Dockerfile, build arg Compose, build Docker in CI e build di ci:local, che usa `http://localhost:4173`.
+- Aggiornati i soli punti del piano coinvolti nell'autorizzazione: configurazione ORIGIN, build Docker/Compose/CI e uso locale. Documentato anche in `.env.example` e README che origine di build e runtime devono coincidere e che cambiarla richiede una nuova build.
+- Aggiunti quattro casi unitari per rifiutare un'origine con percorso, query, credenziali o frammento. Nessuna modifica a CSRF o trustedOrigins.
+- Consultato Graphify; il grafo contiene ancora il corpus legacy, quindi la configurazione SvelteKit corrente è stata verificata sui file effettivi.
+
+**Commit**
+- Nessun nuovo commit o push. Rimane locale il precedente `17dccad` per Arctic; il resto di M2 è nel working tree.
+
+**Controlli**
+- Prettier sui file di configurazione e sui test modificati: verde.
+- Primo comando Docker della ripresa, `docker compose down`: fallito perché il comando docker non è disponibile nella distribuzione WSL. Il messaggio richiede di attivare WSL Integration in Docker Desktop.
+- Nessun arresto o avvio di container effettuato: il comando non è stato trovato. Stato attuale dei container non verificabile da questa sessione.
+- Nessun tentativo alternativo o installazione. Check, test, ci:local e CI remota non eseguiti in questa ripresa; restano valide soltanto come risultati storici le verifiche della voce precedente.
+
+**Decisioni prese dentro il perimetro del piano**
+- Applicata la correzione ORIGIN autorizzata da Ismail. Arresto al primo errore di ambiente, come prescritto da §1.2.
+
+**Domande / blocchi**
+- Riattivare l'integrazione della distribuzione corrente in Docker Desktop → Settings → Resources → WSL Integration, quindi verificare `docker version` e `docker compose version`.
+
+**Prossimo passo**
+- Quando Docker torna disponibile, riprendere i test M2 con compose.dev, correggere eventuali errori del codice, eseguire ci:local e verificare lo stack HTTPS ricostruito, quindi commit/push e CI verde. L'autorizzazione alla correzione ORIGIN rimane acquisita.
+
+## 2026-10-19 — M2 — implementazione e controlli locali completati
+
+**Fatto**
+- Ripreso il lavoro dopo il riavvio Docker comunicato da Ismail: client, daemon e Compose nuovamente disponibili. Risolto il blocco precedente senza installazioni o percorsi alternativi.
+- Applicata la correzione ORIGIN già approvata: `kit.paths.origin` legge il valore validato nella build; Compose lo inoltra come build arg, il job Docker usa lo stesso argomento e ci:local compila per `http://localhost:4173`. README, `.env.example` e punti pertinenti del piano aggiornati come autorizzato. Origine di build e runtime devono coincidere; modificarla richiede una nuova build.
+- Completati sessioni, OAuth, login dev, locals.user, guard default-deny, gestione errori, audit LOGIN, bus publish/subscribe e layout con navigazione responsive. Ruolo letto dal DB a ogni richiesta; upsert OAuth ricalcola il ruolo secondo D5. Login e audit condividono la transazione; pubblicazione soltanto dopo il commit.
+- Aggiunti tutti i segnaposto di §8.1, inclusi download e action, affinché l'autorizzazione sia già verificabile. Le operazioni future restituiscono 501 e non modificano dati; il trasporto SSE rimane in M9. Il display segnaposto rispetta già il token configurabile e il bypass admin.
+- Centralizzata ACTION_TYPES nel dominio audit e riusata nel generatore M1. Mantenuto il legacy invariato e conservate tutte le precedenti voci del diario.
+- Nessuna nuova dipendenza oltre ad Arctic previsto dal piano. La versione installata, 3.7.0, è dichiarata deprecata dal registro npm; mantenuta la scelta prescritta senza sostituzioni autonome.
+
+**Commit**
+- `17dccad` `chore(deps): add arctic oauth client`
+- `a87d970` `fix(config): bind public origin at build time`
+- `b5de8c4` `feat(auth): add sessions oauth identities and login audit`
+- `02517c5` `feat(auth): protect routes and add responsive navigation`
+
+**Controlli**
+- Docker client/server 29.8.1 e Compose 5.5.1: disponibili.
+- `pnpm ci:local`: verde con exit code 0; lint, svelte-check senza errori/warning, 86 unit, 16 integration con Postgres reale, seed, build e 20 e2e Chromium desktop/mobile.
+- Matrice e2e: tutte le pagine e i download admin, 19 action admin, utenti anonimi/normali/admin; snapshot dei dati di business invariati dopo le richieste. Scansione filesystem delle route e delle action confrontata con l'elenco esplicito in `tests/e2e/routes.ts`.
+- Test auth: token base32 di 20 byte e hash SHA256; scadenza esatta e rinnovo sotto i 15 giorni; revoca immediata e cambio ruolo dal DB; cookie, logout esclusivamente POST, CSRF, creazione/login utenti dev, upsert identità, audit nella transazione e nessuna pubblicazione su rollback; profili 42 simulati e default dei campi; state obbligatorio/corrispondente e rimozione del cookie; errori OAuth senza codici/token nei log; `/auth/dev` disabilitata a 404; errori interni generici con id.
+- La prima esecuzione ha trovato un errore nel nuovo validatore ORIGIN su URL non valide: corretto usando URL.parse, verificato dai test. Dopo la correzione dell'origine, i sei test API che si aspettavano un redirect HTTP sono stati allineati alla richiesta HTML: SvelteKit 3 restituisce altrimenti un redirect serializzato in JSON con status HTTP 200. Nessuna modifica alla protezione CSRF.
+- `docker compose up -d --build --wait`: verde; immagine M2 costruita per `https://localhost:8443`, app/Postgres healthy e nginx avviato. Nessun volume eliminato.
+- Prova HTTPS con certificato locale come CA esplicita, senza disabilitare la verifica TLS: health 200, anonimo calendario 303, login dev 303, cookie Secure/HttpOnly/SameSite=Lax, calendario e admin 200, CSP presente, cache privata, logout GET 405, POST senza origine o con origine estranea 403, logout valido 303, riuso del cookie revocato 303. Utente e log creati soltanto per questa prova eliminati alla fine; nessun dato preesistente cancellato.
+- `git diff --check`: verde. CI remota da verificare dopo il push del modulo.
+
+**Decisioni prese dentro il perimetro del piano**
+- File aggiuntivo `domain/auth.ts`: concentra il login transazionale condiviso fra OAuth e sviluppo. Utenti dev creati al volo con intra_id sintetico negativo, distinto dagli id positivi di 42, senza aggiunta automatica alla whitelist.
+- Tipi Database/Transaction condivisi per testare le funzioni con una connessione isolata. Integration eseguite in sequenza fra file perché svuotano lo stesso database di test; gli e2e restano paralleli con identità temporanee distinte.
+- Manifest SvelteKit usato per distinguere pagine ed endpoint, senza affidarsi a estensioni dei file o all'header Accept per decidere l'autorizzazione.
+- Eccezione Git limitata alle directory `.csv` sotto `src/routes`, affinché gli endpoint richiesti siano versionati. Il breakpoint CSS corrisponde al token `--bp-md`: le custom property non sono ammesse nelle condizioni media.
+- Usati Graphify per il riferimento legacy, Ponytail per contenere l'implementazione e Caveman nella comunicazione. Nessuna ricostruzione del grafo.
+
+**Domande / blocchi**
+- Nessun blocco tecnico locale per M2.
+- Login 42 reale da verificare manualmente da Ismail con le proprie credenziali e callback `https://localhost:8443/auth/callback`, come previsto dal criterio M2; questo controllo non blocca il push. Nessuna chiamata reale all'API 42 durante i test.
+
+**Prossimo passo**
+- Verificare la CI dopo il push e registrare la chiusura M2. Non avviare M3 in questa sessione. Stack completo HTTPS lasciato in esecuzione sulle porte 8080/8443.

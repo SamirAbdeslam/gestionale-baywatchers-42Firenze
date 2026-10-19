@@ -194,7 +194,7 @@ Tutte lette e validate in `src/lib/server/env.ts` con Zod all'avvio. Se una vari
 | Variabile | Obbligatoria | Esempio | Uso |
 |---|---|---|---|
 | `DATABASE_URL` | sì | `postgres://bay:bay@localhost:5432/baywatchers` | Connessione Postgres. |
-| `ORIGIN` | sì | `https://localhost:8443` | Origine pubblica (adapter-node, CSRF, redirect OAuth). |
+| `ORIGIN` | sì, build e runtime | `https://localhost:8443` | Origine pubblica senza percorso, query o frammento. La build la incorpora in `kit.paths.origin`; a runtime serve per cookie e redirect OAuth. I due valori devono coincidere. |
 | `FT_CLIENT_ID` | sì in produzione | | App OAuth 42. |
 | `FT_CLIENT_SECRET` | sì in produzione | | App OAuth 42. |
 | `AUTH_DEV_LOGIN` | no | `true` | Abilita il login di sviluppo (§9.3). Vietato fuori da localhost. |
@@ -728,7 +728,7 @@ Job (tutti su `ubuntu-latest`, Node da `.nvmrc`, pnpm con cache):
 3. `integration` — service `postgres:17-alpine` con healthcheck; `pnpm db:migrate`; `pnpm test:integration`.
 4. `e2e` — service Postgres; `pnpm db:migrate`; `pnpm db:seed`; `pnpm build`; `pnpm exec playwright install --with-deps chromium`; `pnpm test:e2e`. In caso di fallimento carica `playwright-report/` come artifact.
 5. `legacy-import` — service Postgres; `pnpm legacy:fake-db -- --out /tmp/calendar.db`; `pnpm db:migrate`; `pnpm legacy:import -- --sqlite /tmp/calendar.db`; `pnpm legacy:verify -- --sqlite /tmp/calendar.db` (§16.3).
-6. `docker` — `docker build .` (solo build, nessun push di immagini).
+6. `docker` — `docker build --build-arg ORIGIN="$ORIGIN" .` (solo build, nessun push di immagini).
 
 Variabili d'ambiente CI: `TZ=Europe/Rome`, `ORIGIN=http://localhost:4173`, `AUTH_DEV_LOGIN=true`, `DATABASE_URL` verso il service.
 
@@ -736,7 +736,7 @@ Variabili d'ambiente CI: `TZ=Europe/Rome`, `ORIGIN=http://localhost:4173`, `AUTH
 `dev`, `build`, `preview`, `lint`, `format`, `check`, `test:unit`, `test:integration`, `test:e2e`, `db:generate`, `db:migrate`, `db:seed`, `legacy:fake-db`, `legacy:import`, `legacy:verify`, `ci:local`.
 
 ### 14.3 Controllo locale prima del push
-`pnpm ci:local` esegue in sequenza lint, check, unit, integration, build ed e2e contro il Postgres di `compose.dev.yaml`. Si fa push solo se termina con exit code 0.
+`pnpm ci:local` esegue in sequenza lint, check, unit, integration, build ed e2e contro il Postgres di `compose.dev.yaml`; la build usa `ORIGIN=http://localhost:4173`, come il server e2e. Si fa push solo se termina con exit code 0.
 
 ---
 
@@ -745,7 +745,7 @@ Variabili d'ambiente CI: `TZ=Europe/Rome`, `ORIGIN=http://localhost:4173`, `AUTH
 ### 15.1 `Dockerfile`
 Multi-stage su `node:24-alpine`:
 1. `deps`: Corepack, `pnpm install --frozen-lockfile`.
-2. `build`: `pnpm build`, poi `pnpm prune --prod`.
+2. `build`: riceve `ARG ORIGIN` e lo passa a `pnpm build`, poi `pnpm prune --prod`. Con SvelteKit 3 e adapter-node 6, `kit.paths.origin` viene configurato nella build tramite `ORIGIN`; cambiare origine richiede una nuova build.
 3. `runtime`: copia `build/`, `node_modules/` di produzione, `package.json`, `drizzle/`, `static/`. `ENV NODE_ENV=production TZ=Europe/Rome`. `USER node`. `EXPOSE 3000`. `HEALTHCHECK` con `wget -qO- http://localhost:3000/healthz`. `CMD ["node", "build"]`.
 
 Le migrazioni si applicano all'avvio nell'hook `init` di `hooks.server.ts` con `migrate()` di drizzle-orm (cartella `drizzle/`).
@@ -757,7 +757,7 @@ Solo `postgres:17-alpine` con porta `5432` esposta su `127.0.0.1`, volume `pgdat
 ### 15.3 `compose.yaml` (stack locale completo) e nginx
 Servizi:
 - `db`: `postgres:17-alpine`, volume `pgdata`, **nessuna porta esposta**, healthcheck `pg_isready`.
-- `app`: build locale, `env_file: .env`, `depends_on: db (service_healthy)`, `ADDRESS_HEADER=X-Forwarded-For`, `XFF_DEPTH=1`, nessuna porta esposta, `restart: unless-stopped`.
+- `app`: build locale con build arg `ORIGIN` letto da `.env`, `env_file: .env`, `depends_on: db (service_healthy)`, `ADDRESS_HEADER=X-Forwarded-For`, `XFF_DEPTH=1`, nessuna porta esposta, `restart: unless-stopped`.
 - `nginx`: `nginx:1.27-alpine`, porte `8080:8080` e `8443:8443`, monta `./nginx/nginx.conf:/etc/nginx/nginx.conf:ro` e `./nginx/certs:/etc/nginx/certs:ro`, `depends_on: app`.
 
 Contenuto di `nginx/nginx.conf` (da usare così com'è):
@@ -834,6 +834,7 @@ Nota: `X-Forwarded-For` viene **sovrascritto** con l'IP reale (non concatenato),
 ### 15.4 Uso locale
 - Sviluppo: `docker compose -f compose.dev.yaml up -d`, `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev` con `AUTH_DEV_LOGIN=true` e `ORIGIN=http://localhost:5173`.
 - Stack completo: `cp .env.example .env`, compila i valori (`DATABASE_URL` con host `db`, `ORIGIN=https://localhost:8443`), genera il certificato locale con il comando nel `README.md`, poi `docker compose up -d --build` e apri `https://localhost:8443`. Il browser mostra l'avviso previsto per il certificato autofirmato.
+- Il valore `ORIGIN` deve essere lo stesso nella build e a runtime. Compose lo passa in entrambe le fasi; dopo una modifica eseguire di nuovo `docker compose up -d --build`. SvelteKit 3 configura l'origine canonica tramite `kit.paths.origin`, non tramite una variabile runtime di adapter-node.
 - Per il login 42 reale, Ismail deve registrare nell'app 42 il redirect URI `https://localhost:8443/auth/callback` (azione manuale, non dell'agent).
 
 ---
@@ -984,7 +985,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 |---|---|
 | M0 Bootstrap | completato (35e0807) |
 | M1 Database, dati fittizi e import | completato (c65209e) |
-| M2 Auth, sessioni, guard, layout | da fare |
+| M2 Auth, sessioni, guard, layout | in corso |
 | M3 Impostazioni e settimane | da fare |
 | M4 Eventi admin | da fare |
 | M5 Iscrizioni e presenze | da fare |
