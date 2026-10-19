@@ -571,3 +571,33 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Commit, push e CI della sostituzione; soltanto dopo, M3.
+
+## 2026-10-19 — M3 — implementazione e controlli locali
+
+**Fatto**
+- Prima di M3, completata la sostituzione Arctic nel commit `a99d67a`. CI [run 39265194953](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39265194953) verde su tutti i sei job; `gh run watch --exit-status` terminato con exit code 0.
+- Implementato `domain/settings.ts`: lettura della settimana richiesta o attiva, date concrete dei sette giorni, impostazione date pool con fine predefinita a +27 giorni, settimana attiva 1–4, limite eventi e reset della sola settimana display a 1.
+- Ogni mutazione controlla i privilegi admin nel dominio e salva impostazioni e audit nella stessa transazione. Pubblicazione `log_created` e, per l'attivazione, `week_activated` solo dopo il commit.
+- Collegati caricamento e quattro form `/admin`, messaggi italiani Paraglide e layout responsive. Le azioni eventi rimangono ai rispettivi moduli del piano; M4 non iniziato.
+
+**Commit**
+- `bc7370a` `feat(settings): add audited admin settings mutations`.
+- `6999dea` `feat(admin): expose pool and week settings with browser coverage`.
+
+**Controlli**
+- `pnpm ci:local`: verde, 91 unit, 35 integration, 22 e2e, lint/check e build; svelte-check senza errori o warning.
+- Integration: date non allineate al lunedì e a cavallo d'anno, input non validi senza scritture, autorizzazioni nel dominio, limite zero e massimo memorizzabile, aggiornamenti concorrenti senza perdita di campi, rollback quando l'audit fallisce e nessun messaggio pubblicato sul rollback.
+- E2E desktop/mobile: intero flusso delle quattro impostazioni, errore date invertite, fine automatica, selezione settimana, sette date, limite 2/0, reset display e assenza di overflow a 360px. Matrice autorizzazioni aggiornata per tutte le route e azioni admin, senza modifiche ai dati da richieste respinte.
+- `git diff --check`: verde; nessuna modifica a legacy, schema o dipendenze in M3.
+- Stack completo ricostruito con `docker compose up -d --build --wait`: verde; app/Postgres healthy, nginx running sulle porte 8080/8443, nessun volume eliminato. Prova con CA locale esplicita e verifica TLS attiva: HTTPS health 200, admin anonimo 303, HTTP 8080 → HTTPS 8443 con 308. Nessuna scrittura sul database applicativo durante questa prova.
+
+**Decisioni prese dentro il perimetro del piano**
+- Limite massimo validato a 32767, coerente con la colonna smallint prevista dal modello dati; zero resta illimitato.
+- Un solo worker Playwright: i test delle impostazioni modificano la riga singleton condivisa fra progetti desktop/mobile. I valori iniziali vengono ripristinati anche quando un test fallisce.
+- Graphify consultato per i comportamenti legacy; sorgenti attuali verificati direttamente. Applicati Ponytail e Caveman, senza ricostruire il grafo.
+
+**Domande / blocchi**
+- Nessun blocco tecnico per M3. Login OAuth 42 reale ancora da verificare manualmente da Ismail; nessuna chiamata reale all'API nei test.
+
+**Prossimo passo**
+- Terminare la ricostruzione dello stack HTTPS, push e verifica dei sei job CI; registrare la chiusura M3. Non iniziare M4 in questa sessione.

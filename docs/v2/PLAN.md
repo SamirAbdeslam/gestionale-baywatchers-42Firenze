@@ -986,7 +986,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M0 Bootstrap | completato (35e0807) |
 | M1 Database, dati fittizi e import | completato (c65209e) |
 | M2 Auth, sessioni, guard, layout | completato (02517c5) |
-| M3 Impostazioni e settimane | da fare |
+| M3 Impostazioni e settimane | in corso |
 | M4 Eventi admin | da fare |
 | M5 Iscrizioni e presenze | da fare |
 | M6 Whitelist | da fare |
