@@ -547,3 +547,27 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Dopo la risposta di Ismail, gestire la scelta su Arctic e avviare M3 se confermato; rileggere piano e diario prima dell'implementazione.
+
+## 2026-10-19 — Sostituzione Arctic — controlli locali completati
+
+**Fatto**
+- Letta e applicata la nota di Ismail: rimosso Arctic con pnpm e aggiornato il lockfile, eliminando anche le sue sei dipendenze transitive.
+- Client OAuth realizzato con URL/URLSearchParams, fetch e node:crypto. State da 32 byte in base64url; scambio codice con client_id/client_secret nel corpo form-urlencoded, risposta 2xx e access_token non vuoto validato con Zod. Redirect dello scambio token rifiutati per non inoltrare credenziali.
+- Conservati contratti dei chiamanti, route, cookie, redirect e gestione errori. Nessuna nuova dipendenza e nessuna modifica alle aspettative dei test OAuth preesistenti.
+
+**Commit**
+- Previsto `refactor(auth): replace arctic with built-in oauth client` con questa registrazione; nessuna implementazione M3 avviata prima della sua CI verde.
+
+**Controlli**
+- `pnpm ci:local`: verde, 91 unit, 16 integration, 20 e2e, lint/check e build. Aggiunti test state (32 byte, 43 caratteri base64url, valori distinti) e risposte token mancanti/nulle/vuote/di tipo errato; verificati metodo, corpo e header dello scambio codice.
+- Nessuna corrispondenza per arctic sotto src; git diff --check verde. Nessuna chiamata reale all'API 42.
+- Push e CI remota da eseguire prima di iniziare M3, come richiesto dalla nota.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna sostituzione con librerie esterne. Graphify consultato per il riferimento legacy, sorgenti attuali verificati direttamente; applicati Ponytail e Caveman.
+
+**Domande / blocchi**
+- Nessuno per questa sostituzione. Login 42 reale rimane la verifica manuale di Ismail prevista dal piano.
+
+**Prossimo passo**
+- Commit, push e CI della sostituzione; soltanto dopo, M3.

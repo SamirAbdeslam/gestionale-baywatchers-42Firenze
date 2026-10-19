@@ -10,6 +10,7 @@ import {
 	matchesDisplayToken
 } from '../../src/lib/server/auth/guards.ts';
 import {
+	generateState,
 	profileSchema,
 	oauthClient,
 	AUTHORIZE_URL,
@@ -136,3 +137,40 @@ it('publishes only to active listeners and unsubscribes independently', () => {
 	expect(one).toHaveBeenCalledExactlyOnceWith(event);
 	expect(two).toHaveBeenCalledTimes(2);
 });
+
+it('generates distinct 32-byte base64url OAuth states', () => {
+	const state = generateState();
+	expect(state).toHaveLength(43);
+	expect(state).toMatch(/^[A-Za-z0-9_-]+$/);
+	expect(Buffer.from(state, 'base64url')).toHaveLength(32);
+	expect(generateState()).not.toBe(state);
+});
+it.each([{}, null, { access_token: '' }, { access_token: 42 }])(
+	'rejects an invalid token response %j before fetching a profile',
+	async (body) => {
+		const mocked = vi.fn().mockResolvedValue(Response.json(body));
+		vi.stubGlobal('fetch', mocked);
+		await expect(
+			fetchProfile(
+				oauthClient({
+					FT_CLIENT_ID: 'id',
+					FT_CLIENT_SECRET: 'secret',
+					ORIGIN: 'https://localhost:8443'
+				}),
+				'code'
+			)
+		).rejects.toThrow();
+		expect(mocked).toHaveBeenCalledTimes(1);
+		const request = mocked.mock.calls[0][0] as Request;
+		expect(request.method).toBe('POST');
+		expect(request.redirect).toBe('error');
+		expect(request.headers.get('content-type')).toBe('application/x-www-form-urlencoded');
+		expect(Object.fromEntries(new URLSearchParams(await request.text()))).toEqual({
+			grant_type: 'authorization_code',
+			code: 'code',
+			redirect_uri: 'https://localhost:8443/auth/callback',
+			client_id: 'id',
+			client_secret: 'secret'
+		});
+	}
+);

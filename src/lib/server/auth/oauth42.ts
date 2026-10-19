@@ -1,10 +1,14 @@
-import { OAuth2Client } from 'arctic';
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { ADMIN_LOGINS } from '../admins.ts';
 
 export const AUTHORIZE_URL = 'https://api.intra.42.fr/oauth/authorize';
 export const TOKEN_URL = 'https://api.intra.42.fr/oauth/token';
 export const PROFILE_URL = 'https://api.intra.42.fr/v2/me';
+export function generateState() {
+	return randomBytes(32).toString('base64url');
+}
+
 export function oauthClient(env: {
 	FT_CLIENT_ID: string;
 	FT_CLIENT_SECRET: string;
@@ -12,7 +16,39 @@ export function oauthClient(env: {
 }) {
 	if (!env.FT_CLIENT_ID || !env.FT_CLIENT_SECRET)
 		throw new Error('OAuth credentials are not configured');
-	return new OAuth2Client(env.FT_CLIENT_ID, env.FT_CLIENT_SECRET, `${env.ORIGIN}/auth/callback`);
+	const redirectUri = `${env.ORIGIN}/auth/callback`;
+	return {
+		createAuthorizationURL(authorizationEndpoint: string, state: string, scopes: string[]) {
+			const url = new URL(authorizationEndpoint);
+			url.search = new URLSearchParams({
+				client_id: env.FT_CLIENT_ID,
+				redirect_uri: redirectUri,
+				response_type: 'code',
+				scope: scopes.join(' '),
+				state
+			}).toString();
+			return url;
+		},
+		async accessToken(code: string) {
+			const request = new Request(TOKEN_URL, {
+				method: 'POST',
+				redirect: 'error',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: new URLSearchParams({
+					grant_type: 'authorization_code',
+					code,
+					redirect_uri: redirectUri,
+					client_id: env.FT_CLIENT_ID,
+					client_secret: env.FT_CLIENT_SECRET
+				}),
+				signal: AbortSignal.timeout(10000)
+			});
+			const response = await fetch(request);
+			if (!response.ok) throw new Error('OAuth token request failed');
+			return z.object({ access_token: z.string().min(1) }).parse(await response.json())
+				.access_token;
+		}
+	};
 }
 export const profileSchema = z
 	.object({
@@ -41,10 +77,10 @@ export const profileSchema = z
 				: ('user' as const)
 	}));
 export type Profile = z.infer<typeof profileSchema>;
-export async function fetchProfile(client: OAuth2Client, code: string) {
-	const tokens = await client.validateAuthorizationCode(TOKEN_URL, code, null);
+export async function fetchProfile(client: ReturnType<typeof oauthClient>, code: string) {
+	const accessToken = await client.accessToken(code);
 	const response = await fetch(PROFILE_URL, {
-		headers: { Authorization: `Bearer ${tokens.accessToken()}` },
+		headers: { Authorization: `Bearer ${accessToken}` },
 		signal: AbortSignal.timeout(10000)
 	});
 	if (!response.ok) throw new Error('OAuth profile request failed');

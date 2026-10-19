@@ -1,7 +1,6 @@
-import { generateState } from 'arctic';
 import { redirect } from '@sveltejs/kit';
 import { readEnv } from '#lib/server/env.ts';
-import { oauthClient, AUTHORIZE_URL } from '#lib/server/auth/oauth42.ts';
+import { oauthClient, AUTHORIZE_URL, generateState } from '#lib/server/auth/oauth42.ts';
 import { cookieOptions } from '#lib/server/auth/session.ts';
 import type { RequestHandler } from './$types';
 
