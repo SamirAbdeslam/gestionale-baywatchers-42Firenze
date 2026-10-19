@@ -8,19 +8,40 @@ if (new URL(databaseUrl).pathname !== '/baywatchers_test') {
 
 export default defineConfig({
 	testDir: './tests/e2e',
-	// Tests share singleton settings, so browser projects must not mutate them concurrently.
-	workers: 1,
 	fullyParallel: true,
 	forbidOnly: Boolean(process.env.CI),
 	retries: process.env.CI ? 2 : 0,
 	reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
 	use: { baseURL: 'http://localhost:4173', trace: 'retain-on-failure' },
 	projects: [
+		// Shared-table mutations and snapshots finish before independent parallel tests.
 		{
-			name: 'chromium',
+			name: 'chromium-shared',
+			grep: /@shared-db/,
+			fullyParallel: false,
+			workers: 1,
 			use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } }
 		},
-		{ name: 'mobile', use: { ...devices['Pixel 7'] } }
+		{
+			name: 'mobile-shared',
+			grep: /@shared-db/,
+			fullyParallel: false,
+			workers: 1,
+			dependencies: ['chromium-shared'],
+			use: { ...devices['Pixel 7'] }
+		},
+		{
+			name: 'chromium',
+			grepInvert: /@shared-db/,
+			dependencies: ['mobile-shared'],
+			use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } }
+		},
+		{
+			name: 'mobile',
+			grepInvert: /@shared-db/,
+			dependencies: ['mobile-shared'],
+			use: { ...devices['Pixel 7'] }
+		}
 	],
 	webServer: {
 		command: 'node build',

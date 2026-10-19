@@ -10,7 +10,10 @@ import { adminRoutes } from './routes.ts';
 const databaseUrl =
 	process.env.DATABASE_URL ?? 'postgres://bay:bay@localhost:5432/baywatchers_test';
 assert.equal(new URL(databaseUrl).pathname, '/baywatchers_test');
-const client = postgres(databaseUrl, { onnotice: () => {} });
+let client: ReturnType<typeof postgres>;
+test.beforeAll(() => {
+	client = postgres(databaseUrl, { onnotice: () => {} });
+});
 test.afterAll(() => client.end());
 const origin = 'http://localhost:4173';
 async function devLogin(request: APIRequestContext, admin = false) {
@@ -82,7 +85,7 @@ test('the authorization matrix covers every admin route and named action', () =>
 	}
 });
 for (const actor of ['anonymous', 'user', 'admin'] as const)
-	test(`authorization matrix: ${actor}`, async ({ request }) => {
+	test(`authorization matrix: ${actor}`, { tag: '@shared-db' }, async ({ request }) => {
 		if (actor !== 'anonymous') await devLogin(request, actor === 'admin');
 		const before = await snapshot();
 		for (const route of adminRoutes) {
@@ -99,6 +102,8 @@ for (const actor of ['anonymous', 'user', 'admin'] as const)
 							: 200
 			);
 			for (const action of route.actions) {
+				// Reset consumes no input; its authorized success is covered by settings tests.
+				if (actor === 'admin' && action === 'resetDisplayWeek') continue;
 				const response = await request.post(`${route.url}?/${action}`, {
 					form: { id: '1', week: 'invalid', login: 'dev_user' },
 					headers: { origin },
