@@ -9,6 +9,7 @@ build/
 !.env.example
 *.db
 *.csv
+!src/routes/**/*.csv/
 playwright-report/
 test-results/
 src/lib/paraglide/

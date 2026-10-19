@@ -43,3 +43,66 @@ h1 {
 .skip-link:focus {
 	transform: translateY(0);
 }
+.brand {
+	display: flex;
+	align-items: center;
+	gap: var(--space-md);
+	color: inherit;
+	text-decoration: none;
+}
+header {
+	flex-wrap: wrap;
+}
+nav {
+	display: none;
+	flex-basis: 100%;
+	flex-direction: column;
+	gap: var(--space-md);
+}
+nav.open {
+	display: flex;
+}
+nav a {
+	color: inherit;
+}
+nav form {
+	margin: 0;
+}
+.menu-toggle {
+	margin-left: auto;
+}
+form {
+	display: flex;
+	flex-direction: column;
+	align-items: start;
+	gap: var(--space-sm);
+	margin-block: var(--space-md);
+}
+input:not([type='checkbox']),
+select,
+button {
+	max-width: 100%;
+	min-height: var(--control-height);
+	padding: var(--space-sm);
+	font: inherit;
+	border: var(--border-width) solid var(--color-text);
+	border-radius: var(--radius);
+	background: var(--color-background);
+	color: var(--color-text);
+}
+button {
+	cursor: pointer;
+}
+/* CSS variables cannot appear in media conditions; keep aligned with --bp-md. */
+@media (min-width: 768px) {
+	.menu-toggle {
+		display: none;
+	}
+	nav,
+	nav.open {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+	}
+}

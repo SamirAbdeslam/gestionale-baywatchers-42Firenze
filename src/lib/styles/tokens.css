@@ -22,3 +22,7 @@
 	--bp-md: 768px;
 	--bp-lg: 1200px;
 }
+:root {
+	--border-width: 1px;
+	--control-height: 2.75rem;
+}
