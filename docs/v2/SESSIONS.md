@@ -643,3 +643,38 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M4: eventi admin. Rileggere piano e diario prima di iniziare.
+
+## 2026-10-19 — M4 — implementazione e controlli locali
+
+**Fatto**
+- Riletti piano e chiusura M3; verificati branch `v2.0.0`, working tree inizialmente pulito e CI verde sull'ultimo commit `50ff240`.
+- Implementato `domain/events.ts`: lista settimanale ordinata per giorno e ora con tutti gli iscritti e conteggio presenti separato; creazione preset/custom; modifica dei soli campi ammessi; eliminazione singola, per giorno, per settimana e globale.
+- Ogni mutazione controlla il ruolo admin nel dominio. Scrittura e audit sono atomici; pubblicati `log_created` ed `event_changed` solo dopo il commit. Modifica con lock dell'evento per rendere corretti gli snapshot JSON dell'audit anche con richieste concorrenti.
+- UI admin con sette giorni, date effettive e specifiche, campi degli eventi, iscritti presenti/assenti, avviso quando i posti sono inferiori agli iscritti, form di creazione/modifica e dialog nativi per le eliminazioni. Le eliminazioni in massa richiedono una conferma esplicita, validata anche nel dominio.
+- Introdotti i componenti `Dialog` e `Toast` già previsti dal piano: il primo usa un dettaglio espandibile come conferma quando JavaScript è disabilitato; il secondo mostra i messaggi nel layout con ruoli status/alert e chiusura al clic o dopo sei secondi.
+- Form admin con progressive enhancement e messaggi `{ ok, messages: [{ type, key, params }] }`. Aggiornate anche le quattro action M3 della stessa pagina per usare questo contratto; conservati testi e comportamento delle impostazioni, con errore accessibile tramite role alert.
+- Azioni sui partecipanti ancora riservate a M5; nessuna implementazione di SSE client/trasporto M9 o di altri moduli.
+
+**Commit**
+- `342dac6` `feat(events): add transactional admin event management`.
+- `ab63bca` `feat(admin): add event forms and confirmed bulk deletion`.
+
+**Controlli**
+- `pnpm ci:local`: verde, 91 unit, 91 integration, 26 e2e, lint/check e build; svelte-check senza errori o warning.
+- 56 nuove integration: tutti i preset, custom/default e data specifica, ordinamento, conteggi inclusi gli assenti, limiti e input non validi, campi immutabili, 404, permessi per ogni mutazione, modifiche concorrenti, cascata per tutte le quattro eliminazioni e rollback di eventi/iscrizioni/audit per ciascuna mutazione se l'audit fallisce.
+- E2E desktop/mobile: crea custom e preset, modifica, iscritti/assenti e capienza ridotta, annulla/conferma eliminazione singola, conferma obbligatoria per giorno/settimana/tutto, messaggi con chiusura al clic e temporizzata, testo HTML ostile mostrato senza esecuzione, assenza di overflow a 360px anche con eventi e form. Flusso aggiuntivo con JavaScript disabilitato, incluso errore di validazione e conferma dell'eliminazione.
+- Matrice autorizzazioni aggiornata per le sei nuove action: richieste anonime, non admin e dati invalidi non modificano eventi, iscrizioni, impostazioni o audit. I test che eliminano tutto ripristinano eventi e iscrizioni iniziali nel database di test, anche in caso di errore.
+- `git diff --check`: verde. Nessuna modifica a legacy, dipendenze o schema.
+- Stack completo ricostruito con `docker compose up -d --build --wait`: app/Postgres healthy, nginx running, porte 8080/8443. Prova con CA locale esplicita e verifica TLS attiva: health HTTPS 200, admin anonimo 303 e redirect HTTP 8080 verso HTTPS 8443 con 308. Nessun volume eliminato e nessuna scrittura sul database applicativo nella prova HTTPS.
+
+**Decisioni prese dentro il perimetro del piano**
+- Limiti numerici coerenti con le colonne integer Postgres. Settimana, tipo e data specifica rimangono immutabili in modifica, come nell'elenco di §8.8.
+- Query unica con join per caricare eventi e iscritti, evitando query per singolo evento. Il conteggio totale comprende sempre anche gli assenti; il conteggio presenti è separato.
+- Nuovi file limitati al dominio previsto, ai due componenti nominati dal piano e ai test corrispondenti. Nessuna dipendenza aggiuntiva.
+- Usati Graphify per individuare le funzioni legacy, Ponytail per contenere le modifiche e Caveman nella comunicazione. Grafo pre-spostamento: percorsi `app.py` e `templates/admin.html` verificati nei corrispondenti file sotto `legacy/`; nessuna ricostruzione del grafo.
+
+**Domande / blocchi**
+- Nessun blocco tecnico per M4. Login 42 reale resta la verifica manuale di Ismail già indicata in M2/M3.
+
+**Prossimo passo**
+- Terminare la ricostruzione dello stack HTTPS, push e verifica dei sei job CI; registrare la chiusura M4. Non iniziare M5 in questa sessione.

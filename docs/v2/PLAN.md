@@ -989,7 +989,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M1 Database, dati fittizi e import | completato (c65209e) |
 | M2 Auth, sessioni, guard, layout | completato (02517c5) |
 | M3 Impostazioni e settimane | completato (6999dea) |
-| M4 Eventi admin | da fare |
+| M4 Eventi admin | in corso |
 | M5 Iscrizioni e presenze | da fare |
 | M6 Whitelist | da fare |
 | M7 Calendario utente e .ics | da fare |
