@@ -749,3 +749,29 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 **Verifica stack HTTPS dopo la ricostruzione**
 - `docker compose up -d --build --wait`: verde; app/Postgres healthy, nginx running, porte 8080/8443. Nessun volume eliminato.
 - Con certificato locale come CA esplicita e verifica TLS attiva: health HTTPS 200, admin anonimo 303 e redirect HTTP 8080 verso HTTPS 8443 con 308. Nessuna scrittura sul database applicativo durante questa prova.
+
+## 2026-10-19 — Revisione M3 dopo M4 — chiusura
+
+**Fatto**
+- Completati tutti i 14 punti della nota di Ismail: 13 correzioni applicate; P1 già implementato in M4 e verificato anche senza JavaScript.
+- Pubblicati i commit su `v2.0.0`. Nessuna modifica al piano, al legacy, alle dipendenze o allo schema. M5 non iniziato.
+
+**Commit**
+- `8d6a68d` `fix(settings): address M3 review findings`.
+- `b43b948` `fix(settings): restore parallel browser coverage`.
+- `e629375` `fix(settings): record review fixes and local validation`.
+
+**Controlli**
+- `pnpm ci:local`: verde, 92 unit, 101 integration e 30 e2e; lint/check e build verdi, nessun errore o warning di svelte-check.
+- CI [run 39273025317](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39273025317) verde su `e629375`: tutti i sei job lint, unit, integration, e2e, legacy-import e docker completati con successo. `gh run watch --exit-status` terminato con exit code 0.
+- Stack HTTPS ricostruito e lasciato attivo: app/Postgres healthy, nginx running, porte 8080/8443. Health HTTPS 200, admin anonimo 303 e redirect HTTP 308 verificati con CA locale esplicita; nessun volume eliminato o dato applicativo modificato dalla prova HTTPS.
+- Working tree pulito prima di questa registrazione finale. Rapporto puntuale di S1–S5, P1–P3, T1–T2 e Ponytail 1–4 nella voce precedente.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Login 42 reale ancora da verificare manualmente da Ismail; test OAuth con risposte simulate.
+
+**Prossimo passo**
+- M5: iscrizioni e presenze. Rileggere piano e diario prima di iniziare.
