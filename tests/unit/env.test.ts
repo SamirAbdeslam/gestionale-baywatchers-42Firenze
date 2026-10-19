@@ -50,6 +50,10 @@ describe('environment validation', () => {
 	it.each([
 		{ AUTH_DEV_LOGIN: 'yes' },
 		{ ORIGIN: 'invalid', AUTH_DEV_LOGIN: 'true' },
+		{ ORIGIN: 'http://localhost/path' },
+		{ ORIGIN: 'http://localhost?query=1' },
+		{ ORIGIN: 'http://user:password@localhost' },
+		{ ORIGIN: 'http://localhost#fragment' },
 		{ DISPLAY_TOKEN: 'short' },
 		{ DISPLAY_REDIRECT_URL: 'javascript:alert(1)' },
 		{ DISPLAY_REDIRECT_SECONDS: '0' },

@@ -20,7 +20,7 @@
 		"legacy:fake-db": "node --env-file-if-exists=.env --import tsx scripts/legacy/make-fake-db.ts",
 		"legacy:import": "node --env-file-if-exists=.env --import tsx scripts/import-legacy.ts",
 		"legacy:verify": "node --env-file-if-exists=.env --import tsx scripts/verify-legacy-import.ts",
-		"ci:local": "docker compose -f compose.dev.yaml up -d --wait && DATABASE_URL=postgres://bay:bay@localhost:5432/baywatchers_test ORIGIN=http://localhost:4173 TZ=Europe/Rome corepack pnpm db:migrate && corepack pnpm lint && corepack pnpm check && corepack pnpm test:unit && corepack pnpm test:integration && DATABASE_URL=postgres://bay:bay@localhost:5432/baywatchers_test ORIGIN=http://localhost:4173 TZ=Europe/Rome corepack pnpm db:seed && corepack pnpm build && corepack pnpm test:e2e"
+		"ci:local": "docker compose -f compose.dev.yaml up -d --wait && DATABASE_URL=postgres://bay:bay@localhost:5432/baywatchers_test ORIGIN=http://localhost:4173 TZ=Europe/Rome corepack pnpm db:migrate && corepack pnpm lint && corepack pnpm check && corepack pnpm test:unit && corepack pnpm test:integration && DATABASE_URL=postgres://bay:bay@localhost:5432/baywatchers_test ORIGIN=http://localhost:4173 TZ=Europe/Rome corepack pnpm db:seed && ORIGIN=http://localhost:4173 corepack pnpm build && corepack pnpm test:e2e"
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",

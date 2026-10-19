@@ -1,12 +1,16 @@
 import { z } from 'zod';
 
 const httpUrl = z.url({ protocol: /^https?$/ });
+export const originSchema = httpUrl.refine(
+	(value) => URL.parse(value)?.origin === value,
+	'Must be an origin without path, credentials, query or fragment'
+);
 
 export const envSchema = z
 	.object({
 		NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 		DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
-		ORIGIN: httpUrl,
+		ORIGIN: originSchema,
 		FT_CLIENT_ID: z.string().default(''),
 		FT_CLIENT_SECRET: z.string().default(''),
 		AUTH_DEV_LOGIN: z

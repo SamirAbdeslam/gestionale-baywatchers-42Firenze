@@ -24,3 +24,5 @@ docker compose up -d --build
 ```
 
 I certificati restano locali in `nginx/certs/`, fuori da Git e dall'immagine Docker. Il browser mostra un avviso perché il certificato è autofirmato; per il controllo da terminale usare `curl --cacert nginx/certs/localhost.crt https://localhost:8443/healthz`.
+
+`ORIGIN` viene incorporata nella build con `kit.paths.origin` e deve coincidere con il valore runtime usato per cookie e OAuth. Compose passa il valore di `.env` anche alla build: quando cambia, ricostruire con `docker compose up -d --build`. Per costruire senza Compose: `docker build --build-arg ORIGIN=https://localhost:8443 .`. Per i test locali usare `pnpm ci:local`, che compila per `http://localhost:4173`.

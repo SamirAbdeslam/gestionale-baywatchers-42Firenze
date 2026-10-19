@@ -5,8 +5,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM deps AS build
+ARG ORIGIN
 COPY . .
-RUN pnpm build && pnpm prune --prod --ignore-scripts
+RUN ORIGIN="$ORIGIN" pnpm build && pnpm prune --prod --ignore-scripts
 
 FROM node:24-alpine AS runtime
 WORKDIR /app
