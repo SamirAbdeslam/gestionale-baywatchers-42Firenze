@@ -3,29 +3,7 @@ import { PRESETS } from '../../src/lib/server/domain/kinds.ts';
 import { addDays } from '../../src/lib/server/domain/dates.ts';
 import type { LegacyRows } from './normalize.ts';
 
-export const ACTION_TYPES = [
-	'CREATE_EVENT',
-	'UPDATE_EVENT',
-	'DELETE_EVENT',
-	'DELETE_DAY_EVENTS',
-	'DELETE_WEEK_EVENTS',
-	'DELETE_ALL_EVENTS',
-	'REGISTER_EVENT',
-	'UNREGISTER_EVENT',
-	'ADMIN_UNREGISTER',
-	'ADMIN_ADD_PARTICIPANT',
-	'MARK_PRESENT',
-	'MARK_ABSENT',
-	'ACTIVATE_WEEK',
-	'UPDATE_SETTING',
-	'CREATE_TEMPLATE',
-	'APPLY_TEMPLATE',
-	'DELETE_TEMPLATE',
-	'IMPORT_TEMPLATES',
-	'WHITELIST_ADD',
-	'WHITELIST_REMOVE',
-	'LOGIN'
-] as const;
+import { ACTION_TYPES } from '../../src/lib/server/domain/audit.ts';
 export const LEGACY_DAYS = [
 	'Lunedì',
 	'Martedì',
