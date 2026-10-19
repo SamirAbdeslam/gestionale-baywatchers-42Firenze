@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import Toast from '#lib/components/Toast.svelte';
 	import { asset, resolve } from '$app/paths';
 	import { m } from '#lib/paraglide/messages.js';
 	import '#lib/styles/base.css';
@@ -43,4 +45,4 @@
 		</nav>
 	{/if}
 </header>
-<main id="main">{@render children()}</main>
+<main id="main"><Toast messages={page.form?.messages ?? []} />{@render children()}</main>

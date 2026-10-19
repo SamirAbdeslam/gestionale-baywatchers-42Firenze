@@ -21,14 +21,14 @@ test('admin edits pool dates, active week, event limit and resets the display we
 		await page.getByLabel('Inizio pool', { exact: true }).fill('2026-12-30');
 		await page.getByLabel('Fine pool', { exact: true }).fill('2026-12-29');
 		await page.getByRole('button', { name: 'Salva date pool', exact: true }).click();
-		await expect(page.getByRole('status')).toHaveText('Dati non validi');
+		await expect(page.getByRole('alert')).toHaveText(/Dati non validi/);
 		expect((await client`SELECT pool_start FROM settings WHERE id=1`)[0].pool_start).toEqual(
 			before.pool_start
 		);
 		await page.getByLabel('Inizio pool', { exact: true }).fill('2026-12-30');
 		await page.getByLabel('Fine pool', { exact: true }).fill('');
 		await page.getByRole('button', { name: 'Salva date pool', exact: true }).click();
-		await expect(page.getByRole('status')).toHaveText('Impostazioni salvate');
+		await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
 		expect((await client`SELECT pool_end::text FROM settings WHERE id=1`)[0].pool_end).toBe(
 			'2027-01-26'
 		);
@@ -50,14 +50,14 @@ test('admin edits pool dates, active week, event limit and resets the display we
 				.getByRole('spinbutton', { name: 'Limite eventi per utente e settimana' })
 				.fill(String(limit));
 			await page.getByRole('button', { name: 'Salva limite', exact: true }).click();
-			await expect(page.getByRole('status')).toHaveText('Impostazioni salvate');
+			await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
 			expect(
 				(await client`SELECT max_events_per_user FROM settings WHERE id=1`)[0].max_events_per_user
 			).toBe(limit);
 		}
 		await expect(page.getByRole('definition').filter({ hasText: 'Illimitato' })).toBeVisible();
 		await page.getByRole('button', { name: 'Riporta la settimana display a 1' }).click();
-		await expect(page.getByRole('status')).toHaveText('Impostazioni salvate');
+		await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
 		expect(
 			(await client`SELECT display_week,active_week FROM settings WHERE id=1`)[0]
 		).toMatchObject({ display_week: 1, active_week: 4 });
