@@ -95,10 +95,13 @@ it('uses the fixed 42 endpoints and validates mocked token and profile responses
 		FT_CLIENT_SECRET: 'secret',
 		ORIGIN: 'https://localhost:8443'
 	});
-	const url = client.createAuthorizationURL(AUTHORIZE_URL, 'random-state', ['public']);
+	const url = client.authorizationUrl('random-state');
 	expect(url.origin + url.pathname).toBe(AUTHORIZE_URL);
 	expect(url.searchParams.get('redirect_uri')).toBe('https://localhost:8443/auth/callback');
 	expect(url.searchParams.get('state')).toBe('random-state');
+	expect(url.searchParams.get('scope')).toBe('public');
+	expect(url.searchParams.get('response_type')).toBe('code');
+	expect(url.searchParams.get('client_id')).toBe('client');
 	const mocked = vi
 		.fn()
 		.mockResolvedValueOnce(Response.json({ access_token: 'test-token', token_type: 'bearer' }))
@@ -109,6 +112,7 @@ it('uses the fixed 42 endpoints and validates mocked token and profile responses
 	expect(tokenRequest.url).toBe('https://api.intra.42.fr/oauth/token');
 	expect(await tokenRequest.text()).toContain('grant_type=authorization_code');
 	expect(mocked.mock.calls[1][0]).toBe('https://api.intra.42.fr/v2/me');
+	expect(new Request(mocked.mock.calls[1][0], mocked.mock.calls[1][1]).redirect).toBe('error');
 	expect(mocked.mock.calls[1][1].headers).toEqual({ Authorization: 'Bearer test-token' });
 });
 it('rejects unsuccessful provider responses', async () => {
@@ -174,3 +178,23 @@ it.each([{}, null, { access_token: '' }, { access_token: 42 }])(
 		});
 	}
 );
+
+it('isolates a failing listener without throwing, leaking details or skipping other listeners', () => {
+	const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+	const healthy = vi.fn();
+	const stopBroken = subscribe(() => {
+		throw new Error('PRIVATE_LISTENER_DATA');
+	});
+	const stopHealthy = subscribe(healthy);
+	const event = { type: 'log_created' as const, id: 7 };
+	try {
+		expect(() => publish(event)).not.toThrow();
+		expect(healthy).toHaveBeenCalledExactlyOnceWith(event);
+		expect(log).toHaveBeenCalledExactlyOnceWith('Realtime listener failed');
+		expect(JSON.stringify(log.mock.calls)).not.toContain('PRIVATE_LISTENER_DATA');
+	} finally {
+		stopBroken();
+		stopHealthy();
+		log.mockRestore();
+	}
+});

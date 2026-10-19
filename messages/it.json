@@ -108,5 +108,6 @@
 	"event_kind_cluster": "Cluster",
 	"event_kind_welcome": "Accoglienza",
 	"event_kind_custom": "Personalizzato",
-	"admin_concrete_date": "Data effettiva"
+	"admin_concrete_date": "Data effettiva",
+	"error_pool_end_before_start": "La fine del pool non può precedere la data di inizio"
 }

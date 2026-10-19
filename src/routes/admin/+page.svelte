@@ -51,7 +51,7 @@
 <ul aria-label={m.admin_week_dates()}>
 	{#each data.dayDates as date, index (index)}<li>
 			{days[index]()}
-			{date ? data.formattedDayDates[index] : m.admin_dates_unset()}
+			{date ?? m.admin_dates_unset()}
 		</li>{/each}
 </ul>
 <section aria-labelledby="pool-title">

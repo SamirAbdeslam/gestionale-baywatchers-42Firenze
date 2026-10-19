@@ -8,18 +8,17 @@ import { audit, type RequestInfo } from './audit.ts';
 import { publish } from '../realtime/bus.ts';
 import { computeWeekDayDates, isoDate, setPoolDates as poolDates, weekNumber } from './dates.ts';
 
-const querySchema = z.object({ week: z.coerce.number().pipe(weekNumber).optional() });
-const activeWeekSchema = z.strictObject({ week: z.coerce.number().pipe(weekNumber) });
+const digits = z.union([z.number(), z.string().regex(/^\d{1,5}$/)]).transform(Number);
+const week = digits.pipe(weekNumber);
+const querySchema = z.object({ week: week.optional() });
+const activeWeekSchema = z.strictObject({ week });
 const maxEventsSchema = z.strictObject({
-	maxEvents: z
-		.union([z.number(), z.string().trim().min(1)])
-		.transform(Number)
-		.pipe(z.number().int().min(0).max(32767))
+	maxEvents: digits.pipe(z.number().int().min(0).max(32767))
 });
+const poolDate = isoDate.refine((date) => date >= '2000-01-01' && date <= '2100-12-31');
 const poolDatesSchema = z
-	.strictObject({ start: isoDate, end: z.union([isoDate, z.literal('')]).optional() })
-	.refine(({ start, end }) => !end || end >= start);
-const resetSchema = z.strictObject({});
+	.strictObject({ start: poolDate, end: z.union([poolDate, z.literal('')]).optional() })
+	.refine(({ start, end }) => !end || end >= start, { message: 'error_pool_end_before_start' });
 
 export async function getAdminSettings(database: typeof db, actor: User | null, query: unknown) {
 	assertAdmin(actor);
@@ -38,29 +37,33 @@ async function saveSettings(
 	database: typeof db,
 	actor: User,
 	changes: Partial<Omit<typeof settings.$inferInsert, 'id' | 'updatedAt'>>,
-	description: string,
+	entry: {
+		actionType: 'UPDATE_SETTING' | 'ACTIVATE_WEEK';
+		description: string;
+		resourceId?: string;
+	},
 	info: RequestInfo,
 	now: Date
 ) {
 	const logId = await database.transaction(async (tx) => {
-		const [row] = await tx
+		const [before] = await tx.select().from(settings).where(eq(settings.id, 1)).for('update');
+		if (!before) throw new Error('Settings row is missing');
+		const keys = Object.keys(changes) as (keyof typeof changes)[];
+		const oldValue = Object.fromEntries(keys.map((key) => [key, before[key]]));
+		await tx
 			.update(settings)
 			.set({ ...changes, updatedAt: now })
-			.where(eq(settings.id, 1))
-			.returning({ id: settings.id });
-		if (!row) throw new Error('Settings row is missing');
+			.where(eq(settings.id, 1));
 		return audit(tx, {
 			...info,
 			actor,
-			actionType: changes.activeWeek === undefined ? 'UPDATE_SETTING' : 'ACTIVATE_WEEK',
-			description,
+			...entry,
 			resourceType: 'setting',
-			resourceId: changes.activeWeek === undefined ? undefined : String(changes.activeWeek)
+			oldValue,
+			newValue: changes
 		});
 	});
 	publish({ type: 'log_created', id: logId });
-	if (changes.activeWeek !== undefined)
-		publish({ type: 'week_activated', week: changes.activeWeek });
 }
 export async function setActiveWeek(
 	database: typeof db,
@@ -75,10 +78,15 @@ export async function setActiveWeek(
 		database,
 		actor,
 		{ activeWeek: week },
-		`Settimana ${week} attivata`,
+		{
+			actionType: 'ACTIVATE_WEEK',
+			description: `Settimana ${week} attivata`,
+			resourceId: String(week)
+		},
 		info,
 		now
 	);
+	publish({ type: 'week_activated', week });
 }
 export async function setMaxEvents(
 	database: typeof db,
@@ -93,7 +101,10 @@ export async function setMaxEvents(
 		database,
 		actor,
 		{ maxEventsPerUser: maxEvents },
-		`Impostato il numero massimo di eventi per utente a ${maxEvents}`,
+		{
+			actionType: 'UPDATE_SETTING',
+			description: `Impostato il numero massimo di eventi per utente a ${maxEvents}`
+		},
 		info,
 		now
 	);
@@ -108,29 +119,32 @@ export async function setPoolDates(
 	assertAdmin(actor);
 	const { start, end } = poolDatesSchema.parse(input);
 	const dates = poolDates(start, end || undefined);
+	poolDate.parse(dates.poolEnd);
 	await saveSettings(
 		database,
 		actor,
 		dates,
-		`Date pool impostate. Inizio: ${dates.poolStart}, Fine: ${dates.poolEnd}`,
+		{
+			actionType: 'UPDATE_SETTING',
+			description: `Date pool impostate. Inizio: ${dates.poolStart}, Fine: ${dates.poolEnd}`
+		},
 		info,
 		now
 	);
+	publish({ type: 'event_changed', eventId: null, week: null, action: 'update' });
 }
 export async function resetDisplayWeek(
 	database: typeof db,
 	actor: User | null,
-	input: unknown,
 	info: RequestInfo,
 	now: Date
 ) {
 	assertAdmin(actor);
-	resetSchema.parse(input);
 	await saveSettings(
 		database,
 		actor,
 		{ displayWeek: 1 },
-		'Settimana display reimpostata a 1',
+		{ actionType: 'UPDATE_SETTING', description: 'Settimana display reimpostata a 1' },
 		info,
 		now
 	);

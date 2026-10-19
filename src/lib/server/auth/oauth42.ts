@@ -18,13 +18,13 @@ export function oauthClient(env: {
 		throw new Error('OAuth credentials are not configured');
 	const redirectUri = `${env.ORIGIN}/auth/callback`;
 	return {
-		createAuthorizationURL(authorizationEndpoint: string, state: string, scopes: string[]) {
-			const url = new URL(authorizationEndpoint);
+		authorizationUrl(state: string) {
+			const url = new URL(AUTHORIZE_URL);
 			url.search = new URLSearchParams({
 				client_id: env.FT_CLIENT_ID,
 				redirect_uri: redirectUri,
 				response_type: 'code',
-				scope: scopes.join(' '),
+				scope: 'public',
 				state
 			}).toString();
 			return url;
@@ -80,6 +80,7 @@ export type Profile = z.infer<typeof profileSchema>;
 export async function fetchProfile(client: ReturnType<typeof oauthClient>, code: string) {
 	const accessToken = await client.accessToken(code);
 	const response = await fetch(PROFILE_URL, {
+		redirect: 'error',
 		headers: { Authorization: `Bearer ${accessToken}` },
 		signal: AbortSignal.timeout(10000)
 	});

@@ -8,6 +8,7 @@
 			| 'admin_event_updated'
 			| 'admin_event_deleted'
 			| 'admin_events_deleted'
+			| 'error_pool_end_before_start'
 			| 'error_invalid_input'
 			| 'error_event_not_found';
 		params: Record<string, never>;

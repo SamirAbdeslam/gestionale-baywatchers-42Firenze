@@ -27,7 +27,11 @@ import type { RequestEvent } from '@sveltejs/kit';
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const { db } = await import('#lib/server/db/index.ts');
 	try {
-		const data = await getAdminSettings(db, locals.user, Object.fromEntries(url.searchParams));
+		const { dayDates, ...data } = await getAdminSettings(
+			db,
+			locals.user,
+			Object.fromEntries(url.searchParams)
+		);
 		const events = await listWeekEvents(db, locals.user, data.week, data.settings.poolStart);
 		return {
 			...data,
@@ -36,7 +40,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				...event,
 				formattedDate: formatEventDate(event.concreteDate, getLocale())
 			})),
-			formattedDayDates: data.dayDates.map((date) => formatEventDate(date, getLocale()))
+			dayDates: dayDates.map((date) => (date === null ? null : formatEventDate(date, getLocale())))
 		};
 	} catch (cause) {
 		if (cause instanceof z.ZodError) error(400, m.error_invalid_input());
@@ -59,11 +63,15 @@ async function save(
 		);
 		return { ok: true, messages: [{ type: 'success' as const, key, params: {} }] };
 	} catch (cause) {
-		if (cause instanceof z.ZodError)
+		if (cause instanceof z.ZodError) {
+			const key = cause.issues.every((issue) => issue.message === 'error_pool_end_before_start')
+				? ('error_pool_end_before_start' as const)
+				: ('error_invalid_input' as const);
 			return fail(400, {
 				ok: false,
-				messages: [{ type: 'error' as const, key: 'error_invalid_input' as const, params: {} }]
+				messages: [{ type: 'error' as const, key, params: {} }]
 			});
+		}
 		if (isHttpError(cause, 404))
 			return fail(404, {
 				ok: false,
@@ -87,5 +95,6 @@ export const actions: Actions = {
 	addParticipant: pending,
 	removeParticipant: pending,
 	setAttendance: pending,
-	resetDisplayWeek: (event) => save(event, resetDisplayWeek)
+	resetDisplayWeek: (event) =>
+		save(event, (database, actor, ...[, info, now]) => resetDisplayWeek(database, actor, info, now))
 };

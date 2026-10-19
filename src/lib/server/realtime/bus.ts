@@ -12,7 +12,13 @@ export type RealtimeEvent =
 // shortcut: in-process bus supports one instance; use Postgres LISTEN/NOTIFY before scaling out.
 const emitter = new EventEmitter();
 export function publish(event: RealtimeEvent) {
-	emitter.emit('event', event);
+	for (const listener of emitter.listeners('event')) {
+		try {
+			listener(event);
+		} catch {
+			console.error('Realtime listener failed');
+		}
+	}
 }
 export function subscribe(listener: (event: RealtimeEvent) => void) {
 	emitter.on('event', listener);
