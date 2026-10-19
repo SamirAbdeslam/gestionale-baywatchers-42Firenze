@@ -2,6 +2,7 @@ export const adminRoutes = [
 	{
 		id: '/admin',
 		url: '/admin',
+		implementedActions: ['setPoolDates', 'setActiveWeek', 'setMaxEvents', 'resetDisplayWeek'],
 		actions: [
 			'setPoolDates',
 			'setActiveWeek',

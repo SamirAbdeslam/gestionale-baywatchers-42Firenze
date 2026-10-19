@@ -8,6 +8,8 @@ if (new URL(databaseUrl).pathname !== '/baywatchers_test') {
 
 export default defineConfig({
 	testDir: './tests/e2e',
+	// Tests share singleton settings, so browser projects must not mutate them concurrently.
+	workers: 1,
 	fullyParallel: true,
 	forbidOnly: Boolean(process.env.CI),
 	retries: process.env.CI ? 2 : 0,

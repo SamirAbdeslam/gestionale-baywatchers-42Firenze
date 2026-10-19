@@ -100,12 +100,18 @@ for (const actor of ['anonymous', 'user', 'admin'] as const)
 			);
 			for (const action of route.actions) {
 				const response = await request.post(`${route.url}?/${action}`, {
-					form: { id: '1', week: '1', login: 'dev_user' },
+					form: { id: '1', week: 'invalid', login: 'dev_user' },
 					headers: { origin },
 					maxRedirects: 0
 				});
 				expect(response.status(), `${route.url}?/${action}`).toBe(
-					actor === 'anonymous' ? 401 : actor === 'user' ? 403 : 501
+					actor === 'anonymous'
+						? 401
+						: actor === 'user'
+							? 403
+							: route.implementedActions?.includes(action)
+								? 400
+								: 501
 				);
 			}
 		}
