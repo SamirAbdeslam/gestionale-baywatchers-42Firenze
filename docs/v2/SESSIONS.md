@@ -489,3 +489,29 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Verificare la CI dopo il push e registrare la chiusura M2. Non avviare M3 in questa sessione. Stack completo HTTPS lasciato in esecuzione sulle porte 8080/8443.
+
+
+## 2026-10-19 — M2 — chiusura
+
+**Fatto**
+- Completato e pubblicato M2 sul branch `v2.0.0`. Aggiornato lo stato di §19 con il commit funzionale `02517c5`.
+- Docker disponibile dopo il riavvio di Ismail; risolto il blocco ORIGIN con la configurazione di build autorizzata. Nessuna modifica al CSRF, a trustedOrigins o al legacy.
+
+**Commit**
+- `17dccad`, `a87d970`, `b5de8c4`, `02517c5`: dipendenza, configurazione dell'origine, dominio auth e collegamento delle route/layout.
+- `bd4c60d` `docs: record M2 configuration and local validation`.
+
+**Controlli**
+- CI [run 39262446068](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39262446068), verde su `bd4c60d`: tutti i sei job lint, unit, integration, e2e, legacy-import e docker completati con successo. `gh run watch --exit-status` terminato con exit code 0.
+- `pnpm ci:local` verde: 86 unit, 16 integration, 20 e2e, lint/check e build.
+- Stack M2 HTTPS ricostruito e verificato come nella voce precedente; app/Postgres healthy, nginx running, porte 8080/8443. Working tree pulito prima di questa registrazione finale; `legacy/` invariata rispetto alla chiusura M1.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione; M3 non iniziato.
+
+**Domande / blocchi**
+- Nessun blocco tecnico per M2. Login 42 reale ancora da verificare manualmente da Ismail, come previsto dal piano; i test usano risposte simulate e non credenziali reali.
+- Arctic 3.7.0 è deprecato secondo npm; conservata la dipendenza richiesta dal piano, senza introdurre alternative.
+
+**Prossimo passo**
+- M3: impostazioni, settimane, date pool, limite eventi, reset display week e relativo audit. Rileggere piano e diario prima di procedere.
