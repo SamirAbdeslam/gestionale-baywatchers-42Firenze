@@ -601,3 +601,29 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Terminare la ricostruzione dello stack HTTPS, push e verifica dei sei job CI; registrare la chiusura M3. Non iniziare M4 in questa sessione.
+
+## 2026-10-19 — M3 — chiusura
+
+**Fatto**
+- Completato e pubblicato M3 sul branch `v2.0.0`; stato di §19 aggiornato al commit funzionale `6999dea`. M4 non iniziato.
+- Sostituzione Arctic completata prima di M3, come richiesto dalla nota di Ismail.
+
+**Commit**
+- `bc7370a`: dominio impostazioni e integration.
+- `6999dea`: pagina admin e copertura browser.
+- `6b02a56`: controlli locali e diario.
+
+**Controlli**
+- CI [run 39266746118](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39266746118) verde su `6b02a56`: tutti i sei job lint, unit, integration, e2e, legacy-import e docker completati con successo. `gh run watch --exit-status` terminato con exit code 0.
+- `pnpm ci:local`: verde, 91 unit, 35 integration e 22 e2e; lint/check e build verdi.
+- Stack HTTPS ricostruito e lasciato attivo sulle porte 8080/8443: app/Postgres healthy, nginx running. Health, redirect e protezione admin verificati con TLS attivo; nessun volume eliminato o dato applicativo modificato dalla prova HTTPS.
+- Working tree pulito prima della registrazione finale; nessuna modifica a legacy, dipendenze o schema nel modulo.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione.
+
+**Domande / blocchi**
+- Nessun blocco tecnico per M3. Login 42 reale ancora da verificare manualmente da Ismail, come previsto dal piano; test OAuth con risposte simulate.
+
+**Prossimo passo**
+- M4: eventi admin. Rileggere piano e diario prima di iniziare.
