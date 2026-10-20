@@ -145,6 +145,12 @@ for (const javaScriptEnabled of [true, false]) {
 						.getByRole('button', { name: 'Rimuovi partecipante', exact: true })
 						.click();
 					await expect(participant).toHaveCount(0);
+					const missing = await page.request.post('/admin?/removeParticipant&week=4', {
+						form: { id: String(id), login: external },
+						headers: { origin, accept: 'text/html' }
+					});
+					expect(missing.status()).toBe(200);
+					expect(await missing.text()).toContain(`${external} non è iscritto a questo evento`);
 					expect(
 						(
 							await client`SELECT action_type FROM action_logs WHERE actor_login=${name} AND action_type<>'LOGIN' ORDER BY id`

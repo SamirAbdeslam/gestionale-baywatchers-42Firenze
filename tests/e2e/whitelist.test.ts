@@ -50,14 +50,27 @@ for (const javaScriptEnabled of [true, false]) {
 							.getByRole('status')
 							.filter({ hasText: `Aggiunti alla whitelist: ${first}, ${third}, ${second}` })
 					).toBeVisible();
-					await expect(
-						page.getByRole('status').filter({ hasText: `Già presenti: ${first}` })
-					).toBeVisible();
+					await expect(page.getByRole('status').filter({ hasText: 'Già presenti:' })).toHaveCount(
+						0
+					);
 					await expect(
 						page
 							.getByRole('status')
 							.filter({ hasText: 'Login non validi, ignorati: <img/src=x/onerror=alert(1)>' })
 					).toBeVisible();
+					if (javaScriptEnabled) {
+						await page
+							.getByRole('status')
+							.filter({ hasText: 'Aggiunti alla whitelist:' })
+							.getByRole('button', { name: 'Chiudi messaggio' })
+							.click();
+						await expect(
+							page.getByRole('status').filter({ hasText: 'Aggiunti alla whitelist:' })
+						).toHaveCount(0);
+						await expect(
+							page.getByRole('status').filter({ hasText: 'Login non validi, ignorati:' })
+						).toBeVisible();
+					}
 					const list = page.getByRole('list', { name: 'Whitelist', exact: true });
 					const ownRows = list.getByRole('listitem').filter({ hasText: name });
 					expect(await ownRows.locator('strong').allTextContents()).toEqual([first, third, second]);
