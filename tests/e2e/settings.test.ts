@@ -60,14 +60,24 @@ test(
 				await page
 					.getByRole('spinbutton', { name: 'Limite eventi per utente e settimana' })
 					.fill(String(limit));
+				const saved = page.waitForResponse(
+					(response) =>
+						response.request().method() === 'POST' && response.url().includes('setMaxEvents')
+				);
 				await page.getByRole('button', { name: 'Salva limite', exact: true }).click();
+				expect((await saved).status()).toBe(200);
 				await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
 				expect(
 					(await client`SELECT max_events_per_user FROM settings WHERE id=1`)[0].max_events_per_user
 				).toBe(limit);
 			}
 			await expect(page.getByRole('definition').filter({ hasText: 'Illimitato' })).toBeVisible();
+			const reset = page.waitForResponse(
+				(response) =>
+					response.request().method() === 'POST' && response.url().includes('resetDisplayWeek')
+			);
 			await page.getByRole('button', { name: 'Riporta la settimana display a 1' }).click();
+			expect((await reset).status()).toBe(200);
 			await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
 			expect(
 				(await client`SELECT display_week,active_week FROM settings WHERE id=1`)[0]
@@ -148,7 +158,12 @@ test(
 			await page.getByRole('button', { name: 'Salva limite', exact: true }).click();
 			await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
 			await client`UPDATE settings SET display_week=3 WHERE id=1`;
+			const reset = page.waitForResponse(
+				(response) =>
+					response.request().method() === 'POST' && response.url().includes('resetDisplayWeek')
+			);
 			await page.getByRole('button', { name: 'Riporta la settimana display a 1' }).click();
+			expect((await reset).status()).toBe(200);
 			await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
 			expect(
 				(

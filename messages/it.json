@@ -128,5 +128,16 @@
 	"admin_add_participant": "Aggiungi partecipante",
 	"admin_remove_participant": "Rimuovi partecipante",
 	"admin_mark_present": "Segna presente",
-	"admin_mark_absent": "Segna assente"
+	"admin_mark_absent": "Segna assente",
+	"whitelist_added": "Aggiunti alla whitelist: {logins}",
+	"whitelist_duplicates": "Già presenti: {logins}",
+	"whitelist_invalid": "Login non validi, ignorati: {logins}",
+	"whitelist_removed": "Rimosso dalla whitelist: {logins}",
+	"error_whitelist_not_found": "Login non trovato nella whitelist",
+	"whitelist_logins": "Login da aggiungere",
+	"whitelist_help": "Separa i login con virgole, spazi o a capo.",
+	"whitelist_add": "Aggiungi alla whitelist",
+	"whitelist_remove": "Rimuovi dalla whitelist",
+	"whitelist_empty": "La whitelist è vuota",
+	"whitelist_added_at": "Aggiunto il"
 }

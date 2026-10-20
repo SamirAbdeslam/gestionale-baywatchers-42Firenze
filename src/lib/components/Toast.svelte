@@ -1,5 +1,6 @@
 <script module lang="ts">
 	import { getLocale } from '#lib/paraglide/runtime.js';
+	import type { WhitelistNotice } from '#lib/server/domain/whitelist.ts';
 	import type { RegistrationNotice } from '#lib/server/domain/registrations.ts';
 	import { m } from '#lib/paraglide/messages.js';
 	type BasicNotice = {
@@ -12,10 +13,11 @@
 			| 'admin_events_deleted'
 			| 'error_pool_end_before_start'
 			| 'error_invalid_input'
-			| 'error_event_not_found';
+			| 'error_event_not_found'
+			| 'error_whitelist_not_found';
 		params: Record<string, never>;
 	};
-	export type Notice = BasicNotice | RegistrationNotice;
+	export type Notice = BasicNotice | RegistrationNotice | WhitelistNotice;
 </script>
 
 <script lang="ts">
@@ -35,6 +37,8 @@
 				{m.error_weekly_limit({
 					count: new Intl.NumberFormat(getLocale()).format(message.params.count)
 				})}
+			{:else if message.key === 'whitelist_added' || message.key === 'whitelist_duplicates' || message.key === 'whitelist_invalid' || message.key === 'whitelist_removed'}
+				{m[message.key](message.params)}
 			{:else if message.key === 'registration_added' || message.key === 'registration_removed' || message.key === 'registration_already_registered_login' || message.key === 'registration_present' || message.key === 'registration_absent'}
 				{m[message.key](message.params)}
 			{:else}
