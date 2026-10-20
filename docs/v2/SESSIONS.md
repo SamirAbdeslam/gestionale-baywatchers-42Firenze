@@ -876,3 +876,29 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 **Verifica stack HTTPS dopo la ricostruzione**
 - `docker compose up -d --build --wait`: exit code 0; app/Postgres healthy e nginx running sulle porte 8080/8443. Nessun volume eliminato.
 - Certificato locale usato come CA esplicita, verifica TLS attiva: health HTTPS 200, whitelist admin anonima 303 verso `/`, redirect HTTP 8080 verso HTTPS 8443 su `/admin/whitelist` con 308. Nessuna scrittura sul database applicativo durante la prova.
+
+## 2026-10-20 — M6 — chiusura
+
+**Fatto**
+- Completato e pubblicato M6 sul branch `v2.0.0`; aggiornata soltanto la colonna Stato di §19 al commit funzionale `8723c27`. M7 non iniziato.
+- Whitelist admin operativa con elenco ordinato e date, aggiunta multipla, segnalazione di invalidi e duplicati, rimozione senza cancellare iscrizioni e audit transazionale. Dettagli e verifiche nella voce precedente.
+
+**Commit**
+- `7d18685`: dominio whitelist e integration.
+- `8723c27`: pagina, action, messaggi ed e2e.
+- `6dfae68`: controlli locali e diario.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 92 unit, 164 integration e 40 e2e; lint/check e build verdi.
+- CI [run 39445984286](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39445984286) verde su `6dfae68`: tutti i sei job lint, unit, integration, e2e, legacy-import e docker completati con successo. `gh run watch --exit-status` terminato con exit code 0.
+- Stack ricostruito e lasciato attivo su 8080/8443: app/Postgres healthy, nginx running. Health HTTPS 200, whitelist admin anonima 303 e redirect HTTP 308 verificati con CA locale esplicita e verifica TLS attiva. Nessun volume eliminato o dato applicativo modificato dalla prova HTTPS.
+- Working tree pulito prima di questa registrazione finale; nessuna modifica a legacy, schema o dipendenze. Note precedenti preservate.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Login 42 reale ancora da verificare manualmente da Ismail.
+
+**Prossimo passo**
+- M7: calendario utente e ICS, da avviare alla prossima richiesta. SSE resta in M9.
