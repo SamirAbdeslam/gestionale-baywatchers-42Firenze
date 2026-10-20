@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { db } from '../db/index.ts';
-import { events, registrations } from '../db/schema.ts';
+import { events, registrations, users } from '../db/schema.ts';
 import { assertAdmin } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
@@ -105,6 +105,8 @@ export async function createEvent(
 				}
 			: PRESETS[parsed.kind];
 	const { event, logId } = await database.transaction(async (tx) => {
+		// Match registration lock order before event writes and the audit's user FK.
+		await tx.select({ id: users.id }).from(users).where(eq(users.id, actor.id)).for('update');
 		const [event] = await tx
 			.insert(events)
 			.values({
@@ -142,6 +144,8 @@ export async function updateEvent(
 	assertAdmin(actor);
 	const { id, ...changes } = updateSchema.parse(input);
 	const { event, logId } = await database.transaction(async (tx) => {
+		// Match registration lock order before event writes and the audit's user FK.
+		await tx.select({ id: users.id }).from(users).where(eq(users.id, actor.id)).for('update');
 		const [before] = await tx.select().from(events).where(eq(events.id, id)).for('update');
 		if (!before) error(404, m.error_event_not_found());
 		const [event] = await tx
@@ -175,6 +179,8 @@ export async function deleteEvent(
 	assertAdmin(actor);
 	const { id } = deleteSchema.parse(input);
 	const { event, logId } = await database.transaction(async (tx) => {
+		// Match registration lock order before event writes and the audit's user FK.
+		await tx.select({ id: users.id }).from(users).where(eq(users.id, actor.id)).for('update');
 		const [event] = await tx.delete(events).where(eq(events.id, id)).returning();
 		if (!event) error(404, m.error_event_not_found());
 		const logId = await audit(tx, {
@@ -212,6 +218,8 @@ async function deleteMatching(
 				? `Eliminati tutti gli eventi della settimana ${scope.week}.`
 				: 'Eliminati TUTTI gli eventi da TUTTE le settimane.';
 	const logId = await database.transaction(async (tx) => {
+		// Match registration lock order before event writes and the audit's user FK.
+		await tx.select({ id: users.id }).from(users).where(eq(users.id, actor.id)).for('update');
 		await tx
 			.delete(events)
 			.where(

@@ -1,0 +1,294 @@
+import { error } from '@sveltejs/kit';
+import { and, count, eq } from 'drizzle-orm';
+import { z } from 'zod';
+import type { db } from '../db/index.ts';
+import { users, events, registrations, settings, whitelist } from '../db/schema.ts';
+import { assertAdmin, assertUser } from '../auth/guards.ts';
+import type { User } from '../auth/session.ts';
+import { audit, type RequestInfo } from './audit.ts';
+import { concreteDate, isPassed } from './dates.ts';
+import { publish } from '../realtime/bus.ts';
+import { m } from '#lib/paraglide/messages.js';
+
+type PlainKey =
+	| 'error_event_not_found'
+	| 'error_registration_not_found'
+	| 'error_not_whitelisted'
+	| 'error_event_passed'
+	| 'error_weekly_limit'
+	| 'error_already_registered'
+	| 'error_event_full'
+	| 'error_event_passed_unregister'
+	| 'registration_registered'
+	| 'registration_unregistered';
+type LoginKey =
+	| 'registration_added'
+	| 'registration_removed'
+	| 'registration_already_registered_login'
+	| 'registration_present'
+	| 'registration_absent';
+export type RegistrationNotice =
+	| {
+			type: 'success' | 'error';
+			key: Exclude<PlainKey, 'error_weekly_limit'>;
+			params: Record<string, never>;
+	  }
+	| { type: 'error'; key: 'error_weekly_limit'; params: { count: number } }
+	| { type: 'success' | 'warning'; key: LoginKey; params: { login: string } };
+export type RegistrationResult = {
+	ok: boolean;
+	messages: RegistrationNotice[];
+	status?: 400 | 403 | 404;
+};
+const idSchema = z.strictObject({ id: z.coerce.number().int().positive().max(2147483647) });
+const participantSchema = idSchema.extend({
+	login: z
+		.string()
+		.trim()
+		.toLowerCase()
+		.regex(/^[a-z0-9_-]{1,32}$/)
+});
+const attendanceSchema = participantSchema.extend({
+	attended: z.union([z.boolean(), z.enum(['true', 'false']).transform((value) => value === 'true')])
+});
+const days = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+const failure = (
+	key: Exclude<
+		PlainKey,
+		'error_weekly_limit' | 'registration_registered' | 'registration_unregistered'
+	>,
+	status: 400 | 403 | 404 = 400
+): RegistrationResult => ({ ok: false, status, messages: [{ type: 'error', key, params: {} }] });
+type Operation = 'register' | 'unregister' | 'add' | 'remove' | 'attendance';
+
+async function changeRegistration(
+	database: typeof db,
+	actor: User | null,
+	input: unknown,
+	info: RequestInfo,
+	now: Date,
+	operation: Operation
+): Promise<RegistrationResult> {
+	const admin = operation === 'add' || operation === 'remove' || operation === 'attendance';
+	if (admin) assertAdmin(actor);
+	else assertUser(actor);
+	const parsed: { id: number; login?: string; attended?: boolean } =
+		operation === 'attendance'
+			? attendanceSchema.parse(input)
+			: admin
+				? participantSchema.parse(input)
+				: idSchema.parse(input);
+	const outcome = await database.transaction(
+		async (
+			tx
+		): Promise<
+			| RegistrationResult
+			| { result: RegistrationResult; event: typeof events.$inferSelect; logId: number }
+		> => {
+			// All registration mutations lock the acting user before the event.
+			const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
+			if (!user) error(401, m.error_unauthorized());
+			if (admin) assertAdmin(user);
+			const [event] = await tx.select().from(events).where(eq(events.id, parsed.id)).for('update');
+			if (!event) return failure('error_event_not_found', 404);
+			const login = parsed.login ?? user.login;
+			const participant = and(
+				eq(registrations.eventId, event.id),
+				eq(registrations.participantLogin, login)
+			);
+			let result: RegistrationResult;
+			let actionType:
+				| 'REGISTER_EVENT'
+				| 'UNREGISTER_EVENT'
+				| 'ADMIN_ADD_PARTICIPANT'
+				| 'ADMIN_UNREGISTER'
+				| 'MARK_PRESENT'
+				| 'MARK_ABSENT';
+			let description: string;
+			const details = `'${event.title}' (${days[event.weekday - 1]}, ${event.startTime.slice(0, 5)}-${event.endTime.slice(0, 5)}, ID: ${event.id}).`;
+			if (operation === 'register') {
+				const [allowed] = await tx
+					.select({ id: whitelist.id })
+					.from(whitelist)
+					.where(eq(whitelist.login, login));
+				if (!allowed) return failure('error_not_whitelisted', 403);
+				const [config] = await tx.select().from(settings).where(eq(settings.id, 1));
+				if (!config) throw new Error('Settings row is missing');
+				if (isPassed(concreteDate(event, config.poolStart), event.endTime, now))
+					return failure('error_event_passed');
+				if (config.maxEventsPerUser > 0) {
+					const [total] = await tx
+						.select({ n: count() })
+						.from(registrations)
+						.innerJoin(events, eq(registrations.eventId, events.id))
+						.where(and(eq(registrations.participantLogin, login), eq(events.week, event.week)));
+					if (total.n >= config.maxEventsPerUser)
+						return {
+							ok: false,
+							status: 400 as const,
+							messages: [
+								{
+									type: 'error' as const,
+									key: 'error_weekly_limit' as const,
+									params: { count: config.maxEventsPerUser }
+								}
+							]
+						};
+				}
+				const [existing] = await tx
+					.select({ id: registrations.id })
+					.from(registrations)
+					.where(participant);
+				if (existing) return failure('error_already_registered');
+				const [total] = await tx
+					.select({ n: count() })
+					.from(registrations)
+					.where(eq(registrations.eventId, event.id));
+				if (total.n >= event.maxSlots) return failure('error_event_full');
+				await tx.insert(registrations).values({
+					eventId: event.id,
+					participantLogin: login,
+					attended: true,
+					registeredAt: now
+				});
+				actionType = 'REGISTER_EVENT';
+				description = `Utente '${login}' registrato all'evento ${details}`;
+				result = {
+					ok: true,
+					messages: [{ type: 'success', key: 'registration_registered', params: {} }]
+				};
+			} else if (operation === 'add') {
+				const [existing] = await tx
+					.select({ id: registrations.id })
+					.from(registrations)
+					.where(participant);
+				if (existing)
+					return {
+						ok: false,
+						messages: [
+							{
+								type: 'warning' as const,
+								key: 'registration_already_registered_login' as const,
+								params: { login }
+							}
+						]
+					};
+				await tx.insert(registrations).values({
+					eventId: event.id,
+					participantLogin: login,
+					attended: true,
+					registeredAt: now
+				});
+				actionType = 'ADMIN_ADD_PARTICIPANT';
+				description = `Admin ha aggiunto '${login}' all'evento ${details}`;
+				result = {
+					ok: true,
+					messages: [{ type: 'success', key: 'registration_added', params: { login } }]
+				};
+			} else if (operation === 'attendance') {
+				const attended = parsed.attended === true;
+				const [row] = await tx
+					.update(registrations)
+					.set({ attended })
+					.where(participant)
+					.returning({ id: registrations.id });
+				if (!row) return failure('error_registration_not_found', 404);
+				actionType = attended ? 'MARK_PRESENT' : 'MARK_ABSENT';
+				description = `Segnato '${login}' come ${attended ? 'presente' : 'assente'} per l'evento ${details}`;
+				result = {
+					ok: true,
+					messages: [
+						{
+							type: attended ? 'success' : 'warning',
+							key: attended ? 'registration_present' : 'registration_absent',
+							params: { login }
+						}
+					]
+				};
+			} else {
+				if (operation === 'unregister' && user.role !== 'admin') {
+					const [config] = await tx.select().from(settings).where(eq(settings.id, 1));
+					if (!config) throw new Error('Settings row is missing');
+					if (isPassed(concreteDate(event, config.poolStart), event.endTime, now))
+						return failure('error_event_passed_unregister');
+				}
+				const [removed] = await tx
+					.delete(registrations)
+					.where(participant)
+					.returning({ id: registrations.id });
+				if (!removed) return { ok: true, messages: [] };
+				actionType = operation === 'unregister' ? 'UNREGISTER_EVENT' : 'ADMIN_UNREGISTER';
+				description =
+					operation === 'unregister'
+						? `Utente '${login}' disiscritto dall'evento ${details}`
+						: `Admin ha disiscritto '${login}' dall'evento ${details}`;
+				result =
+					operation === 'unregister'
+						? {
+								ok: true,
+								messages: [{ type: 'success', key: 'registration_unregistered', params: {} }]
+							}
+						: {
+								ok: true,
+								messages: [{ type: 'success', key: 'registration_removed', params: { login } }]
+							};
+			}
+			const logId = await audit(tx, {
+				...info,
+				actor: user,
+				actionType,
+				description,
+				resourceType: 'event',
+				resourceId: String(event.id)
+			});
+			return { result, event, logId };
+		}
+	);
+	if ('result' in outcome) {
+		publish({ type: 'log_created', id: outcome.logId });
+		publish({
+			type: 'event_changed',
+			eventId: outcome.event.id,
+			week: outcome.event.week,
+			action: 'update'
+		});
+		return outcome.result;
+	}
+	return outcome;
+}
+
+export const register = (
+	database: typeof db,
+	actor: User | null,
+	input: unknown,
+	info: RequestInfo,
+	now: Date
+) => changeRegistration(database, actor, input, info, now, 'register');
+export const unregister = (
+	database: typeof db,
+	actor: User | null,
+	input: unknown,
+	info: RequestInfo,
+	now: Date
+) => changeRegistration(database, actor, input, info, now, 'unregister');
+export const addParticipant = (
+	database: typeof db,
+	actor: User | null,
+	input: unknown,
+	info: RequestInfo,
+	now: Date
+) => changeRegistration(database, actor, input, info, now, 'add');
+export const removeParticipant = (
+	database: typeof db,
+	actor: User | null,
+	input: unknown,
+	info: RequestInfo,
+	now: Date
+) => changeRegistration(database, actor, input, info, now, 'remove');
+export const setAttendance = (
+	database: typeof db,
+	actor: User | null,
+	input: unknown,
+	info: RequestInfo,
+	now: Date
+) => changeRegistration(database, actor, input, info, now, 'attendance');
