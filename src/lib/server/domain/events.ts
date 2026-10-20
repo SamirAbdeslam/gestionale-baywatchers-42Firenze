@@ -1,23 +1,20 @@
 import { error } from '@sveltejs/kit';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
-import type { db } from '../db/index.ts';
+import type { db, Transaction } from '../db/index.ts';
 import { events, registrations, users } from '../db/schema.ts';
 import { assertAdmin } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { publish } from '../realtime/bus.ts';
-import { concreteDate, isoDate, weekNumber, weekdayNumber } from './dates.ts';
+import { concreteDate, digits, isoDate, weekNumber, weekdayNumber } from './dates.ts';
 import { capitalizeFirst, EVENT_KINDS, PRESETS } from './kinds.ts';
 import { m } from '#lib/paraglide/messages.js';
 
-const integer = z
-	.union([z.number(), z.string().trim().min(1)])
-	.transform(Number)
-	.pipe(z.number().int().max(2147483647));
-const week = z.coerce.number().pipe(weekNumber);
-const weekday = z.coerce.number().pipe(weekdayNumber);
-const id = z.coerce.number().int().min(1).max(2147483647);
+const integer = digits(10).pipe(z.number().int().max(2147483647));
+const week = digits(5).pipe(weekNumber);
+const weekday = digits(5).pipe(weekdayNumber);
+const id = integer.pipe(z.number().min(1));
 const time = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
 const text = z.string().trim().min(1).max(120).transform(capitalizeFirst);
 const description = z.string().trim().max(500).transform(capitalizeFirst);
@@ -106,7 +103,9 @@ export async function createEvent(
 			: PRESETS[parsed.kind];
 	const { event, logId } = await database.transaction(async (tx) => {
 		// Match registration lock order before event writes and the audit's user FK.
-		await tx.select({ id: users.id }).from(users).where(eq(users.id, actor.id)).for('update');
+		const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
+		if (!user) error(401, m.error_unauthorized());
+		assertAdmin(user);
 		const [event] = await tx
 			.insert(events)
 			.values({
@@ -120,7 +119,7 @@ export async function createEvent(
 			.returning();
 		const logId = await audit(tx, {
 			...info,
-			actor,
+			actor: user,
 			actionType: 'CREATE_EVENT',
 			description: `Creato evento '${event.title}' (${event.weekday}, ${parsed.startTime}-${parsed.endTime}) per la settimana ${event.week}.`,
 			resourceType: 'event',
@@ -145,7 +144,9 @@ export async function updateEvent(
 	const { id, ...changes } = updateSchema.parse(input);
 	const { event, logId } = await database.transaction(async (tx) => {
 		// Match registration lock order before event writes and the audit's user FK.
-		await tx.select({ id: users.id }).from(users).where(eq(users.id, actor.id)).for('update');
+		const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
+		if (!user) error(401, m.error_unauthorized());
+		assertAdmin(user);
 		const [before] = await tx.select().from(events).where(eq(events.id, id)).for('update');
 		if (!before) error(404, m.error_event_not_found());
 		const [event] = await tx
@@ -155,7 +156,7 @@ export async function updateEvent(
 			.returning();
 		const logId = await audit(tx, {
 			...info,
-			actor,
+			actor: user,
 			actionType: 'UPDATE_EVENT',
 			description: `Aggiornato evento '${event.title}' (ID: ${id}).`,
 			resourceType: 'event',
@@ -170,6 +171,26 @@ export async function updateEvent(
 	return event;
 }
 
+async function deletionSnapshot(tx: Transaction, where: SQL | undefined) {
+	// Lock events before reading participants so registration changes cannot escape the snapshot.
+	const removed = await tx.select().from(events).where(where).orderBy(events.id).for('update');
+	if (!removed.length) return [];
+	const participants = await tx
+		.select()
+		.from(registrations)
+		.where(
+			inArray(
+				registrations.eventId,
+				removed.map((event) => event.id)
+			)
+		)
+		.orderBy(registrations.participantLogin);
+	return removed.map((event) => ({
+		...event,
+		participants: participants.filter((row) => row.eventId === event.id)
+	}));
+}
+
 export async function deleteEvent(
 	database: typeof db,
 	actor: User | null,
@@ -180,16 +201,21 @@ export async function deleteEvent(
 	const { id } = deleteSchema.parse(input);
 	const { event, logId } = await database.transaction(async (tx) => {
 		// Match registration lock order before event writes and the audit's user FK.
-		await tx.select({ id: users.id }).from(users).where(eq(users.id, actor.id)).for('update');
-		const [event] = await tx.delete(events).where(eq(events.id, id)).returning();
+		const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
+		if (!user) error(401, m.error_unauthorized());
+		assertAdmin(user);
+		const oldValue = await deletionSnapshot(tx, eq(events.id, id));
+		const [event] = oldValue;
 		if (!event) error(404, m.error_event_not_found());
+		await tx.delete(events).where(eq(events.id, id));
 		const logId = await audit(tx, {
 			...info,
-			actor,
+			actor: user,
 			actionType: 'DELETE_EVENT',
 			description: `Eliminato evento '${event.title}' (ID: ${id}) dalla settimana ${event.week}.`,
 			resourceType: 'event',
-			resourceId: String(id)
+			resourceId: String(id),
+			oldValue
 		});
 		return { event, logId };
 	});
@@ -219,22 +245,29 @@ async function deleteMatching(
 				: 'Eliminati TUTTI gli eventi da TUTTE le settimane.';
 	const logId = await database.transaction(async (tx) => {
 		// Match registration lock order before event writes and the audit's user FK.
-		await tx.select({ id: users.id }).from(users).where(eq(users.id, actor.id)).for('update');
-		await tx
-			.delete(events)
-			.where(
-				and(
-					scope.week === undefined ? undefined : eq(events.week, scope.week),
-					scope.weekday === undefined ? undefined : eq(events.weekday, scope.weekday)
+		const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
+		if (!user) error(401, m.error_unauthorized());
+		assertAdmin(user);
+		const where = and(
+			scope.week === undefined ? undefined : eq(events.week, scope.week),
+			scope.weekday === undefined ? undefined : eq(events.weekday, scope.weekday)
+		);
+		const oldValue = await deletionSnapshot(tx, where);
+		if (oldValue.length)
+			await tx.delete(events).where(
+				inArray(
+					events.id,
+					oldValue.map((event) => event.id)
 				)
 			);
 		return audit(tx, {
 			...info,
-			actor,
+			actor: user,
 			actionType,
 			description,
 			resourceType: 'event',
-			resourceId
+			resourceId,
+			oldValue
 		});
 	});
 	publish({ type: 'log_created', id: logId });

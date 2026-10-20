@@ -6,14 +6,19 @@ import { assertAdmin } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { publish } from '../realtime/bus.ts';
-import { computeWeekDayDates, isoDate, setPoolDates as poolDates, weekNumber } from './dates.ts';
+import {
+	computeWeekDayDates,
+	digits,
+	isoDate,
+	setPoolDates as poolDates,
+	weekNumber
+} from './dates.ts';
 
-const digits = z.union([z.number(), z.string().regex(/^\d{1,5}$/)]).transform(Number);
-const week = digits.pipe(weekNumber);
+const week = digits(5).pipe(weekNumber);
 const querySchema = z.object({ week: week.optional() });
 const activeWeekSchema = z.strictObject({ week });
 const maxEventsSchema = z.strictObject({
-	maxEvents: digits.pipe(z.number().int().min(0).max(32767))
+	maxEvents: digits(5).pipe(z.number().int().min(0).max(32767))
 });
 const poolDate = isoDate.refine((date) => date >= '2000-01-01' && date <= '2100-12-31');
 const poolDatesSchema = z

@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const digits = (maxLength: number) =>
+	z.union([z.number(), z.string().regex(new RegExp(`^\\d{1,${maxLength}}$`))]).transform(Number);
+
 export const isoDate = z.iso.date();
 export const weekNumber = z.number().int().min(1).max(4);
 export const weekdayNumber = z.number().int().min(1).max(7);
