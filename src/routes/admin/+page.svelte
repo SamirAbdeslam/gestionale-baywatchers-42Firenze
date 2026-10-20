@@ -267,9 +267,29 @@
 								{participant.participantLogin} — {participant.attended
 									? m.admin_participant_present()
 									: m.admin_participant_absent()}
+								<form method="POST" action={`?/setAttendance&week=${data.week}`} use:enhance>
+									<input type="hidden" name="id" value={event.id} />
+									<input type="hidden" name="login" value={participant.participantLogin} />
+									<input type="hidden" name="attended" value={String(!participant.attended)} />
+									<button type="submit"
+										>{participant.attended ? m.admin_mark_absent() : m.admin_mark_present()}</button
+									>
+								</form>
+								<form method="POST" action={`?/removeParticipant&week=${data.week}`} use:enhance>
+									<input type="hidden" name="id" value={event.id} />
+									<input type="hidden" name="login" value={participant.participantLogin} />
+									<button type="submit">{m.admin_remove_participant()}</button>
+								</form>
 							</li>
 						{/each}
 					</ul>
+					<form method="POST" action={`?/addParticipant&week=${data.week}`} use:enhance>
+						<input type="hidden" name="id" value={event.id} />
+						<label for={`participant-${event.id}`}>{m.admin_participant_login()}</label>
+						<input id={`participant-${event.id}`} name="login" maxlength="32" required />
+						<button type="submit">{m.admin_add_participant()}</button>
+					</form>
+
 					<details>
 						<summary>{m.admin_edit_event()}</summary>
 						<form method="POST" action={`?/updateEvent&week=${data.week}`} use:enhance>

@@ -1,7 +1,8 @@
-import { fail } from '@sveltejs/kit';
-import { m } from '#lib/paraglide/messages.js';
+import { registrationAction } from '#lib/server/registration-actions.ts';
+import { register, unregister } from '#lib/server/domain/registrations.ts';
 import type { Actions } from './$types';
 
-// Placeholder actions exercise authorization before their owning module implements them.
-const pending = () => fail(501, { message: m.error_not_implemented() });
-export const actions: Actions = { register: pending, unregister: pending };
+export const actions: Actions = {
+	register: (event) => registrationAction(event, register),
+	unregister: (event) => registrationAction(event, unregister)
+};

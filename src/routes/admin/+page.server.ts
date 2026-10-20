@@ -16,6 +16,12 @@ import {
 	deleteAllEvents,
 	listWeekEvents
 } from '#lib/server/domain/events.ts';
+import { registrationAction } from '#lib/server/registration-actions.ts';
+import {
+	addParticipant,
+	removeParticipant,
+	setAttendance
+} from '#lib/server/domain/registrations.ts';
 import { EVENT_KINDS } from '#lib/server/domain/kinds.ts';
 import type { Notice } from '#lib/components/Toast.svelte';
 import { m } from '#lib/paraglide/messages.js';
@@ -80,8 +86,6 @@ async function save(
 		throw cause;
 	}
 }
-// Event mutations are implemented by their owning modules.
-const pending = () => fail(501, { message: m.error_not_implemented() });
 export const actions: Actions = {
 	setPoolDates: (event) => save(event, setPoolDates),
 	setActiveWeek: (event) => save(event, setActiveWeek),
@@ -92,9 +96,9 @@ export const actions: Actions = {
 	deleteDayEvents: (event) => save(event, deleteDayEvents, 'admin_events_deleted'),
 	deleteWeekEvents: (event) => save(event, deleteWeekEvents, 'admin_events_deleted'),
 	deleteAllEvents: (event) => save(event, deleteAllEvents, 'admin_events_deleted'),
-	addParticipant: pending,
-	removeParticipant: pending,
-	setAttendance: pending,
+	addParticipant: (event) => registrationAction(event, addParticipant),
+	removeParticipant: (event) => registrationAction(event, removeParticipant),
+	setAttendance: (event) => registrationAction(event, setAttendance),
 	resetDisplayWeek: (event) =>
 		save(event, (database, actor, ...[, info, now]) => resetDisplayWeek(database, actor, info, now))
 };

@@ -1,6 +1,8 @@
 <script module lang="ts">
+	import { getLocale } from '#lib/paraglide/runtime.js';
+	import type { RegistrationNotice } from '#lib/server/domain/registrations.ts';
 	import { m } from '#lib/paraglide/messages.js';
-	export type Notice = {
+	type BasicNotice = {
 		type: 'success' | 'warning' | 'error';
 		key:
 			| 'admin_settings_saved'
@@ -13,6 +15,7 @@
 			| 'error_event_not_found';
 		params: Record<string, never>;
 	};
+	export type Notice = BasicNotice | RegistrationNotice;
 </script>
 
 <script lang="ts">
@@ -28,7 +31,15 @@
 {#if visible}
 	{#each messages as message, index (index)}
 		<p role={message.type === 'error' ? 'alert' : 'status'}>
-			{m[message.key](message.params)}
+			{#if message.key === 'error_weekly_limit'}
+				{m.error_weekly_limit({
+					count: new Intl.NumberFormat(getLocale()).format(message.params.count)
+				})}
+			{:else if message.key === 'registration_added' || message.key === 'registration_removed' || message.key === 'registration_already_registered_login' || message.key === 'registration_present' || message.key === 'registration_absent'}
+				{m[message.key](message.params)}
+			{:else}
+				{m[message.key](message.params)}
+			{/if}
 			<button type="button" aria-label={m.app_dismiss_message()} onclick={() => (visible = false)}
 				>{m.app_dismiss_message()}</button
 			>

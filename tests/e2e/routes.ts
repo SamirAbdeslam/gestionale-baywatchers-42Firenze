@@ -12,7 +12,10 @@ export const adminRoutes = [
 			'deleteEvent',
 			'deleteDayEvents',
 			'deleteWeekEvents',
-			'deleteAllEvents'
+			'deleteAllEvents',
+			'addParticipant',
+			'removeParticipant',
+			'setAttendance'
 		],
 		actions: [
 			'setPoolDates',

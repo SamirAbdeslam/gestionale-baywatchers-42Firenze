@@ -39,7 +39,12 @@ test(
 				'2027-01-26'
 			);
 			await page.getByLabel('Settimana da attivare').selectOption('4');
+			const activated = page.waitForResponse(
+				(response) =>
+					response.request().method() === 'POST' && response.url().includes('setActiveWeek')
+			);
 			await page.getByRole('button', { name: 'Attiva settimana', exact: true }).click();
+			expect((await activated).status()).toBe(200);
 			await page.goto('/admin');
 			await expect(page.getByLabel('Settimana visualizzata')).toHaveValue('4');
 			const dates = page.getByRole('list', { name: 'Date della settimana' });
