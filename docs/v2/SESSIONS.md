@@ -914,3 +914,44 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M7: calendario utente e ICS, da avviare alla prossima richiesta. SSE resta in M9.
+
+## 2026-10-20 — Revisione M4–M6 e revisione M3 — controlli locali completati
+
+**Fatto**
+- Letta la nota di Ismail introdotta in `d2bfd0d` dopo la chiusura M6. Verificati tutti i dieci punti sul codice: nessuno era già completamente risolto. Applicati soltanto gli interventi richiesti; M7 non iniziato.
+- **R1:** spostato `digits(maxLength)` in `dates.ts`, riutilizzato in impostazioni, eventi, iscrizioni e rimozione whitelist. Stringhe numeriche ammesse soltanto con cifre decimali e lunghezza prevista, prima della conversione; conservati gli input numerici interi del dominio e i limiti Postgres.
+- **R2:** creazione, modifica, eliminazione singola e massiva degli eventi rileggono l'utente bloccato e verificano il ruolo attuale; l'audit usa quell'attore. Utente declassato respinto prima delle scritture.
+- **R3:** tutte le eliminazioni eventi implementate salvano in `old_value` l'array JSON degli eventi con `participants`, comprese presenze e date di iscrizione. Snapshot letto nella stessa transazione, bloccando gli eventi prima delle iscrizioni; il DELETE massivo riguarda esattamente gli id nello snapshot. Audit ed eliminazione restano atomici. La regola per APPLY_TEMPLATE con sovrascrittura sarà applicata quando verrà implementato il modulo template previsto dal piano, senza anticiparlo.
+- **R4:** chiusura del singolo toast tramite indici dei messaggi chiusi; timer di sei secondi e stato ripristinati quando arrivano nuovi messaggi. Rimozione admin di un login non iscritto restituisce il warning i18n `registration_not_registered_login`, senza scritture, log o notifiche; disiscrizione propria inesistente ancora silenziosa.
+- **R5:** deduplicati i login validi prima degli inserimenti whitelist. I ripetuti nello stesso invio vengono aggiunti una sola volta, senza comparire in "Già presenti"; il warning riguarda quelli già memorizzati.
+- **R6:** limite di 5000 caratteri sul campo logins prima del trim. Input superiore respinto con 400 senza scritture o audit.
+- **Ponytail 1:** Toast conserva il ramo di formattazione del limite settimanale e un solo ramo di traduzione per gli altri messaggi; adattamento tipizzato della mappa di traduzioni alle unioni dei parametri dei messaggi.
+- **Ponytail 2:** sostituiti i cinque wrapper delle iscrizioni con la factory `op(operation)`, mantenendo firme e chiamanti.
+- **Ponytail 3:** tipi espliciti delle chiavi di errore e `failure` condiviso anche per il limite settimanale; rimosso il blocco duplicato.
+- **Ponytail 4:** unico `formAction` per admin, calendario e whitelist. Conservati messaggi di successo, status restituiti dal dominio, 400 Zod con chiave generica o specifica e 404 con chiave scelta dal chiamante. Eliminati i tre adattatori precedenti.
+
+**Commit**
+- `974c4b3` `fix(events): validate decimal inputs and preserve deletion audit`.
+- `697bab9` `fix(registrations): address registration and whitelist review findings`.
+- `5e7b5c8` `refactor: share form actions and dismiss individual notices`.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0; 92 unit, 185 integration e 40 e2e, lint/check e build verdi; svelte-check senza errori o warning.
+- 21 nuove integration in `review.test.ts`: tutti i quattro input numerici richiesti producono 400 per una action di ciascuno dei quattro domini senza scritture/audit/notifiche; 5001 caratteri respinti; ruolo declassato respinto per tutte le sei mutazioni eventi; snapshot JSON esatti per singolo/giorno/settimana/tutto, con e senza iscritti; 404 lanciati e restituiti mappati alle chiavi originali; warning admin e silenzio utente senza audit o notifiche.
+- Aggiornate le integration su duplicati whitelist e rimozione admin inesistente. Conservate le prove di concorrenza, rollback audit, impostazioni e autorizzazioni.
+- E2E desktop/mobile con e senza JavaScript aggiornati per duplicati e warning admin; verifica con JavaScript che chiudere il successo lasci visibile il warning dello stesso invio. Controlli esistenti su timeout dei toast e messaggi successivi ancora verdi.
+- `git diff --check`: verde. Nessuna modifica a piano, schema, dipendenze o legacy; preservate note e voci precedenti.
+
+**Decisioni prese dentro il perimetro del piano**
+- `form-action.ts` sostituisce `registration-actions.ts` e centralizza gli adattatori richiesti; nuovo `review.test.ts` raccoglie le verifiche trasversali della nota. Nessun altro nuovo file.
+- Graphify consultato per localizzare funzioni legacy pertinenti; grafo pre-spostamento e sorgenti correnti verificati direttamente. Applicati Ponytail e Caveman; nessuna ricostruzione del grafo.
+
+**Domande / blocchi**
+- Nessun blocco tecnico nei controlli locali. Login 42 reale resta la verifica manuale di Ismail già prevista.
+
+**Prossimo passo**
+- Terminare ricostruzione e prova HTTPS, push e verifica dei sei job CI, poi registrare la chiusura della revisione. Non iniziare M7.
+
+**Verifica stack HTTPS dopo la ricostruzione**
+- `docker compose up -d --build --wait`: exit code 0, app/Postgres healthy e nginx running sulle porte 8080/8443. Nessun volume eliminato.
+- Con CA locale esplicita e verifica TLS attiva: health HTTPS 200, admin anonimo 303, redirect HTTP 8080 verso HTTPS 8443 con 308. Nessuna scrittura sul database applicativo durante la prova.
