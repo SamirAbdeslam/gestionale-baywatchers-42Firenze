@@ -839,3 +839,40 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M6: whitelist, da avviare alla prossima richiesta. Calendario completo, dialog e ICS restano in M7; SSE in M9.
+
+## 2026-10-20 — M6 — implementazione e controlli locali
+
+**Fatto**
+- Riletti piano e ultima chiusura M5; verificati branch `v2.0.0` e working tree inizialmente pulito. Implementato soltanto M6 (§8.14).
+- Nuovo dominio whitelist: elenco ordinato per login con data di inserimento; aggiunta multipla separata da virgole, spazi, tab o a capo; normalizzazione in minuscolo e validazione della regex prevista. Login non validi saltati e segnalati; duplicati segnalati come warning, inclusi quelli ripetuti nello stesso invio; messaggio di successo per gli aggiunti.
+- Aggiunta atomica dell'intero gruppo con un audit `WHITELIST_ADD` per ogni nuova riga. Inserimenti in ordine deterministico e gestione del conflitto univoco per gruppi sovrapposti concorrenti, senza errori sui duplicati.
+- Rimozione per id con 404 se inesistente e audit `WHITELIST_REMOVE`; nessuna cancellazione delle iscrizioni esistenti. Le modifiche verificano nuovamente il ruolo dell'attore nella transazione e pubblicano soltanto `log_created`, dopo il commit.
+- Pagina `/admin/whitelist` operativa: textarea con istruzioni, elenco, data/ora localizzata in Europe/Rome, pulsanti rimuovi, stato vuoto. Form con progressive enhancement e funzionamento senza JavaScript; messaggi tramite i18n e toast condiviso.
+- Matrice di autorizzazione estesa alle due action implementate. Corretto il test M3 che riconosceva il toast del salvataggio precedente e leggeva il database troppo presto: attesa esplicita della risposta POST per limite e reset display, come già per l'attivazione settimana.
+- Nessuna modifica a legacy, schema o dipendenze. M7 non iniziato.
+
+**Commit**
+- `7d18685` `feat(whitelist): add transactional batch management`.
+- `8723c27` `feat(whitelist): add accessible admin forms and browser coverage`.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 92 unit, 164 integration e 40 e2e; lint/check e build verdi, svelte-check senza errori o warning.
+- 22 nuove integration: elenco vuoto e ordinato, date, separatori/normalizzazione, input misti e limiti di lunghezza, login mai autenticati, soli invalidi e soli duplicati senza scritture, permessi prima della validazione e ruolo aggiornato, input form non validi, rimozione/404, conservazione delle iscrizioni e disiscrizione successiva consentita.
+- Gruppi concorrenti sovrapposti e in ordine opposto producono una sola riga e un solo audit per login. Fallimento del secondo audit di aggiunta annulla anche la prima aggiunta e il relativo audit; fallimento dell'audit di rimozione conserva la whitelist. Nessuna notifica in caso di rollback.
+- Quattro nuovi e2e desktop/mobile, con e senza JavaScript: aggiunta mista, warning duplicati e invalidi, ordine e date, testo HTML ostile mostrato senza esecuzione, rimozione con iscrizioni conservate, audit esatto. Richieste cross-origin per entrambe le action danno 403 senza modifiche; input vuoto 400 e id inesistente 404. Verificata assenza di overflow a 360px.
+- `git diff --check`: verde; note precedenti preservate integralmente.
+
+**Decisioni prese dentro il perimetro del piano**
+- Input composto soltanto da separatori rifiutato come form invalido; login non conformi alla regex segnalati e saltati anche quando nessuno è aggiunto. Duplicati e invalidi non producono audit. Le date di inserimento già esistenti rimangono invariate.
+- Nessun nuovo helper o componente: riutilizzati dominio/audit, bus, guard, form e toast esistenti. Nuovi file soltanto dominio previsto e test corrispondenti.
+- Graphify consultato per localizzare elenco/aggiunta/rimozione whitelist legacy; verificati i sorgenti sotto `legacy/`, dato che il grafo conserva i percorsi pre-spostamento. Applicati Ponytail e Caveman; nessuna ricostruzione del grafo.
+
+**Domande / blocchi**
+- Nessun blocco tecnico nei controlli locali. Login 42 reale resta la verifica manuale di Ismail già prevista.
+
+**Prossimo passo**
+- Terminare ricostruzione e prova HTTPS, push e verifica dei sei job CI, quindi registrare la chiusura M6. Non iniziare M7.
+
+**Verifica stack HTTPS dopo la ricostruzione**
+- `docker compose up -d --build --wait`: exit code 0; app/Postgres healthy e nginx running sulle porte 8080/8443. Nessun volume eliminato.
+- Certificato locale usato come CA esplicita, verifica TLS attiva: health HTTPS 200, whitelist admin anonima 303 verso `/`, redirect HTTP 8080 verso HTTPS 8443 su `/admin/whitelist` con 308. Nessuna scrittura sul database applicativo durante la prova.
