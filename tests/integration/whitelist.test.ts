@@ -62,7 +62,7 @@ it('splits all separators, normalizes logins, skips invalid entries and warns on
 				key: 'whitelist_added',
 				params: { logins: 'alpha, dash-name, under_score, zeta' }
 			},
-			{ type: 'warning', key: 'whitelist_duplicates', params: { logins: 'alpha, existing' } },
+			{ type: 'warning', key: 'whitelist_duplicates', params: { logins: 'existing' } },
 			{
 				type: 'warning',
 				key: 'whitelist_invalid',

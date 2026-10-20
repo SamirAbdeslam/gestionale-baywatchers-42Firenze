@@ -139,5 +139,6 @@
 	"whitelist_add": "Aggiungi alla whitelist",
 	"whitelist_remove": "Rimuovi dalla whitelist",
 	"whitelist_empty": "La whitelist è vuota",
-	"whitelist_added_at": "Aggiunto il"
+	"whitelist_added_at": "Aggiunto il",
+	"registration_not_registered_login": "{login} non è iscritto a questo evento"
 }

@@ -6,11 +6,11 @@ import { users, events, registrations, settings, whitelist } from '../db/schema.
 import { assertAdmin, assertUser } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
-import { concreteDate, isPassed } from './dates.ts';
+import { concreteDate, digits, isPassed } from './dates.ts';
 import { publish } from '../realtime/bus.ts';
 import { m } from '#lib/paraglide/messages.js';
 
-type PlainKey =
+type ErrorKey =
 	| 'error_event_not_found'
 	| 'error_registration_not_found'
 	| 'error_not_whitelisted'
@@ -18,29 +18,29 @@ type PlainKey =
 	| 'error_weekly_limit'
 	| 'error_already_registered'
 	| 'error_event_full'
-	| 'error_event_passed_unregister'
-	| 'registration_registered'
-	| 'registration_unregistered';
+	| 'error_event_passed_unregister';
 type LoginKey =
 	| 'registration_added'
 	| 'registration_removed'
 	| 'registration_already_registered_login'
+	| 'registration_not_registered_login'
 	| 'registration_present'
 	| 'registration_absent';
 export type RegistrationNotice =
 	| {
 			type: 'success' | 'error';
-			key: Exclude<PlainKey, 'error_weekly_limit'>;
-			params: Record<string, never>;
+			key: ErrorKey | 'registration_registered' | 'registration_unregistered';
+			params: { count?: number };
 	  }
-	| { type: 'error'; key: 'error_weekly_limit'; params: { count: number } }
 	| { type: 'success' | 'warning'; key: LoginKey; params: { login: string } };
 export type RegistrationResult = {
 	ok: boolean;
 	messages: RegistrationNotice[];
 	status?: 400 | 403 | 404;
 };
-const idSchema = z.strictObject({ id: z.coerce.number().int().positive().max(2147483647) });
+const idSchema = z.strictObject({
+	id: digits(10).pipe(z.number().int().positive().max(2147483647))
+});
 const participantSchema = idSchema.extend({
 	login: z
 		.string()
@@ -53,12 +53,10 @@ const attendanceSchema = participantSchema.extend({
 });
 const days = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 const failure = (
-	key: Exclude<
-		PlainKey,
-		'error_weekly_limit' | 'registration_registered' | 'registration_unregistered'
-	>,
-	status: 400 | 403 | 404 = 400
-): RegistrationResult => ({ ok: false, status, messages: [{ type: 'error', key, params: {} }] });
+	key: ErrorKey,
+	status: 400 | 403 | 404 = 400,
+	params: { count?: number } = {}
+): RegistrationResult => ({ ok: false, status, messages: [{ type: 'error', key, params }] });
 type Operation = 'register' | 'unregister' | 'add' | 'remove' | 'attendance';
 
 async function changeRegistration(
@@ -123,17 +121,7 @@ async function changeRegistration(
 						.innerJoin(events, eq(registrations.eventId, events.id))
 						.where(and(eq(registrations.participantLogin, login), eq(events.week, event.week)));
 					if (total.n >= config.maxEventsPerUser)
-						return {
-							ok: false,
-							status: 400 as const,
-							messages: [
-								{
-									type: 'error' as const,
-									key: 'error_weekly_limit' as const,
-									params: { count: config.maxEventsPerUser }
-								}
-							]
-						};
+						return failure('error_weekly_limit', 400, { count: config.maxEventsPerUser });
 				}
 				const [existing] = await tx
 					.select({ id: registrations.id })
@@ -216,7 +204,14 @@ async function changeRegistration(
 					.delete(registrations)
 					.where(participant)
 					.returning({ id: registrations.id });
-				if (!removed) return { ok: true, messages: [] };
+				if (!removed)
+					return {
+						ok: true,
+						messages:
+							operation === 'unregister'
+								? []
+								: [{ type: 'warning', key: 'registration_not_registered_login', params: { login } }]
+					};
 				actionType = operation === 'unregister' ? 'UNREGISTER_EVENT' : 'ADMIN_UNREGISTER';
 				description =
 					operation === 'unregister'
@@ -257,38 +252,12 @@ async function changeRegistration(
 	return outcome;
 }
 
-export const register = (
-	database: typeof db,
-	actor: User | null,
-	input: unknown,
-	info: RequestInfo,
-	now: Date
-) => changeRegistration(database, actor, input, info, now, 'register');
-export const unregister = (
-	database: typeof db,
-	actor: User | null,
-	input: unknown,
-	info: RequestInfo,
-	now: Date
-) => changeRegistration(database, actor, input, info, now, 'unregister');
-export const addParticipant = (
-	database: typeof db,
-	actor: User | null,
-	input: unknown,
-	info: RequestInfo,
-	now: Date
-) => changeRegistration(database, actor, input, info, now, 'add');
-export const removeParticipant = (
-	database: typeof db,
-	actor: User | null,
-	input: unknown,
-	info: RequestInfo,
-	now: Date
-) => changeRegistration(database, actor, input, info, now, 'remove');
-export const setAttendance = (
-	database: typeof db,
-	actor: User | null,
-	input: unknown,
-	info: RequestInfo,
-	now: Date
-) => changeRegistration(database, actor, input, info, now, 'attendance');
+const op =
+	(operation: Operation) =>
+	(database: typeof db, actor: User | null, input: unknown, info: RequestInfo, now: Date) =>
+		changeRegistration(database, actor, input, info, now, operation);
+export const register = op('register');
+export const unregister = op('unregister');
+export const addParticipant = op('add');
+export const removeParticipant = op('remove');
+export const setAttendance = op('attendance');

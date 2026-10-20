@@ -7,6 +7,7 @@ import { assertAdmin } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { publish } from '../realtime/bus.ts';
+import { digits } from './dates.ts';
 import { m } from '#lib/paraglide/messages.js';
 
 export type WhitelistNotice = {
@@ -17,11 +18,14 @@ export type WhitelistNotice = {
 const addSchema = z.strictObject({
 	logins: z
 		.string()
+		.max(5000)
 		.trim()
 		.min(1)
 		.refine((value) => /[^,\s]/.test(value))
 });
-const removeSchema = z.strictObject({ id: z.coerce.number().int().positive().max(2147483647) });
+const removeSchema = z.strictObject({
+	id: digits(10).pipe(z.number().int().positive().max(2147483647))
+});
 
 export async function listWhitelist(database: typeof db, actor: User | null) {
 	assertAdmin(actor);
@@ -42,7 +46,7 @@ export async function addLogins(
 		.split(/[,\s]+/)
 		.filter(Boolean);
 	const invalid = [...new Set(tokens.filter((login) => !/^[a-z0-9_-]{1,32}$/.test(login)))];
-	const valid = tokens.filter((login) => /^[a-z0-9_-]{1,32}$/.test(login));
+	const valid = [...new Set(tokens.filter((login) => /^[a-z0-9_-]{1,32}$/.test(login)))];
 	const { added, duplicates, logIds } = await database.transaction(async (tx) => {
 		const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
 		if (!user) error(401, m.error_unauthorized());

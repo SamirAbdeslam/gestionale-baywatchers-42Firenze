@@ -239,7 +239,16 @@ it('admin bypasses every user restriction, normalizes unknown logins and audits 
 	).toBe(true);
 	expect(
 		await removeParticipant(database, admin, { id: row.id, login: 'external_login' }, info, now)
-	).toEqual({ ok: true, messages: [] });
+	).toEqual({
+		ok: true,
+		messages: [
+			{
+				type: 'warning',
+				key: 'registration_not_registered_login',
+				params: { login: 'external_login' }
+			}
+		]
+	});
 	expect(
 		(await client`SELECT action_type FROM action_logs ORDER BY id`).map((row) => row.action_type)
 	).toEqual(['ADMIN_ADD_PARTICIPANT', 'MARK_ABSENT', 'MARK_PRESENT', 'ADMIN_UNREGISTER']);
