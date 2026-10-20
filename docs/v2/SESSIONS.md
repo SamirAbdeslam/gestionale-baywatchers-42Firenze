@@ -775,3 +775,41 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M5: iscrizioni e presenze. Rileggere piano e diario prima di iniziare.
+
+## 2026-10-20 — M5 — implementazione e controlli locali
+
+**Fatto**
+- Ripresa la sessione interrotta con le modifiche M5 conservate sul branch `v2.0.0`; riletti piano e ultima chiusura. Il precedente processo di test non era più disponibile: rieseguito integralmente `pnpm ci:local`.
+- Implementato §8.5 nel dominio iscrizioni: iscrizione e disiscrizione proprie, aggiunta e rimozione admin, modifica della presenza. D1 rispettata: capienza e limite settimanale includono anche gli assenti; zero indica limite settimanale illimitato.
+- Iscrizione con lock dell'utente e poi dell'evento, controlli nell'ordine richiesto, audit atomico e notifiche prive di dati personali soltanto dopo il commit. Operazioni senza iscrizione da rimuovere idempotenti, senza audit o notifiche aggiuntive.
+- Aggiunta admin con login normalizzato e validato, anche mai autenticato, bypass di capienza/whitelist/limite/data passata; duplicato segnalato come warning senza scritture. Presenze validate come booleani o stringhe esplicite true/false, con 404 per iscrizione inesistente.
+- Collegate le due action del calendario e le tre action admin. Form partecipanti admin operativi con progressive enhancement, funzionamento senza JavaScript e messaggi i18n accessibili.
+- Allineato l'ordine dei lock delle mutazioni eventi M4 a utente prima di evento: evita il ciclo tra lock dell'evento e FK dell'attore nell'audit durante un'iscrizione concorrente dello stesso admin. Regole degli eventi invariate.
+- Corretto un test M3 che navigava subito dopo il clic di attivazione settimana, interrompendo il POST: ora attende la risposta prima della navigazione. La traccia del fallimento precedente mostrava la richiesta interrotta.
+- Calendario completo, dialog di aggiunta al calendario e file ICS restano in M7; endpoint/client SSE in M9. M6 non iniziato.
+
+**Commit**
+- `8ba8e41` `feat(registrations): add transactional bookings and attendance`.
+- `bddc6e2` `feat(registrations): connect participant forms and actions`.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 92 unit, 142 integration e 36 e2e; lint/check e build verdi, svelte-check senza errori o warning.
+- 41 nuove integration: ordine dei controlli e rispettivi errori, date concrete/pool/non impostate, istante esatto di fine, assenti nel limite e nella capienza, disiscrizione propria/idempotente, bypass e duplicato admin, presenza limitata alla riga richiesta, 404, autenticazione/ruolo aggiornato e input invalidi.
+- Concorrenza: 20 utenti su 5 posti producono esattamente 5 iscrizioni; due richieste dello stesso utente producono una riga; iscrizioni a eventi differenti rispettano il limite settimanale; aggiunte admin concorrenti dello stesso login normalizzato restano uniche. Verificata anche la concorrenza fra modifica evento e iscrizione dello stesso admin.
+- Rollback di tutte le sei mutazioni effettive se l'audit fallisce: iscrizioni invariate, nessun log o notifica. Verificati i tipi di audit e l'assenza di effetti nei casi senza modifica.
+- Sei nuovi e2e complessivi desktop/mobile: action utente con whitelist, CSRF, tentativo di impersonare un login, capienza e limite; form admin con e senza JavaScript per aggiunta oltre capienza a evento passato, warning duplicato, assente/presente e rimozione. Controllo senza overflow a 360px; matrice autorizzazioni estesa alle tre action admin.
+- `git diff --check`: verde. Nessuna modifica a legacy, dipendenze o schema; preservate le note precedenti.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nuovo `src/lib/server/registration-actions.ts` per condividere fra calendario e admin l'adattamento delle cinque action al contratto form e agli errori Zod; regole di business esclusivamente nel dominio previsto.
+- Graphify usato per localizzare iscrizione, disiscrizione e presenze legacy; il grafo mantiene i percorsi precedenti allo spostamento, verificati in `legacy/`. Nessuna ricostruzione del grafo. Applicati Ponytail e Caveman.
+
+**Domande / blocchi**
+- Nessun blocco tecnico nei controlli locali. Login 42 reale resta la verifica manuale di Ismail già prevista.
+
+**Prossimo passo**
+- Terminare ricostruzione e prova HTTPS, push e verifica dei sei job CI, quindi registrare la chiusura M5. Non iniziare M6.
+
+**Verifica stack HTTPS dopo la ricostruzione**
+- `docker compose up -d --build --wait`: exit code 0, app/Postgres healthy e nginx running, porte 8080/8443. Nessun volume eliminato.
+- Prova con certificato locale come CA esplicita e verifica TLS attiva: health HTTPS 200, admin anonimo 303 verso `/`, redirect HTTP 8080 verso HTTPS 8443 con 308. Nessuna scrittura sul database applicativo durante la prova.
