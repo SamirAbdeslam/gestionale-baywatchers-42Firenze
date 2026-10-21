@@ -183,7 +183,7 @@ export async function updateEvent(
 	return event;
 }
 
-async function deletionSnapshot(tx: Transaction, where: SQL | undefined) {
+export async function deletionSnapshot(tx: Transaction, where: SQL | undefined) {
 	// Lock events before reading participants so registration changes cannot escape the snapshot.
 	const removed = await tx.select().from(events).where(where).orderBy(events.id).for('update');
 	if (!removed.length) return [];
