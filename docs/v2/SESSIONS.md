@@ -1199,3 +1199,30 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 **Verifica stack HTTPS dopo la ricostruzione**
 - `docker compose up -d --build --wait`: exit code 0, app/Postgres healthy e nginx running sulle porte 8080/8443; nessun volume eliminato.
 - Con CA locale esplicita e TLS attivo: health HTTPS 200, admin anonimo 303, ICS anonimo 401, redirect HTTP 8080 verso HTTPS 8443 su `/display?check=m8` con 308 e percorso/query preservati. Nessuna richiesta al caricamento del display sul DB applicativo durante questa prova, per evitare l'avanzamento automatico previsto; display e redirect già verificati sul DB di test. Nessuna scrittura sul database applicativo.
+
+## 2026-10-21 — M8 — chiusura
+
+**Fatto**
+- Completato e pubblicato M8 sul branch `v2.0.0`; aggiornata soltanto la colonna Stato di §19 al commit funzionale `28ea717`. M9 non iniziato.
+- Display operativo con token facoltativo e bypass admin, avanzamento transazionale, settimana indipendente, conteggi D1, login dei soli presenti, weekend condizionali, vista TV/mobile in sola lettura e redirect nativo. URL completo copiabile dall'admin; scheda evento e lettura dati riutilizzate nelle pagine esistenti.
+- Dettagli, decisioni e copertura nella voce precedente. Nessuna modifica a schema, dipendenze o legacy; note originali preservate.
+
+**Commit**
+- `20ade83`: dominio display, letture condivise e test unit/integration.
+- `28ea717`: pagina TV, scheda condivisa, link admin e test browser.
+- `1617554`: controlli locali e diario.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 104 unit, 216 integration e 56 e2e; lint/check e build verdi, svelte-check senza errori o warning.
+- CI [run 39592470352](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39592470352) verde su `1617554`: tutti i sei job lint, unit, integration, e2e, legacy-import e docker completati con successo. `gh run watch --exit-status` terminato con exit code 0.
+- Stack completo ricostruito e lasciato attivo su 8080/8443; app/Postgres healthy e nginx running. Health HTTPS 200, admin anonimo 303, ICS anonimo 401 e redirect HTTP 308 verificati con CA locale esplicita e TLS attivo. Nessun volume eliminato o dato applicativo modificato dalla prova HTTPS.
+- Working tree pulito prima di questa registrazione finale. Token configurato verificato con dominio e caricamenti reali contro il DB di test; pagina pubblica e redirect verificati nei browser desktop/mobile, con e senza JavaScript. Nessuna prova su una TV fisica.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Login 42 reale ancora da verificare manualmente da Ismail.
+
+**Prossimo passo**
+- M9: real-time SSE, da avviare alla prossima richiesta.
