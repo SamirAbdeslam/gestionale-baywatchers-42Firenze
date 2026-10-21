@@ -1409,3 +1409,32 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M10: template e import CSV, da avviare alla prossima richiesta.
+
+
+## 2026-10-21 — Revisione M9 — controlli locali completati
+
+**Fatto**
+- Completati R10–R12 e Ponytail 21–23 prima di M10. Nessun punto era già risolto; note originali preservate.
+- R10: tetto globale di 500 ascoltatori per processo, conteggio esportato dal bus e risposta 503 prima di creare lo stream; costante e commento shortcut espliciti. Nessun limite nginx per IP.
+- R11: callback di ricarica dopo ogni open successivo al primo; calendario, display, admin e log passano la propria invalidate. La riconnessione recupera anche modifiche avvenute durante la disconnessione.
+- R12: display aggiornato ogni 60 secondi, intervallo rimosso nel cleanup insieme alla connessione.
+- Ponytail 21: admin ignora log_created. Ponytail 22: solo data JSON comprensivo di type, singolo onmessage con safeParse. Ponytail 23: cleanup client ridotto a close(). Filtri, heartbeat, token e controlli di accesso conservati.
+
+**Commit**
+- `61ca6dd` `fix(realtime): cap streams and recover stale views after reconnect`.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 123 unit, 217 integration e 70 e2e; lint/check e build verdi, nessun errore o warning svelte-check.
+- Unit: 501ª connessione respinta senza nuovi ascoltatori, riapertura dopo cleanup, primo open senza ricarica e open successivi con una ricarica ciascuno; framing aggiornato e precedenti prove di sicurezza ancora verdi.
+- E2e desktop/mobile: recupero di una modifica persa durante la disconnessione; orologio finto, nessuna ricarica a 59999 ms e una a 60000 ms, nessuna richiesta display dopo la navigazione. Prima esecuzione completa fermata da due problemi dei nuovi test: handler di rete ancora attivo dopo chiusura del contesto e orologio non congelato prima del mount. Corretti solo i fixture; quattro prove mirate e nuova suite completa verdi.
+- Stack ricostruito con `docker compose up -d --build --wait`, app/Postgres/nginx healthy su 8080/8443. CA locale esplicita: health 200, admin anonimo 303, ICS anonimo 401, redirect HTTP 308 con query preservata, SSE 200 con ping immediato e no-cache. URI stream presente nei log nginx, token assente. Nessuna scrittura sul DB applicativo o eliminazione di volumi.
+- `git diff --check`: verde. Nessuna dipendenza, schema o modifica legacy. CI non ancora eseguita per questa revisione.
+
+**Decisioni prese dentro il perimetro del piano**
+- Un solo commit funzionale per la modifica coordinata del protocollo e dei quattro chiamanti. Graphify consultato; Ponytail e Caveman applicati, nessuna ricostruzione del grafo.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Bus ancora per singola istanza; login 42 reale resta la verifica manuale di Ismail.
+
+**Prossimo passo**
+- Push e verifica dei sei job CI; registrare la chiusura della revisione, poi iniziare M10 come richiesto.
