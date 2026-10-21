@@ -98,14 +98,20 @@ for (const actor of ['anonymous', 'user', 'admin'] as const)
 					: actor === 'user'
 						? 403
 						: route.endpoint
-							? 501
+							? route.implementedEndpoint
+								? 200
+								: 501
 							: 200
 			);
 			for (const action of route.actions) {
 				// Reset consumes no input; its authorized success is covered by settings tests.
 				if (actor === 'admin' && action === 'resetDisplayWeek') continue;
 				const response = await request.post(`${route.url}?/${action}`, {
-					form: { id: '1', week: 'invalid', login: 'dev_user' },
+					form: {
+						id: route.id.startsWith('/admin/templates') ? 'invalid' : '1',
+						week: 'invalid',
+						login: 'dev_user'
+					},
 					headers: { origin },
 					maxRedirects: 0
 				});

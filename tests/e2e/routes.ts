@@ -39,12 +39,23 @@ export const adminRoutes = [
 		actions: ['add', 'remove'],
 		implementedActions: ['add', 'remove']
 	},
-	{ id: '/admin/templates', url: '/admin/templates', actions: ['apply', 'delete', 'importCsv'] },
-	{ id: '/admin/templates/new', url: '/admin/templates/new', actions: ['save'] },
+	{
+		id: '/admin/templates',
+		url: '/admin/templates',
+		actions: ['apply', 'delete', 'importCsv'],
+		implementedActions: ['apply', 'delete', 'importCsv']
+	},
+	{
+		id: '/admin/templates/new',
+		url: '/admin/templates/new',
+		actions: ['save'],
+		implementedActions: ['save']
+	},
 	{ id: '/admin/participants', url: '/admin/participants', actions: [] },
 	{ id: '/admin/logs', url: '/admin/logs', actions: [] },
 	{
 		id: '/admin/templates/example.csv',
+		implementedEndpoint: true,
 		url: '/admin/templates/example.csv',
 		endpoint: true,
 		actions: []

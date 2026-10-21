@@ -19,7 +19,7 @@ export async function formAction(
 			| 'admin_event_updated'
 			| 'admin_events_deleted'
 			| 'admin_event_deleted';
-		notFound?: 'error_event_not_found' | 'error_whitelist_not_found';
+		notFound?: 'error_event_not_found' | 'error_whitelist_not_found' | 'error_template_not_found';
 	} = {}
 ) {
 	const { db } = await import('./db/index.ts');

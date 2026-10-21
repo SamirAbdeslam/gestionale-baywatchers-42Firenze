@@ -1,7 +1,17 @@
-import { fail } from '@sveltejs/kit';
-import { m } from '#lib/paraglide/messages.js';
-import type { Actions } from './$types';
-
-// Placeholder actions exercise authorization before their owning module implements them.
-const pending = () => fail(501, { message: m.error_not_implemented() });
-export const actions: Actions = { apply: pending, delete: pending, importCsv: pending };
+import { formAction } from '#lib/server/form-action.ts';
+import {
+	listTemplates,
+	applyTemplate,
+	deleteTemplate,
+	importTemplates
+} from '#lib/server/domain/templates.ts';
+import type { Actions, PageServerLoad } from './$types';
+export const load: PageServerLoad = async ({ locals }) => {
+	const { db } = await import('#lib/server/db/index.ts');
+	return { templates: await listTemplates(db, locals.user) };
+};
+export const actions: Actions = {
+	apply: (event) => formAction(event, applyTemplate, { notFound: 'error_template_not_found' }),
+	delete: (event) => formAction(event, deleteTemplate, { notFound: 'error_template_not_found' }),
+	importCsv: (event) => formAction(event, importTemplates)
+};
