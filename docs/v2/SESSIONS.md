@@ -1133,3 +1133,31 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 **Verifica stack HTTPS dopo la ricostruzione**
 - `docker compose up -d --build --wait`: exit code 0, app/Postgres healthy e nginx running sulle porte 8080/8443, nessun volume eliminato.
 - Con CA locale esplicita e TLS attivo: health HTTPS 200, calendario anonimo 303, ICS anonimo 401, redirect HTTP 8080 verso HTTPS 8443 sul calendario con 308. Nessuna scrittura sul database applicativo durante la prova.
+
+## 2026-10-21 — M7 — chiusura
+
+**Fatto**
+- Completato e pubblicato M7 sul branch `v2.0.0`; aggiornata soltanto la colonna Stato di §19 al commit funzionale `1890810`. M8 non iniziato.
+- Calendario utente operativo con settimane disponibili, weekend condizionali, privacy dei login assenti, conteggi D1 e azioni nello stato corretto. Dialog automatico dopo iscrizione con Google Calendar e download ICS, funzionamento con e senza JavaScript. Endpoint ICS autenticato con date/UID/allarmi e risposte 400/404/409 previste.
+- Dettagli, decisioni e copertura nella voce precedente. Nessuna modifica a schema o legacy; note originali preservate.
+
+**Commit**
+- `0f4bad3`: ical-generator 11.1.2, unica nuova dipendenza consentita dal piano.
+- `0013375`: dominio calendario/ICS e test unit/integration.
+- `1890810`: pagina, action, endpoint, dialog e browser.
+- `8fc8968`: controlli locali e diario.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 99 unit, 202 integration e 48 e2e; lint/check e build verdi, svelte-check senza errori o warning.
+- CI [run 39569270407](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39569270407) verde su `8fc8968`: tutti i sei job lint, unit, integration, e2e, legacy-import e docker completati con successo. `gh run watch --exit-status` terminato con exit code 0.
+- Stack completo ricostruito e lasciato attivo su 8080/8443; app/Postgres healthy e nginx running. Health HTTPS 200, calendario anonimo 303, ICS anonimo 401 e redirect HTTP 308 verificati con CA locale esplicita e TLS attivo. Nessun volume eliminato o dato applicativo modificato dalla prova HTTPS.
+- Working tree pulito prima di questa registrazione finale. File ICS verificati strutturalmente e scaricati nei browser; nessuna importazione in account Google o client calendario esterni durante i test.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Login 42 reale ancora da verificare manualmente da Ismail.
+
+**Prossimo passo**
+- M8: display pubblico, da avviare alla prossima richiesta. Real-time resta in M9.
