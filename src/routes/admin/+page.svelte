@@ -18,10 +18,11 @@
 		welcome: m.event_kind_welcome,
 		custom: m.event_kind_custom
 	};
+	const reload = () => invalidate('app:admin');
 	onMount(() =>
-		listenRealtime(() => {
-			void invalidate('app:admin');
-		})
+		listenRealtime((event) => {
+			if (event.type !== 'log_created') void reload();
+		}, reload)
 	);
 </script>
 

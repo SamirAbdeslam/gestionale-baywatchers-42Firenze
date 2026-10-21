@@ -102,6 +102,10 @@ test(
 			await admin.getByRole('button', { name: 'Salva limite', exact: true }).click();
 			await expect(admin.getByRole('status')).toContainText('Impostazioni salvate');
 			await post(context.request, '/admin?/setMaxEvents', { maxEvents: '4' });
+			await post(context.request, '/admin?/addParticipant', {
+				id: String(fixture.id),
+				login: fixture.name
+			});
 			await expect(admin.locator('dl').first().locator('dd').nth(2)).toHaveText('4');
 			await expect(admin.getByRole('status')).toContainText('Impostazioni salvate');
 			for (const view of [page, admin, logs])
@@ -163,7 +167,7 @@ test(
 	}
 );
 test(
-	'reconnects natively after a closed stream and refreshes the calendar on the next event',
+	'recovers changes missed while disconnected when the native stream reopens',
 	{ tag: '@shared-db' },
 	async ({ page, browser }) => {
 		const admin = await browser.newContext();
@@ -178,7 +182,14 @@ test(
 						contentType: 'text/event-stream',
 						body: 'retry: 10\n\n'
 					});
-				else await route.continue();
+				else {
+					if (attempts === 2)
+						await post(admin.request, '/admin?/addParticipant', {
+							id: String(fixture.id),
+							login: fixture.name
+						});
+					await route.continue();
+				}
 			});
 			const connected = page.waitForResponse(
 				(response) =>
@@ -188,13 +199,43 @@ test(
 			await page.goto('/calendar');
 			await connected;
 			expect(attempts).toBeGreaterThanOrEqual(2);
-			await post(admin.request, '/admin?/addParticipant', {
-				id: String(fixture.id),
-				login: fixture.name
-			});
 			await expect(page.getByRole('article', { name: fixture.name, exact: true })).toContainText(
 				'1/2 iscritti'
 			);
+		} finally {
+			await page.unrouteAll({ behavior: 'wait' });
+			await admin.close();
+			await page.goto('/');
+			await fixture.cleanup();
+		}
+	}
+);
+
+test(
+	'refreshes the display after 60 seconds and stops the interval on navigation',
+	{ tag: '@shared-db' },
+	async ({ page, browser }) => {
+		const admin = await browser.newContext();
+		const fixture = await setup(page.request, admin.request);
+		try {
+			await page.clock.install({ time: new Date('2030-01-01T00:00:00Z') });
+			await page.clock.pauseAt(new Date('2030-01-01T01:00:00Z'));
+			await live(page, '/display');
+			let reloads = 0;
+			page.on('request', (request) => {
+				if (new URL(request.url()).pathname === '/display/__data.json') reloads++;
+			});
+			await page.clock.runFor(59999);
+			expect(reloads).toBe(0);
+			const refreshed = page.waitForResponse(
+				(response) => new URL(response.url()).pathname === '/display/__data.json'
+			);
+			await page.clock.runFor(1);
+			await refreshed;
+			expect(reloads).toBe(1);
+			await page.goto('/profile');
+			await page.clock.runFor(60000);
+			expect(reloads).toBe(1);
 		} finally {
 			await admin.close();
 			await page.goto('/');

@@ -20,3 +20,5 @@ export function subscribe(listener: (event: RealtimeEvent) => void) {
 		emitter.off('event', listener);
 	};
 }
+
+export const listenerCount = () => emitter.listenerCount('event');

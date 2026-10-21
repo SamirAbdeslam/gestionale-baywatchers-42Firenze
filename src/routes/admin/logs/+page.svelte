@@ -3,10 +3,11 @@
 	import { invalidate } from '$app/navigation';
 	import { listenRealtime } from '#lib/realtime.ts';
 	import { m } from '#lib/paraglide/messages.js';
+	const reload = () => invalidate('app:logs');
 	onMount(() =>
 		listenRealtime((event) => {
-			if (event.type === 'log_created') void invalidate('app:logs');
-		})
+			if (event.type === 'log_created') void reload();
+		}, reload)
 	);
 </script>
 

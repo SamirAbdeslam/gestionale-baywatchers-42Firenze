@@ -161,5 +161,6 @@
 	"calendar_your_registration": "La tua iscrizione",
 	"display_free_slots": "{count} posti liberi",
 	"admin_display_link": "Link display per la TV",
-	"calendar_week_activated": "La settimana {week} è stata attivata!"
+	"calendar_week_activated": "La settimana {week} è stata attivata!",
+	"error_stream_busy": "Servizio temporaneamente non disponibile"
 }

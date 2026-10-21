@@ -14,25 +14,27 @@ export const realtimeEventSchema = z.discriminatedUnion('type', [
 ]);
 export type RealtimeEvent = z.infer<typeof realtimeEventSchema>;
 
-export function listenRealtime(onEvent: (event: RealtimeEvent) => void, token?: string) {
+export function listenRealtime(
+	onEvent: (event: RealtimeEvent) => void,
+	onReconnect: () => void,
+	token?: string
+) {
 	const query = token === undefined ? '' : `?${new URLSearchParams({ token })}`;
 	const source = new EventSource(`/api/stream${query}`);
-	const listeners = (['event_changed', 'week_activated', 'log_created'] as const).map((type) => {
-		const listener = (message: Event) => {
-			let data: unknown;
-			try {
-				data = JSON.parse((message as MessageEvent<string>).data);
-			} catch {
-				return;
-			}
-			const parsed = realtimeEventSchema.safeParse({ ...(data as object), type });
-			if (parsed.success) onEvent(parsed.data);
-		};
-		source.addEventListener(type, listener);
-		return { type, listener };
-	});
-	return () => {
-		for (const { type, listener } of listeners) source.removeEventListener(type, listener);
-		source.close();
+	let opened = false;
+	source.onopen = () => {
+		if (opened) onReconnect();
+		opened = true;
 	};
+	source.onmessage = (message) => {
+		let data: unknown;
+		try {
+			data = JSON.parse(message.data);
+		} catch {
+			return;
+		}
+		const parsed = realtimeEventSchema.safeParse(data);
+		if (parsed.success) onEvent(parsed.data);
+	};
+	return () => source.close();
 }

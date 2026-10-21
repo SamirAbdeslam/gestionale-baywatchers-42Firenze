@@ -9,14 +9,21 @@
 	import { formatNumber } from '#lib/format.ts';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
-	onMount(() =>
-		listenRealtime(
+	const reload = () => invalidate('app:display');
+	onMount(() => {
+		const close = listenRealtime(
 			(event) => {
-				if (event.type !== 'log_created') void invalidate('app:display');
+				if (event.type !== 'log_created') void reload();
 			},
+			reload,
 			page.url.searchParams.get('token') ?? ''
-		)
-	);
+		);
+		const timer = setInterval(reload, 60000);
+		return () => {
+			clearInterval(timer);
+			close();
+		};
+	});
 </script>
 
 <svelte:head>

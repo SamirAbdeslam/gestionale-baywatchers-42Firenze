@@ -14,12 +14,13 @@
 
 	const registered = $derived(data.events.find((event) => event.id === form?.registeredEventId));
 	let activated = $state<{ week: number } | null>(null);
+	const reload = () => invalidate('app:calendar');
 	onMount(() =>
 		listenRealtime((event) => {
 			if (event.type === 'log_created') return;
 			if (event.type === 'week_activated') activated = { week: event.week };
-			void invalidate('app:calendar');
-		})
+			void reload();
+		}, reload)
 	);
 </script>
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { listenRealtime } from '../../src/lib/realtime.ts';
-import { publish } from '../../src/lib/server/realtime/bus.ts';
+import { publish, listenerCount } from '../../src/lib/server/realtime/bus.ts';
 import { GET } from '../../src/routes/api/stream/+server.ts';
 import type { User } from '../../src/lib/server/auth/session.ts';
 vi.mock('#lib/server/env.ts', () => ({ readEnv: () => ({ DISPLAY_TOKEN: expectedToken }) }));
@@ -62,13 +62,13 @@ it.each([null, 'user', 'admin'] as const)(
 			token: 'PRIVATE_TOKEN'
 		} as Parameters<typeof publish>[0]);
 		expect(await decode(reader)).toBe(
-			'event: event_changed\ndata: {"eventId":12,"week":2,"action":"update"}\n\n'
+			'data: {"type":"event_changed","eventId":12,"week":2,"action":"update"}\n\n'
 		);
 		publish({ type: 'log_created', id: 42 });
 		publish({ type: 'week_activated', week: 3 });
 		if (role === 'admin')
-			expect(await decode(reader)).toBe('event: log_created\ndata: {"id":42}\n\n');
-		expect(await decode(reader)).toBe('event: week_activated\ndata: {"week":3}\n\n');
+			expect(await decode(reader)).toBe('data: {"type":"log_created","id":42}\n\n');
+		expect(await decode(reader)).toBe('data: {"type":"week_activated","week":3}\n\n');
 	}
 );
 it.each([undefined, '', 'wrong', 'x'.repeat(24)])(
@@ -101,7 +101,7 @@ it('never sends log_created on the display stream even with an admin session', a
 	publish({ type: 'log_created', id: 99 });
 	publish({ type: 'event_changed', eventId: null, week: null, action: 'update' });
 	expect(await decode(reader)).toBe(
-		'event: event_changed\ndata: {"eventId":null,"week":null,"action":"update"}\n\n'
+		'data: {"type":"event_changed","eventId":null,"week":null,"action":"update"}\n\n'
 	);
 });
 it('removes subscriptions and timers when the request aborts or the reader cancels', async () => {
@@ -131,38 +131,72 @@ it('supports more than ten simultaneous connections and closes them independentl
 	for (const stream of streams.slice(1)) await stream.reader.cancel();
 	expect(vi.getTimerCount()).toBe(0);
 });
-class FakeSource extends EventTarget {
+it('rejects the 501st connection without adding a listener and admits one after cleanup', async () => {
+	const streams = await Promise.all(Array.from({ length: 500 }, () => open()));
+	expect(listenerCount()).toBe(500);
+	await expect(open()).rejects.toMatchObject({ status: 503 });
+	expect(listenerCount()).toBe(500);
+	expect(vi.getTimerCount()).toBe(500);
+	await streams[0].reader.cancel();
+	const replacement = await open();
+	expect(replacement.response.status).toBe(200);
+	await replacement.reader.cancel();
+	for (const stream of streams.slice(1)) await stream.reader.cancel();
+	expect(listenerCount()).toBe(0);
+	expect(vi.getTimerCount()).toBe(0);
+});
+class FakeSource {
 	static instances: FakeSource[] = [];
 	closed = false;
+	onmessage: ((message: MessageEvent<string>) => void) | null = null;
+	onopen: (() => void) | null = null;
 	constructor(public url: string) {
-		super();
 		FakeSource.instances.push(this);
 	}
 	close() {
 		this.closed = true;
 	}
 }
-it('uses the native EventSource URL, validates messages and removes handlers on cleanup', () => {
+it('uses the native EventSource URL, validates messages and closes on cleanup', () => {
 	vi.stubGlobal('EventSource', FakeSource);
 	const handler = vi.fn();
-	const close = listenRealtime(handler, 'token &?');
+	const close = listenRealtime(handler, () => {}, 'token &?');
 	const source = FakeSource.instances.at(-1)!;
 	expect(source.url).toBe('/api/stream?token=token+%26%3F');
-	source.dispatchEvent(
-		new MessageEvent('week_activated', { data: '{"week":2,"private":"hidden"}' })
+	source.onmessage!(
+		new MessageEvent('message', { data: '{"type":"week_activated","week":2,"private":"hidden"}' })
 	);
 	expect(handler).toHaveBeenCalledExactlyOnceWith({ type: 'week_activated', week: 2 });
-	for (const data of ['not-json', '{"week":0}', '{"week":5}', '{}'])
-		source.dispatchEvent(new MessageEvent('week_activated', { data }));
+	for (const data of [
+		'not-json',
+		'{"type":"week_activated","week":0}',
+		'{"type":"week_activated","week":5}',
+		'{}'
+	])
+		source.onmessage!(new MessageEvent('message', { data }));
 	expect(handler).toHaveBeenCalledTimes(1);
 	close();
 	expect(source.closed).toBe(true);
-	source.dispatchEvent(new MessageEvent('week_activated', { data: '{"week":3}' }));
-	expect(handler).toHaveBeenCalledTimes(1);
 });
 it('omits the token query on authenticated page streams', () => {
 	vi.stubGlobal('EventSource', FakeSource);
-	const close = listenRealtime(() => {});
+	const close = listenRealtime(
+		() => {},
+		() => {}
+	);
 	expect(FakeSource.instances.at(-1)!.url).toBe('/api/stream');
+	close();
+});
+it('reloads on a reopened stream but not on its first successful open', () => {
+	vi.stubGlobal('EventSource', FakeSource);
+	const reload = vi.fn();
+	const close = listenRealtime(() => {}, reload);
+	const source = FakeSource.instances.at(-1)!;
+	source.onopen!();
+	expect(reload).not.toHaveBeenCalled();
+	source.onopen!();
+	expect(reload).toHaveBeenCalledTimes(1);
+	source.onopen!();
+	expect(reload).toHaveBeenCalledTimes(2);
 	close();
 });
