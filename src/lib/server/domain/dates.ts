@@ -79,3 +79,19 @@ export function formatEventDate(date: string | null, locale: string): string {
 		)
 		.join('');
 }
+
+export function visibleWeekDays(
+	events: { weekday: number }[],
+	poolStart: string | null,
+	week: number
+) {
+	const dates = computeWeekDayDates(poolStart, week);
+	return [
+		1,
+		2,
+		3,
+		4,
+		5,
+		...[6, 7].filter((day) => events.some((event) => event.weekday === day))
+	].map((weekday) => ({ weekday, date: dates[weekday - 1] }));
+}

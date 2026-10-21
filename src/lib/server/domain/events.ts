@@ -65,18 +65,13 @@ const updateSchema = z.strictObject({ id, ...editable }).refine(timeOrder);
 const deleteSchema = z.strictObject({ id });
 const bulkSchema = z.strictObject({ week, weekday, confirm: z.literal('yes') });
 
-export async function listWeekEvents(
-	database: typeof db,
-	actor: User | null,
-	input: unknown,
-	poolStart: string | null
-) {
-	assertAdmin(actor);
+// Page-specific loaders authorize access before reading participants.
+export async function readWeekEvents(database: typeof db, input: number) {
 	const rows = await database
 		.select({ event: events, participant: registrations })
 		.from(events)
 		.leftJoin(registrations, eq(registrations.eventId, events.id))
-		.where(eq(events.week, week.parse(input)))
+		.where(eq(events.week, weekNumber.parse(input)))
 		.orderBy(events.weekday, events.startTime, events.id, registrations.participantLogin);
 	const grouped = new Map<
 		number,
@@ -90,7 +85,18 @@ export async function listWeekEvents(
 		}
 		if (row.participant) event.participants.push(row.participant);
 	}
-	return [...grouped.values()].map((event) => ({
+	return [...grouped.values()];
+}
+
+export async function listWeekEvents(
+	database: typeof db,
+	actor: User | null,
+	input: unknown,
+	poolStart: string | null
+) {
+	assertAdmin(actor);
+	const rows = await readWeekEvents(database, week.parse(input));
+	return rows.map((event) => ({
 		...event,
 		concreteDate: concreteDate(event, poolStart),
 		registeredCount: event.participants.length,
