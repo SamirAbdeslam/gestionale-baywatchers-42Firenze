@@ -141,5 +141,22 @@
 	"whitelist_empty": "La whitelist è vuota",
 	"whitelist_added_at": "Aggiunto il",
 	"registration_not_registered_login": "{login} non è iscritto a questo evento",
-	"error_event_date_weekday": "La data specifica non corrisponde al giorno della settimana"
+	"error_event_date_weekday": "La data specifica non corrisponde al giorno della settimana",
+	"error_event_date_unset": "Impossibile determinare la data dell'evento. Impostare la data di inizio pool.",
+	"calendar_week": "Settimana {week}",
+	"calendar_previous": "Settimana precedente",
+	"calendar_next": "Settimana successiva",
+	"calendar_events": "Eventi della settimana",
+	"calendar_empty": "Nessun evento",
+	"calendar_registered_count": "{count}/{slots} iscritti",
+	"calendar_register": "Iscriviti",
+	"calendar_unregister": "Disiscriviti",
+	"calendar_passed": "Passato",
+	"calendar_full": "Completo",
+	"calendar_participants": "Partecipanti",
+	"calendar_absent": "Non partecipato",
+	"calendar_add": "Aggiungi al calendario",
+	"calendar_google": "Google Calendar",
+	"calendar_ics": "Scarica file ICS",
+	"calendar_your_registration": "La tua iscrizione"
 }

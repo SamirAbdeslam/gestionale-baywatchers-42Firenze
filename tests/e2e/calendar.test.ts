@@ -1,0 +1,187 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import postgres from 'postgres';
+import { expect, test, type APIRequestContext } from '@playwright/test';
+const databaseUrl =
+	process.env.DATABASE_URL ?? 'postgres://bay:bay@localhost:5432/baywatchers_test';
+assert.equal(new URL(databaseUrl).pathname, '/baywatchers_test');
+let client: ReturnType<typeof postgres>;
+test.beforeAll(() => {
+	client = postgres(databaseUrl, { onnotice: () => {} });
+});
+test.afterAll(() => client.end());
+const origin = 'http://localhost:4173';
+async function setup(request: APIRequestContext, admin = false, dates = true) {
+	const name = `m7_${randomUUID().replaceAll('-', '').slice(0, 16)}`;
+	const response = await request.post('/auth/dev', {
+		form: { mode: 'create', login: name, ...(admin ? { admin: 'on' } : {}) },
+		headers: { origin, accept: 'text/html' },
+		maxRedirects: 0
+	});
+	expect(response.status()).toBe(303);
+	const [settings] = await client`SELECT * FROM settings WHERE id=1`;
+	const savedEvents = await client`SELECT * FROM events WHERE week=2`;
+	const savedRegistrations =
+		await client`SELECT r.* FROM registrations r JOIN events e ON r.event_id=e.id WHERE e.week=2`;
+	await client`DELETE FROM events WHERE week=2`;
+	await client`UPDATE settings SET active_week=2,max_events_per_user=0,pool_start=null,pool_end=null WHERE id=1`;
+	await client`INSERT INTO whitelist(login) VALUES (${name})`;
+	const [event] =
+		await client`INSERT INTO events(title,week,weekday,event_date,start_time,end_time,max_slots,compensation) VALUES (${'<img src=x onerror=alert(1)> ' + name},2,1,${dates ? '2099-01-05' : null},'09:00','11:00',3,200) RETURNING id,title`;
+	await client`INSERT INTO registrations(event_id,participant_login,attended) VALUES (${event.id},${name + '_visible'},true),(${event.id},${name + '_hidden'},false)`;
+	return {
+		name,
+		id: event.id as number,
+		title: event.title as string,
+		cleanup: async () => {
+			await client.begin(async (tx) => {
+				await tx`DELETE FROM events WHERE week=2`;
+				if (savedEvents.length) await tx`INSERT INTO events ${tx(savedEvents)}`;
+				if (savedRegistrations.length)
+					await tx`INSERT INTO registrations ${tx(savedRegistrations)}`;
+				await tx`UPDATE settings SET ${tx(settings, 'pool_start', 'pool_end', 'active_week', 'display_week', 'max_events_per_user', 'updated_at')} WHERE id=1`;
+				await tx`DELETE FROM action_logs WHERE actor_login=${name}`;
+				await tx`DELETE FROM whitelist WHERE login=${name}`;
+				await tx`DELETE FROM users WHERE login=${name}`;
+			});
+		}
+	};
+}
+for (const javaScriptEnabled of [true, false])
+	test.describe(`calendar JavaScript ${javaScriptEnabled}`, () => {
+		test.use({ javaScriptEnabled });
+		test(
+			'navigates available weeks, redacts absences, registers, opens calendar links, downloads ICS and unregisters',
+			{ tag: '@shared-db' },
+			async ({ page }) => {
+				const fixture = await setup(page.request);
+				try {
+					let alerts = 0;
+					page.on('dialog', async (dialog) => {
+						alerts++;
+						await dialog.dismiss();
+					});
+					const [full] =
+						await client`INSERT INTO events(title,week,weekday,event_date,start_time,end_time,max_slots) VALUES (${'Full ' + fixture.name},2,2,'2099-01-06','09:00','10:00',1) RETURNING id`;
+					await client`INSERT INTO registrations(event_id,participant_login,attended) VALUES (${full.id},${fixture.name + '_full_hidden'},false)`;
+					await client`INSERT INTO events(title,week,weekday,event_date,start_time,end_time) VALUES (${'Past ' + fixture.name},2,3,'2000-01-05','09:00','10:00'),(${'Sunday ' + fixture.name},2,7,'2099-01-11','09:00','10:00')`;
+					await page.goto('/calendar?week=4');
+					await expect(
+						page.getByRole('heading', { name: 'Settimana 2', exact: true })
+					).toBeVisible();
+					await expect(
+						page.getByRole('link', { name: 'Settimana successiva', exact: true })
+					).toHaveCount(0);
+					await expect(page.getByRole('heading', { name: /Domenica/ })).toHaveCount(1);
+					await expect(page.getByRole('heading', { name: /Sabato/ })).toHaveCount(0);
+					await page.getByRole('link', { name: 'Settimana precedente', exact: true }).click();
+					await expect(page).toHaveURL('/calendar?week=1');
+					await expect(
+						page.getByRole('link', { name: 'Settimana precedente', exact: true })
+					).toHaveCount(0);
+					await page.getByRole('link', { name: 'Settimana successiva', exact: true }).click();
+					const article = page.getByRole('article', { name: fixture.title, exact: true });
+					await expect(article).toContainText('2/3 iscritti');
+					await expect(article).toContainText('200 ₳');
+					await expect(article).toContainText('09:00–11:00');
+					await expect(article).toContainText(fixture.name + '_visible');
+					expect(await page.content()).not.toContain(fixture.name + '_hidden');
+					expect(await page.content()).not.toContain(fixture.name + '_full_hidden');
+					await expect(article.locator('img')).toHaveCount(0);
+					await expect(
+						page.getByRole('article', { name: 'Full ' + fixture.name, exact: true })
+					).toContainText('Completo');
+					await expect(
+						page
+							.getByRole('article', { name: 'Past ' + fixture.name, exact: true })
+							.getByRole('button')
+					).toHaveCount(0);
+					await article.getByRole('button', { name: 'Iscriviti', exact: true }).click();
+					const dialog = page.getByRole('dialog', { name: 'Aggiungi al calendario', exact: true });
+					await expect(dialog).toBeVisible();
+					const google = new URL(
+						(await dialog
+							.getByRole('link', { name: 'Google Calendar', exact: true })
+							.getAttribute('href'))!
+					);
+					expect(google.searchParams.get('text')).toBe(fixture.title);
+					expect(google.searchParams.get('dates')).toBe('20990105T080000Z/20990105T100000Z');
+					const downloadPromise = page.waitForEvent('download');
+					await dialog.getByRole('link', { name: 'Scarica file ICS', exact: true }).click();
+					const download = await downloadPromise;
+					expect(download.suggestedFilename()).toBe(`evento_${fixture.id}.ics`);
+					expect(await download.failure()).toBeNull();
+					const ics = await readFile((await download.path())!, 'utf8');
+					expect(ics).toContain('DTSTART;TZID=Europe/Rome:20990105T090000');
+					expect(ics.match(/BEGIN:VALARM/g)).toHaveLength(3);
+					await dialog.getByRole('button', { name: 'Annulla', exact: true }).click();
+					await expect(dialog).not.toBeVisible();
+					await expect(article.locator('strong')).toHaveText(fixture.name);
+					await expect(article).toContainText('3/3 iscritti');
+					await article.getByRole('button', { name: 'Disiscriviti', exact: true }).first().click();
+					await expect(
+						article.getByRole('button', { name: 'Iscriviti', exact: true })
+					).toBeVisible();
+					await expect(page.getByRole('dialog')).toHaveCount(0);
+					expect((await page.request.get('/participants/123')).status()).toBe(404);
+					expect((await page.request.get('/events/2147483647/calendar.ics')).status()).toBe(404);
+					expect((await page.request.get('/events/0x2/calendar.ics')).status()).toBe(400);
+					expect(
+						(
+							await client`SELECT action_type FROM action_logs WHERE actor_login=${fixture.name} AND action_type<>'LOGIN' ORDER BY id`
+						).map((row) => row.action_type)
+					).toEqual(['REGISTER_EVENT', 'UNREGISTER_EVENT']);
+					if (javaScriptEnabled) {
+						await page.setViewportSize({ width: 360, height: 800 });
+						expect(
+							await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
+						).toBe(true);
+					}
+					expect(alerts).toBe(0);
+				} finally {
+					await fixture.cleanup();
+				}
+			}
+		);
+	});
+test(
+	'omits Google links without a date and returns the explicit ICS conflict',
+	{ tag: '@shared-db' },
+	async ({ page }) => {
+		const fixture = await setup(page.request, false, false);
+		try {
+			await page.goto('/calendar');
+			await page
+				.getByRole('article', { name: fixture.title, exact: true })
+				.getByRole('button', { name: 'Iscriviti', exact: true })
+				.click();
+			const dialog = page.getByRole('dialog');
+			await expect(dialog).toBeVisible();
+			await expect(dialog.getByRole('link', { name: 'Google Calendar', exact: true })).toHaveCount(
+				0
+			);
+			const response = await page.request.get(`/events/${fixture.id}/calendar.ics`);
+			expect(response.status()).toBe(409);
+			expect(await response.text()).toContain("Impossibile determinare la data dell'evento");
+		} finally {
+			await fixture.cleanup();
+		}
+	}
+);
+test(
+	'admins see absent participants while counts include all registrations',
+	{ tag: '@shared-db' },
+	async ({ page }) => {
+		const fixture = await setup(page.request, true);
+		try {
+			await page.goto('/calendar');
+			const article = page.getByRole('article', { name: fixture.title, exact: true });
+			await expect(article).toContainText(fixture.name + '_hidden');
+			await expect(article).toContainText('Non partecipato');
+			await expect(article).toContainText('2/3 iscritti');
+		} finally {
+			await fixture.cleanup();
+		}
+	}
+);
