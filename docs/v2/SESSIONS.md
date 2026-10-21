@@ -967,3 +967,100 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 **Verifica stack HTTPS dopo la ricostruzione**
 - `docker compose up -d --build --wait`: exit code 0, app/Postgres healthy e nginx running sulle porte 8080/8443. Nessun volume eliminato.
 - Con CA locale esplicita e verifica TLS attiva: health HTTPS 200, admin anonimo 303, redirect HTTP 8080 verso HTTPS 8443 con 308. Nessuna scrittura sul database applicativo durante la prova.
+
+## 2026-10-20 — Seconda revisione M4–M6 — interrotta su richiesta di Ismail
+
+**Fatto**
+- Arresto richiesto da Ismail per spegnere il PC. Controllo in corso interrotto con Ctrl-C (exit 130); modifiche salvate nei file del working tree, senza commit o push della seconda revisione. M7 non iniziato.
+- Prima revisione R1–R6/Ponytail 1–4 implementata e pubblicata fino a `3252bb5`, controlli locali verdi (92 unit, 185 integration, 40 e2e). CI 39448520312 annullata automaticamente quando è arrivato il commit di note `c58b1c7`; cinque job verdi, e2e annullato. Non registrare quella run come interamente verde.
+- Letta e inclusa la seconda nota di Ismail in `c58b1c7`, ora HEAD del checkout. In lavorazione R7 e Ponytail 5–14, tutti implementati nel working tree ma ancora da validare completamente.
+- R7: discriminated union preset/custom per la creazione; controllo data specifica/giorno ISO in creazione e, usando la data salvata sotto lock, in modifica; chiave `error_event_date_weekday` anche nell'adattatore e nei toast. Rimosse parse, assertion e capitalizzazioni duplicate.
+- Helper `lockAdmin` e costante `loginPattern` in guards, riutilizzati in eventi/whitelist/iscrizioni e login dev; metadati delle eliminazioni massive passati dai chiamanti; snippet confirmDelete e costante weeks in admin; whitelist classificata in un solo passaggio con Set e senza deduplicazione superflua dei duplicati.
+- Iscrizioni: helper passed per settings/data passata e un solo INSERT dopo i controlli di register/add.
+- Dialog in prova con commandfor/show-modal/close nativi, senza onMount/ready/details. Deve essere mantenuto SOLO se gli e2e con e senza JavaScript passano in tutti i progetti; altrimenti ripristinare il Dialog da HEAD e documentarlo come richiesto da Ponytail 11.
+
+**Commit**
+- Prima revisione già pubblicata: `974c4b3`, `697bab9`, `5e7b5c8`, `3252bb5`.
+- HEAD `c58b1c7` contiene la seconda nota di Ismail. Nessun commit della seconda revisione.
+
+**Controlli**
+- Seconda revisione: lint e svelte-check verdi nell'ultima esecuzione interrotta; nessun errore o warning TypeScript.
+- Esecuzione precedente: 185 integration verdi e una fallita (totale 186) perché il vecchio fixture del test di concorrenza modifica/iscrizione aveva data 2026-10-20 (martedì) ma weekday 1. Corretto SOLO quel fixture e il relativo payload a weekday 2 in `tests/integration/registrations.test.ts`; nuova esecuzione interrotta prima dei test su richiesta di Ismail. La correzione resta da verificare.
+- Aggiunta integration R7 in review.test.ts: creazione incoerente 400, creazione coerente ammessa, modifica incoerente 400 senza cambiamenti a evento/audit/notifiche, modifica coerente ammessa. Aggiornato il fixture custom del 2027-01-01 a weekday 5 (venerdì).
+- Test e2e senza JavaScript esteso con apertura/chiusura nativa di dialog singolo e massivo. Non ancora eseguito sulla seconda revisione.
+- Log temporanei: `/tmp/baywatchers-review2-ci.log`, `/tmp/baywatchers-review2-check.log` (potrebbero scomparire al riavvio).
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna nuova dipendenza o modifica a schema/legacy/piano. Modifiche locali conservate nel checkout abituale, branch `v2.0.0`.
+
+**Domande / blocchi**
+- Nessun blocco tecnico aperto: lavoro fermato esplicitamente dall'utente. Login 42 reale resta la verifica manuale già prevista.
+
+**Prossimo passo**
+- Riprendere soltanto quando Ismail lo richiede. Rileggere entrambe le note, piano e questa voce; verificare git status e conservare le modifiche locali.
+- Rieseguire `pnpm ci:local`: attesi 92 unit, 186 integration e 40 e2e. Verificare soprattutto R7 e Dialog nativo; eventuali fixture incoerenti vanno corretti rispetto alla nuova regola, senza allentarla.
+- Docker al momento dell'arresto: soltanto Postgres dev healthy su 127.0.0.1:5432; stack completo app/nginx fermato per i test. Dopo i controlli ripristinare lo stack con `docker compose -f compose.dev.yaml down` e `docker compose up -d --build --wait`, senza eliminare volumi, e provare HTTPS con CA locale esplicita su 8080/8443.
+- Completare commit piccoli della seconda revisione, diario, push e `gh run watch --exit-status` con tutti i sei job verdi; registrare poi la chiusura complessiva delle due revisioni. Non iniziare M7.
+
+## 2026-10-21 — Seconda revisione M4–M6 — bloccata alla ripresa
+
+**Fatto**
+- Ripresa autorizzata da Ismail con Ponytail e Caveman. Riletta la voce di interruzione; verificati HEAD `c58b1c7` e modifiche locali conservate, inclusi i test aggiornati. Nessuna modifica al codice in questa ripresa; M7 non iniziato.
+
+**Commit**
+- Nessuno; modifiche della seconda revisione ancora nel working tree.
+
+**Controlli**
+- `docker compose -f compose.dev.yaml ps`: fallito perché Docker non è disponibile nella distribuzione WSL 2 corrente. Messaggio: "The command 'docker' could not be found in this WSL 2 distro", con richiesta di attivare l'integrazione WSL in Docker Desktop.
+- `pnpm ci:local`: fallito immediatamente allo stesso prerequisito Docker, prima di eseguire lint o test.
+- Nessun push o nuova CI. Non sono state tentate installazioni, alternative o altre configurazioni.
+
+**Decisioni prese dentro il perimetro del piano**
+- Arresto al blocco di ambiente, come richiesto da PLAN.md §1.2 e dalle regole di Ismail.
+
+**Domande / blocchi**
+- Ismail deve avviare Docker Desktop e verificare Settings → Resources → WSL Integration per la distribuzione corrente, poi eseguire `docker version`.
+
+**Prossimo passo**
+- Dopo la disponibilità di Docker, riprendere dalla voce di interruzione del 2026-10-20: rieseguire `pnpm ci:local`, verificare R7 e dialog nativi con/senza JavaScript, completare commit/diario/push/CI e ripristinare HTTPS 8080/8443. Non iniziare M7.
+
+## 2026-10-21 — Seconda revisione M4–M6 — controlli locali completati
+
+**Fatto**
+- Ripresa autorizzata con Ponytail e Caveman. Docker nuovamente disponibile; conservate tutte le modifiche e le note delle interruzioni del 2026-10-20/21. Completati R7 e Ponytail 5–14; nessun punto già completamente risolto all'inizio della seconda revisione. M7 non iniziato.
+- **R7:** la data specifica deve coincidere con il giorno ISO scelto. Creazione incoerente respinta; modifica confrontata con la data già salvata, letta sotto il lock esistente. Risposta 400 con chiave dedicata `error_event_date_weekday`, senza scritture, audit o notifiche. Creazione e modifica coerenti consentite.
+- **Ponytail 5:** helper `lockAdmin(tx, actor)` in guards: restituisce la riga utente bloccata e verifica il ruolo attuale. Riutilizzato nelle quattro mutazioni eventi, nelle due whitelist e nel ramo admin delle iscrizioni; conservato l'ordine utente prima di evento.
+- **Ponytail 6:** metadati dell'audit delle eliminazioni massive passati esplicitamente dai tre chiamanti; rimosse le catene di ternari in deleteMatching, con descrizioni e resourceId invariati.
+- **Ponytail 7:** snippet confirmDelete(action, hidden) unico per le tre conferme massive; conservati campi hidden, checkbox obbligatorio, progressive enhancement e validazione lato dominio.
+- **Ponytail 8:** unica costante loginPattern in guards usata da login dev, iscrizioni e whitelist. Whitelist classificata in un solo passaggio in Set validi/non validi; conservati normalizzazione e messaggi.
+- **Ponytail 9:** creazione eventi con discriminatedUnion per kind, ramo custom con titolo e compenso obbligatori e ramo preset con valori facoltativi validati. Eliminati la seconda parse del titolo e la non-null assertion sul compenso; preservati default e valori fidati dei preset.
+- **Ponytail 10:** eliminate le due capitalizzazioni finali duplicate; custom già trasformati dagli schemi e preset già corretti.
+- **Ponytail 11:** mantenuti i comandi nativi commandfor/show-modal/close: apertura, annullamento e conferma passano con e senza JavaScript nei progetti desktop/mobile. Eliminati onMount, ready e fallback details. Conservata la chiusura del dialog al submit dei form enhanced.
+- **Ponytail 12:** helper locale passed per configurazione e controllo data passata; unico INSERT per iscrizione utente e aggiunta admin dopo i rispettivi controlli. Ordine dei controlli, bypass admin, audit e notifiche invariati.
+- **Ponytail 13:** costante weeks riutilizzata nelle tre select admin.
+- **Ponytail 14:** restituito direttamente duplicates, già unico grazie alla deduplicazione dei validi.
+
+**Commit**
+- `c4465e6` `fix(events): enforce matching specific dates and weekdays`.
+- `b20f12d` `refactor: reuse admin guards and native event confirmations`.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0; 92 unit, 186 integration, 40 e2e; lint/check e build verdi, svelte-check senza errori o warning.
+- Integration R7: 400 dedicato in creazione e modifica incoerenti; nessuna modifica a evento, audit o notifiche; successo con giorno coerente. Conservate tutte le verifiche della prima revisione, concorrenza e rollback.
+- Corretti due fixture antecedenti alla nuova regola: custom del 2027-01-01 impostato a venerdì; evento del test concorrenza del 2026-10-20 e relativo update impostati a martedì.
+- E2E desktop/mobile: il vecchio tentativo di spostare a lunedì l'evento di domenica 2027-01-31 ora verifica prima il rifiuto R7, poi salva con domenica. Il test senza JavaScript verifica apertura e annullamento di un dialog massivo e singolo, quindi conferma eliminazione singola. Corretto il selettore del test che cercava "Elimina settimana" invece dell'etichetta effettiva "Elimina eventi della settimana"; quel timeout non dipendeva dal supporto ai comandi nativi.
+- `git diff --check`: verde. Nessuna modifica a piano, schema, dipendenze o legacy; note precedenti preservate.
+
+**Decisioni prese dentro il perimetro del piano**
+- Comandi nativi mantenuti soltanto dopo la verifica richiesta da Ponytail 11, senza introdurre fallback o dipendenze aggiuntive. Nessun nuovo file per la seconda revisione.
+- Applicati Ponytail e Caveman. Graphify già consultato nella prima revisione per le funzioni legacy; nessuna ricostruzione del grafo.
+
+**Domande / blocchi**
+- Blocco Docker risolto. Nessun altro blocco tecnico. Login 42 reale resta la verifica manuale di Ismail già prevista.
+
+**Prossimo passo**
+- Terminare ricostruzione e prova HTTPS, pubblicare i commit e verificare tutti i sei job CI; registrare la chiusura complessiva delle due revisioni. Non iniziare M7.
+
+**Verifica stack HTTPS dopo la ricostruzione**
+- `docker compose up -d --build --wait`: exit code 0, app/Postgres healthy e nginx running sulle porte 8080/8443; nessun volume eliminato.
+- Health HTTPS 200, admin anonimo 303 e redirect HTTP 8080 verso HTTPS 8443 con 308, verificati con CA locale esplicita e TLS attivo. Nessuna scrittura sul database applicativo durante la prova.
