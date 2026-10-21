@@ -1337,3 +1337,40 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M9: real-time SSE, da avviare alla prossima richiesta.
+
+## 2026-10-21 — M9 — implementazione e controlli locali
+
+**Fatto**
+- Riletti piano e ultima chiusura della revisione M7–M8, branch `v2.0.0` e working tree inizialmente pulito. Implementato §10 e collegamenti real-time di calendario/display/admin/log; M10 non iniziato.
+- Endpoint GET `/api/stream` con eventi SSE nominati, Content-Type text/event-stream, Cache-Control no-cache e X-Accel-Buffering no. Ping iniziale per rendere subito disponibile la connessione, poi heartbeat ogni 25 secondi. Su abort della richiesta o cancellazione del reader vengono rimossi iscrizione al bus, timer e listener di abort.
+- Stream anonimo pubblico se DISPLAY_TOKEN è vuoto, altrimenti token corretto obbligatorio con 404 generico. Gli utenti autenticati usano la sessione per il calendario; il display passa il token della propria URL, anche vuoto. La presenza del parametro token identifica lo stream del display, che riceve soltanto eventi pubblici anche con una sessione admin. Bypass admin conservato; ruolo acquisito all'apertura come previsto dal piano.
+- `log_created` inviato soltanto agli admin sugli stream delle pagine autenticate. Payload pubblici limitati a eventId/week/action o week; payload log limitato all'id. Schema Zod condiviso valida i messaggi e rimuove eventuali campi estranei prima del trasporto; nessun dato personale, dettaglio audit o token trasmesso negli eventi.
+- Unico helper `src/lib/realtime.ts` con EventSource nativo, riconnessione nativa, listener per i tre eventi e cleanup esplicito. Messaggi malformati ignorati. Tipi del bus derivati dallo stesso schema e riesportati dal percorso esistente, senza cambiare i chiamanti.
+- Calendario: invalidate app:calendar su event_changed/week_activated; dialog nativo automatico con messaggio i18n della settimana attivata. Display: invalidate app:display sui due eventi pubblici, senza pulsanti o reload. Admin: dipendenza app:admin e aggiornamento anche sui log per riflettere limite eventi/reset display che pubblicano soltanto log_created. Log: collegamento app:logs e caricamento minimo per la dipendenza; pagina completa, evidenziazione e banner restano in M13.
+- Bus ancora in memoria per una sola istanza, come previsto; eliminata la soglia di avviso di dieci listener per consentire più connessioni SSE contemporanee. Cleanup verificato con venti stream.
+- Individuata e corretta una regressione introdotta dagli aggiornamenti SSE: SvelteKit 3 conserva il risultato del form nelle props ma azzera page.form durante l'invalidazione; il Toast nel layout perdeva il messaggio dopo alcune eliminazioni. Messaggi del layout conservati fino alla navigazione successiva, con timer/dismiss del Toast invariati. Prova specifica con un secondo aggiornamento da un'altra sessione e test precedenti di eliminazione ancora verdi.
+
+**Commit**
+- `98e6357` `feat(realtime): add filtered SSE streams and native subscriptions`.
+- `1fe2bc9` `feat(realtime): refresh live views and announce week activation`.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 121 unit, 217 integration, 68 e2e; lint/check e build verdi, svelte-check senza errori o warning.
+- Quindici nuovi unit: header e framing SSE, ping iniziale e intervallo esatto 25 secondi con timer finti, pubblico/utente/admin e filtro audit, quattro token errati, token valido/sessione/bypass admin, display admin privo di log, redazione di campi estranei, abort/cancel e richiesta già abortita, venti connessioni con cleanup, URL codificata dell'EventSource, validazione client e rimozione degli handler.
+- Sei nuovi e2e desktop/mobile: attivazione settimana da seconda sessione con dialog utente e aggiornamento admin/log senza reload; feedback del form conservato dopo SSE; capienza e login presenti aggiornati nel display pubblico con token inoltrato, assenza che mantiene occupato il posto, sola lettura; riconnessione nativa dopo una risposta SSE chiusa e ricezione degli eventi successivi. I test ripristinano impostazioni, eventi e iscrizioni preesistenti.
+- Test precedenti, matrice dei permessi, flussi senza JavaScript e sei prove WebKit ancora verdi. Aggiornata solo la fixture dell'integration adminLoad con depends richiesto dal nuovo caricamento.
+- Prima validazione interrotta da un cast della fixture da aggiornare; poi la prova admin ha evidenziato il Toast perso. Analizzati trace di rete e runtime SvelteKit installato con investigate-first prima della correzione. Corretto anche un selettore ambiguo del nuovo test (regione e input con lo stesso nome), usando il ruolo spinbutton. Cinque prove browser mirate verdi prima del controllo completo finale.
+- Stack completo ricostruito con `docker compose up -d --build --wait`: exit code 0, app/Postgres healthy e nginx running su 8080/8443; nessun volume eliminato.
+- HTTPS con CA locale esplicita: stream 200 con ping immediato e secondo heartbeat reale dopo 25 secondi attraverso nginx, senza buffering; Cache-Control no-cache conservato. Connessione chiusa dopo la prova. URI dello stream presente nei log nginx, token assente. Health 200, admin anonimo 303, ICS anonimo 401 e HTTP 308 con percorso/query preservati. Nessuna scrittura sul DB applicativo durante la prova.
+- `git diff --check`: verde. Nessuna modifica a schema, dipendenze o legacy; note originali preservate.
+
+**Decisioni prese dentro il perimetro del piano**
+- Helper client/schema nello stesso file richiesto da §10; nuovo caricamento minimo dei log per dichiarare depends e relativi test protocollo/browser. Nessuna anticipazione della UI M13.
+- Header globale private/no-store conservato per le altre risposte, esclusi soltanto i response text/event-stream per rispettare no-cache richiesto da §10. Nessuna nuova dipendenza.
+- Graphify consultato per emit_event_update, emit_log_update e week_activated legacy, con i percorsi del grafo precedenti allo spostamento sotto legacy; nessuna ricostruzione. Applicati Ponytail e Caveman.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Login 42 reale resta la verifica manuale di Ismail già prevista. Il bus resta limitato a una singola istanza applicativa.
+
+**Prossimo passo**
+- Pubblicare M9 e verificare tutti i sei job CI, poi aggiornare soltanto lo Stato di M9 nel piano e registrare la chiusura. Non iniziare M10.
