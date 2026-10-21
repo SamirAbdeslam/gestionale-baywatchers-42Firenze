@@ -3,7 +3,12 @@ import { z } from 'zod';
 import type { register } from './domain/registrations.ts';
 import type { Notice } from '#lib/components/Toast.svelte';
 
-type Result = { ok: boolean; messages: Notice[]; status?: 400 | 403 | 404 };
+type Result = {
+	registeredEventId?: number;
+	ok: boolean;
+	messages: Notice[];
+	status?: 400 | 403 | 404;
+};
 export async function formAction(
 	event: RequestEvent,
 	mutate: (...args: Parameters<typeof register>) => Promise<unknown>,

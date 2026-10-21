@@ -1,5 +1,5 @@
 <script module lang="ts">
-	import { getLocale } from '#lib/paraglide/runtime.js';
+	import { formatNumber } from '#lib/format.ts';
 	import type { WhitelistNotice } from '#lib/server/domain/whitelist.ts';
 	import type { RegistrationNotice } from '#lib/server/domain/registrations.ts';
 	import { m as translations } from '#lib/paraglide/messages.js';
@@ -41,7 +41,7 @@
 			<p role={message.type === 'error' ? 'alert' : 'status'}>
 				{#if message.key === 'error_weekly_limit'}
 					{translations.error_weekly_limit({
-						count: new Intl.NumberFormat(getLocale()).format(message.params.count!)
+						count: formatNumber(message.params.count!)
 					})}
 				{:else}
 					{m[message.key](message.params)}

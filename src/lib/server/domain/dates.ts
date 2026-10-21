@@ -95,3 +95,13 @@ export function visibleWeekDays(
 		...[6, 7].filter((day) => events.some((event) => event.weekday === day))
 	].map((weekday) => ({ weekday, date: dates[weekday - 1] }));
 }
+
+export function formatWeekDates<
+	D extends { date: string | null },
+	E extends { date: string | null }
+>(data: { days: D[]; events: E[] }, locale: string) {
+	return {
+		days: data.days.map((day) => ({ ...day, date: formatEventDate(day.date, locale) })),
+		events: data.events.map((event) => ({ ...event, date: formatEventDate(event.date, locale) }))
+	};
+}

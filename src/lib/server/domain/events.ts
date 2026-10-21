@@ -29,13 +29,8 @@ const editable = {
 };
 const timeOrder = (value: { startTime: string; endTime: string }) =>
 	value.startTime < value.endTime;
-const datedWeekday = z
-	.object({ weekday: weekdayNumber, eventDate: isoDate.nullable() })
-	.refine(
-		({ weekday, eventDate }) =>
-			eventDate === null || (new Date(`${eventDate}T00:00:00Z`).getUTCDay() || 7) === weekday,
-		{ message: 'error_event_date_weekday' }
-	);
+const matchesWeekday = (weekday: number, eventDate: string | null) =>
+	eventDate === null || (new Date(`${eventDate}T00:00:00Z`).getUTCDay() || 7) === weekday;
 const createFields = {
 	...editable,
 	week,
@@ -56,10 +51,9 @@ const createSchema = z
 		})
 	])
 	.refine(timeOrder)
-	.superRefine((value, context) => {
-		const result = datedWeekday.safeParse(value);
-		if (!result.success)
-			context.addIssue({ code: 'custom', message: 'error_event_date_weekday', path: ['weekday'] });
+	.refine(({ weekday, eventDate }) => matchesWeekday(weekday, eventDate), {
+		message: 'error_event_date_weekday',
+		path: ['weekday']
 	});
 const updateSchema = z.strictObject({ id, ...editable }).refine(timeOrder);
 const deleteSchema = z.strictObject({ id });
@@ -163,7 +157,10 @@ export async function updateEvent(
 		const user = await lockAdmin(tx, actor);
 		const [before] = await tx.select().from(events).where(eq(events.id, id)).for('update');
 		if (!before) error(404, m.error_event_not_found());
-		datedWeekday.parse({ weekday: changes.weekday, eventDate: before.eventDate });
+		if (!matchesWeekday(changes.weekday, before.eventDate))
+			throw new z.ZodError([
+				{ code: 'custom', message: 'error_event_date_weekday', path: ['weekday'] }
+			]);
 		const [event] = await tx
 			.update(events)
 			.set({ ...changes, updatedAt: now })

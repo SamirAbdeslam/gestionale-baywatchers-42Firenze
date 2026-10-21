@@ -31,15 +31,23 @@ export default defineConfig({
 			use: { ...devices['Pixel 7'] }
 		},
 		{
+			name: 'webkit-shared',
+			testMatch: ['events.test.ts', 'calendar.test.ts'],
+			fullyParallel: false,
+			workers: 1,
+			dependencies: ['mobile-shared'],
+			use: { ...devices['Desktop Safari'], viewport: { width: 1280, height: 800 } }
+		},
+		{
 			name: 'chromium',
 			grepInvert: /@shared-db/,
-			dependencies: ['mobile-shared'],
+			dependencies: ['webkit-shared'],
 			use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } }
 		},
 		{
 			name: 'mobile',
 			grepInvert: /@shared-db/,
-			dependencies: ['mobile-shared'],
+			dependencies: ['webkit-shared'],
 			use: { ...devices['Pixel 7'] }
 		}
 	],

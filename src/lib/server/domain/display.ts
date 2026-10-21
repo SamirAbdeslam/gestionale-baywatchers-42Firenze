@@ -26,7 +26,6 @@ export async function advanceDisplayWeek(database: typeof db, now: Date) {
 	return database.transaction(async (tx) => {
 		const [config] = await tx.select().from(settings).where(eq(settings.id, 1)).for('update');
 		if (!config) throw new Error('Settings row is missing');
-		if (config.poolStart === null || config.displayWeek === 4) return config;
 		const candidates = await tx
 			.select({
 				week: events.week,

@@ -66,7 +66,11 @@ async function signup(id: number, login = user.login, attended = true) {
 it('registers with one audit and publishes only after the committed change', async () => {
 	const row = await event();
 	const result = await register(database, user, { id: String(row.id) }, info, now);
-	expect(result).toMatchObject({ ok: true, messages: [{ key: 'registration_registered' }] });
+	expect(result).toMatchObject({
+		ok: true,
+		registeredEventId: row.id,
+		messages: [{ key: 'registration_registered' }]
+	});
 	expect(await database.select().from(schema.registrations)).toMatchObject([
 		{ eventId: row.id, participantLogin: user.login, attended: true, registeredAt: now }
 	]);

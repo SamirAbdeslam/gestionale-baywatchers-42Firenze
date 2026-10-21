@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { EventKind } from '#lib/server/domain/kinds.ts';
-	import { getLocale } from '#lib/paraglide/runtime.js';
+	import { formatNumber } from '#lib/format.ts';
 	let {
 		event,
 		children
@@ -22,7 +22,7 @@
 	<h4>{event.title}</h4>
 	<p>{event.startTime}–{event.endTime}</p>
 	{#if event.date}<p>{event.date}</p>{/if}
-	<p>{new Intl.NumberFormat(getLocale()).format(event.compensation)} ₳</p>
+	<p>{formatNumber(event.compensation)} ₳</p>
 	{@render children()}
 </article>
 

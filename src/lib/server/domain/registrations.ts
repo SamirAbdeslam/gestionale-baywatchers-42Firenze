@@ -34,6 +34,7 @@ export type RegistrationNotice =
 	  }
 	| { type: 'success' | 'warning'; key: LoginKey; params: { login: string } };
 export type RegistrationResult = {
+	registeredEventId?: number;
 	ok: boolean;
 	messages: RegistrationNotice[];
 	status?: 400 | 403 | 404;
@@ -138,7 +139,8 @@ async function changeRegistration(
 				description = `Utente '${login}' registrato all'evento ${details}`;
 				result = {
 					ok: true,
-					messages: [{ type: 'success', key: 'registration_registered', params: {} }]
+					messages: [{ type: 'success', key: 'registration_registered', params: {} }],
+					registeredEventId: event.id
 				};
 			} else if (operation === 'add') {
 				const [existing] = await tx

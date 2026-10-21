@@ -1,18 +1,10 @@
 <script lang="ts">
 	import EventCard from '#lib/components/EventCard.svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import { getLocale } from '#lib/paraglide/runtime.js';
+	import { weekdays } from '#lib/weekdays.ts';
+	import { formatNumber } from '#lib/format.ts';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
-	const days = [
-		m.weekday_1,
-		m.weekday_2,
-		m.weekday_3,
-		m.weekday_4,
-		m.weekday_5,
-		m.weekday_6,
-		m.weekday_7
-	];
 </script>
 
 <svelte:head>
@@ -24,12 +16,12 @@
 </svelte:head>
 <div class="screen">
 	<h1>{m.display_title()}</h1>
-	<h2>{m.calendar_week({ week: new Intl.NumberFormat(getLocale()).format(data.week) })}</h2>
+	<h2>{m.calendar_week({ week: formatNumber(data.week) })}</h2>
 	<div class="display-grid" data-days={data.days.length}>
 		{#each data.days as day (day.weekday)}
 			<section aria-labelledby={`day-${day.weekday}`}>
 				<h3 id={`day-${day.weekday}`}>
-					{days[day.weekday - 1]()}{#if day.date}
+					{weekdays[day.weekday - 1]()}{#if day.date}
 						— {day.date}{/if}
 				</h3>
 				{#each data.events.filter((event) => event.weekday === day.weekday) as event (event.id)}
@@ -40,7 +32,7 @@
 								: event.state === 'full'
 									? m.calendar_full()
 									: m.display_free_slots({
-											count: new Intl.NumberFormat(getLocale()).format(event.freeSlots)
+											count: formatNumber(event.freeSlots)
 										})}
 						</p>
 						<ul aria-label={m.calendar_participants()}>

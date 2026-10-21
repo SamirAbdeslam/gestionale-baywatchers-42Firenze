@@ -4,19 +4,11 @@
 	import EventCard from '#lib/components/EventCard.svelte';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import { m } from '#lib/paraglide/messages.js';
-	import { getLocale } from '#lib/paraglide/runtime.js';
+	import { weekdays } from '#lib/weekdays.ts';
+	import { formatNumber } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
-	const days = [
-		m.weekday_1,
-		m.weekday_2,
-		m.weekday_3,
-		m.weekday_4,
-		m.weekday_5,
-		m.weekday_6,
-		m.weekday_7
-	];
-	const number = (value: number) => new Intl.NumberFormat(getLocale()).format(value);
+
 	const registered = $derived(data.events.find((event) => event.id === form?.registeredEventId));
 </script>
 
@@ -26,7 +18,7 @@
 	{#if data.week > 1}<a href="{resolve('/calendar')}?week={data.week - 1}"
 			>{m.calendar_previous()}</a
 		>{/if}
-	<h2>{m.calendar_week({ week: number(data.week) })}</h2>
+	<h2>{m.calendar_week({ week: formatNumber(data.week) })}</h2>
 	{#if data.week < data.activeWeek}<a href="{resolve('/calendar')}?week={data.week + 1}"
 			>{m.calendar_next()}</a
 		>{/if}
@@ -51,15 +43,15 @@
 	{#each data.days as day (day.weekday)}
 		<section aria-labelledby={`day-${day.weekday}`}>
 			<h3 id={`day-${day.weekday}`}>
-				{days[day.weekday - 1]()}{#if day.date}
+				{weekdays[day.weekday - 1]()}{#if day.date}
 					— {day.date}{/if}
 			</h3>
 			{#each data.events.filter((event) => event.weekday === day.weekday) as event (event.id)}
 				<EventCard {event}>
 					<p class:full={event.registeredCount >= event.maxSlots} class="capacity">
 						{m.calendar_registered_count({
-							count: number(event.registeredCount),
-							slots: number(event.maxSlots)
+							count: formatNumber(event.registeredCount),
+							slots: formatNumber(event.maxSlots)
 						})}
 					</p>
 					<ul aria-label={m.calendar_participants()}>

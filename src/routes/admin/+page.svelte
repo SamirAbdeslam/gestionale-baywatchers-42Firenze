@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import Dialog from '#lib/components/Dialog.svelte';
-	import { getLocale } from '#lib/paraglide/runtime.js';
+	import { weekdays } from '#lib/weekdays.ts';
+	import { formatNumber } from '#lib/format.ts';
 	import { m } from '#lib/paraglide/messages.js';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
@@ -14,16 +15,6 @@
 		welcome: m.event_kind_welcome,
 		custom: m.event_kind_custom
 	};
-	const number = (value: number) => new Intl.NumberFormat(getLocale()).format(value);
-	const days = [
-		m.weekday_1,
-		m.weekday_2,
-		m.weekday_3,
-		m.weekday_4,
-		m.weekday_5,
-		m.weekday_6,
-		m.weekday_7
-	];
 </script>
 
 <svelte:head><title>{m.nav_admin()} — {m.app_name()}</title></svelte:head>
@@ -53,7 +44,7 @@
 </form>
 <ul aria-label={m.admin_week_dates()}>
 	{#each data.dayDates as date, index (index)}<li>
-			{days[index]()}
+			{weekdays[index]()}
 			{date ?? m.admin_dates_unset()}
 		</li>{/each}
 </ul>
@@ -125,7 +116,7 @@
 	>
 	<label for={`${prefix}-weekday`}>{m.admin_event_weekday()}</label>
 	<select id={`${prefix}-weekday`} name="weekday" value={event?.weekday ?? 1}>
-		{#each days as day, index (index)}<option value={index + 1}>{day()}</option>{/each}
+		{#each weekdays as day, index (index)}<option value={index + 1}>{day()}</option>{/each}
 	</select>
 	<label for={`${prefix}-start`}>{m.admin_event_start()}</label>
 	<input
@@ -213,7 +204,7 @@
 	<Dialog label={m.admin_delete_all()} title={m.admin_confirm_delete_all()}>
 		{@render confirmDelete('deleteAllEvents', {})}
 	</Dialog>
-	{#each days as day, index (index)}
+	{#each weekdays as day, index (index)}
 		<section aria-labelledby={`day-${index + 1}`}>
 			<h3 id={`day-${index + 1}`}>{day()}</h3>
 			<Dialog label={m.admin_delete_day()} title={m.admin_confirm_delete_day()}>
@@ -227,7 +218,7 @@
 						<dt>{m.admin_event_kind()}</dt>
 						<dd>{kindLabels[event.kind]()}</dd>
 						<dt>{m.admin_event_week()}</dt>
-						<dd>{number(event.week)}</dd>
+						<dd>{formatNumber(event.week)}</dd>
 						<dt>{m.admin_event_date()}</dt>
 						<dd>{event.eventDate ?? m.admin_dates_unset()}</dd>
 						<dt>{m.admin_concrete_date()}</dt>
@@ -237,16 +228,16 @@
 						<dt>{m.admin_event_end()}</dt>
 						<dd>{event.endTime.slice(0, 5)}</dd>
 						<dt>{m.admin_event_slots()}</dt>
-						<dd>{number(event.maxSlots)}</dd>
+						<dd>{formatNumber(event.maxSlots)}</dd>
 						<dt>{m.admin_event_compensation()}</dt>
-						<dd>{number(event.compensation)} ₳</dd>
+						<dd>{formatNumber(event.compensation)} ₳</dd>
 					</dl>
 					<p>
-						{m.admin_registered_count({ count: number(event.registeredCount) })} / {number(
+						{m.admin_registered_count({ count: formatNumber(event.registeredCount) })} / {formatNumber(
 							event.maxSlots
 						)}
 					</p>
-					<p>{m.admin_attended_count({ count: number(event.attendedCount) })}</p>
+					<p>{m.admin_attended_count({ count: formatNumber(event.attendedCount) })}</p>
 					{#if event.maxSlots < event.registeredCount}<p role="status">
 							{m.admin_capacity_warning()}
 						</p>{/if}
