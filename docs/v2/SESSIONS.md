@@ -1092,3 +1092,44 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M7: calendario utente e ICS, da avviare alla prossima richiesta. La regola sugli snapshot in APPLY_TEMPLATE sarà applicata nel modulo template; SSE resta in M9.
+
+## 2026-10-21 — M7 — implementazione e controlli locali
+
+**Fatto**
+- Riletti piano e ultima chiusura delle revisioni; verificati working tree inizialmente pulito, branch `v2.0.0`, D2/D3 confermate. Implementati §8.4 e §8.12 senza anticipare M8 o real-time M9.
+- Calendario utente con settimana attiva predefinita, clamp della query numerica valida fra 1 e activeWeek, navigazione precedente/successiva soltanto dove consentita e nessun evento di settimane future nel payload. Query non valide respinte con 400.
+- Colonne lunedì–venerdì e soltanto i giorni del weekend con eventi; date del pool e specifiche, ordinamento per giorno/ora, titolo/orario/compenso, badge iscritti/posti verde o rosso. Conteggio comprensivo degli assenti secondo D1.
+- Payload utenti privo dei login assenti; admin vede tutte le iscrizioni e lo stato assente. Il proprio login presente è evidenziato e offre anche la disiscrizione sul badge. Ordine dello stato: passato, già iscritto, pieno, iscrivibile; la propria iscrizione assente resta rilevata per la disiscrizione, senza rendere il login assente nell'elenco pubblico all'utente.
+- Form progressive enhancement e funzionamento senza JavaScript. Dopo iscrizione riuscita, action restituisce l'id validato per selezionare l'evento nella pagina; dialog condiviso con apertura automatica, link Google Calendar e ICS. Dialog visibile anche nella risposta HTML senza JavaScript, riapribile e chiudibile con comandi nativi; conferme admin esistenti conservate.
+- Link Google con titolo e descrizione codificati, fallback previsto, UTC e ctz Europe/Rome; assente quando la data non è calcolabile. Endpoint ICS autenticato con id validato, 404 per evento mancante e 409 i18n se la data non è determinabile.
+- ICS con PRODID richiesto, un solo VEVENT, UID stabile basato su id/inizio ISO UTC, DTSTAMP dall'ora passata al dominio, DTSTART/DTEND con TZID Europe/Rome, location 42 Firenze e tre allarmi DISPLAY a 1440/120/60 minuti prima. Orari interpretati in Europe/Rome, obbligatorio per il processo come da §6; coperti inverno/estate e transizioni dell'ora.
+- Layout minimale a colonne con scorrimento confinato al calendario, focus da tastiera e token di larghezza dedicato; nessuna dipendenza CSS o componente generico aggiunto. D3 verificata con 404 sulla vecchia pagina partecipanti da utente autenticato.
+- Installato soltanto `ical-generator` 11.1.2, versione stabile verificata nel registro e compatibile con Node 24 (engines 22 oppure >=24), già consentita da §4.1. Nessun aggiornamento delle dipendenze esistenti.
+
+**Commit**
+- `0f4bad3` `chore(deps): add ical-generator for event exports`.
+- `0013375` `feat(calendar): add private week views and event calendar exports`.
+- `1890810` `feat(calendar): add responsive booking and calendar download flows`.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 99 unit, 202 integration, 48 e2e; lint/check e build verdi, svelte-check senza errori o warning.
+- Sette nuovi unit: struttura ICS e valori esatti, UID/PRODID/DTSTAMP/TZID, tre allarmi, escaping contro iniezioni di proprietà/componenti, UTC Google in inverno/estate e nei due cambi ora, parametri e fallback, data nulla senza link.
+- Sedici nuove integration: default/clamp delle settimane, query invalide, colonne weekend separate, ordinamento e date specifiche/pool, redazione degli assenti compreso payload serializzato, conteggi e iscrizione propria assente, precedenza degli stati e istante esatto di fine, ICS con date diverse/null, header download, 404/409/400, autenticazione e metadati soltanto dopo iscrizione riuscita.
+- Otto nuovi e2e desktop/mobile: flusso completo con e senza JavaScript (navigazione, iscrizione, dialog, parametri Google, download ICS con nome/contenuto, disiscrizione sul badge, audit), assenti non presenti nell'HTML utente e visibili all'admin, capienza piena anche con assenti, evento passato senza azioni, domenica visibile e sabato assente, XSS come testo, pagina partecipanti eliminata, errori ICS e assenza di overflow a 360px. I test ripristinano impostazioni, eventi e iscrizioni preesistenti nel DB di test.
+- Test dei dialog admin con e senza JavaScript e matrice autorizzazioni ancora verdi. Nessun servizio Google esterno aperto nei test: verificati URL e file scaricati, senza accesso a calendari reali.
+- `git diff --check`: verde. Nessuna modifica a schema o legacy; preservate tutte le note precedenti.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nuovo `domain/calendar.ts` per settimana, stati e privacy del payload utente, senza indebolire il caricamento admin esistente. Nuovo `domain/ics.ts` previsto dal piano e test corrispondenti. Nessun EventCard/WeekNav/ParticipantBadge generico anticipato: la pagina usa markup semantico e riutilizza il Dialog esistente.
+- Il contenitore scorrevole ha tabindex e nome accessibile per l'uso da tastiera; unica esclusione locale del warning Svelte sui tabindex non interattivi, motivata nel codice per la regione scorrevole.
+- Graphify usato per localizzare calendario e download ICS legacy; letti i sorgenti verificando i percorsi sotto legacy. Consultati README e sorgenti installati di ical-generator per formattazione, timezone e allarmi. Applicati Ponytail e Caveman; nessuna ricostruzione del grafo.
+
+**Domande / blocchi**
+- Nessun blocco tecnico nei controlli locali. Login 42 reale resta la verifica manuale di Ismail già prevista.
+
+**Prossimo passo**
+- Terminare ricostruzione e prova HTTPS, pubblicare M7 e verificare tutti i sei job CI, quindi aggiornare soltanto lo Stato di M7 nel piano e registrare la chiusura. Non iniziare M8.
+
+**Verifica stack HTTPS dopo la ricostruzione**
+- `docker compose up -d --build --wait`: exit code 0, app/Postgres healthy e nginx running sulle porte 8080/8443, nessun volume eliminato.
+- Con CA locale esplicita e TLS attivo: health HTTPS 200, calendario anonimo 303, ICS anonimo 401, redirect HTTP 8080 verso HTTPS 8443 sul calendario con 308. Nessuna scrittura sul database applicativo durante la prova.
