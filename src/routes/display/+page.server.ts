@@ -1,16 +1,27 @@
-import { error } from '@sveltejs/kit';
-import { z } from 'zod';
 import { readEnv } from '#lib/server/env.ts';
-import { matchesDisplayToken } from '#lib/server/auth/guards.ts';
-import { m } from '#lib/paraglide/messages.js';
+import { getDisplay } from '#lib/server/domain/display.ts';
+import { formatEventDate } from '#lib/server/domain/dates.ts';
+import { getLocale } from '#lib/paraglide/runtime.js';
 import type { PageServerLoad } from './$types';
-export const load: PageServerLoad = ({ locals, url }) => {
-	const query = z
-		.object({ token: z.string().optional() })
-		.safeParse(Object.fromEntries(url.searchParams));
-	if (
-		locals.user?.role !== 'admin' &&
-		(!query.success || !matchesDisplayToken(query.data.token ?? null, readEnv().DISPLAY_TOKEN))
-	)
-		error(404, m.error_not_found());
+export const load: PageServerLoad = async ({ locals, url, depends }) => {
+	depends('app:display');
+	const env = readEnv();
+	const { db } = await import('#lib/server/db/index.ts');
+	const data = await getDisplay(
+		db,
+		locals.user,
+		Object.fromEntries(url.searchParams),
+		env.DISPLAY_TOKEN,
+		new Date()
+	);
+	return {
+		...data,
+		days: data.days.map((day) => ({ ...day, date: formatEventDate(day.date, getLocale()) })),
+		events: data.events.map((event) => ({
+			...event,
+			date: formatEventDate(event.date, getLocale())
+		})),
+		redirectUrl: env.DISPLAY_REDIRECT_URL,
+		redirectSeconds: env.DISPLAY_REDIRECT_SECONDS
+	};
 };

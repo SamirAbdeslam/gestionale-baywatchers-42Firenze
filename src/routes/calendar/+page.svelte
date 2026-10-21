@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import EventCard from '#lib/components/EventCard.svelte';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
@@ -54,11 +55,7 @@
 					— {day.date}{/if}
 			</h3>
 			{#each data.events.filter((event) => event.weekday === day.weekday) as event (event.id)}
-				<article aria-label={event.title} data-kind={event.kind}>
-					<h4>{event.title}</h4>
-					<p>{event.startTime}–{event.endTime}</p>
-					{#if event.date}<p>{event.date}</p>{/if}
-					<p>{number(event.compensation)} ₳</p>
+				<EventCard {event}>
 					<p class:full={event.registeredCount >= event.maxSlots} class="capacity">
 						{m.calendar_registered_count({
 							count: number(event.registeredCount),
@@ -101,7 +98,7 @@
 									: m.calendar_register()}</button
 							>
 						</form>{/if}
-				</article>
+				</EventCard>
 			{:else}<p>{m.calendar_empty()}</p>{/each}
 		</section>
 	{/each}
@@ -123,27 +120,6 @@
 	section {
 		flex: 1 0 var(--calendar-day-width);
 		min-width: 0;
-	}
-	article {
-		border: var(--border-width) solid var(--color-custom);
-		border-radius: var(--radius);
-		padding: var(--space-md);
-		margin-block: var(--space-md);
-	}
-	article[data-kind='exam'] {
-		border-color: var(--color-exam);
-	}
-	article[data-kind='icebreaker'] {
-		border-color: var(--color-icebreaker);
-	}
-	article[data-kind='rush'] {
-		border-color: var(--color-rush);
-	}
-	article[data-kind='cluster'] {
-		border-color: var(--color-cluster);
-	}
-	article[data-kind='welcome'] {
-		border-color: var(--color-welcome);
 	}
 	.capacity {
 		color: var(--color-icebreaker);

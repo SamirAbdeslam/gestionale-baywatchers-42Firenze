@@ -1,3 +1,4 @@
+import { readEnv } from '#lib/server/env.ts';
 import { error } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
@@ -37,8 +38,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			Object.fromEntries(url.searchParams)
 		);
 		const events = await listWeekEvents(db, locals.user, data.week, data.settings.poolStart);
+		const env = readEnv();
+		const displayUrl = new URL('/display', env.ORIGIN);
+		if (env.DISPLAY_TOKEN) displayUrl.searchParams.set('token', env.DISPLAY_TOKEN);
 		return {
 			...data,
+			displayUrl: displayUrl.toString(),
 			kinds: EVENT_KINDS,
 			events: events.map((event) => ({
 				...event,

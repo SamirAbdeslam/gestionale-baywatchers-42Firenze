@@ -29,3 +29,7 @@
 :root {
 	--calendar-day-width: 16rem;
 }
+
+:root {
+	--font-display: 1.25rem;
+}

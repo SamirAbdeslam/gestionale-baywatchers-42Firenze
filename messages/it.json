@@ -158,5 +158,7 @@
 	"calendar_add": "Aggiungi al calendario",
 	"calendar_google": "Google Calendar",
 	"calendar_ics": "Scarica file ICS",
-	"calendar_your_registration": "La tua iscrizione"
+	"calendar_your_registration": "La tua iscrizione",
+	"display_free_slots": "{count} posti liberi",
+	"admin_display_link": "Link display per la TV"
 }

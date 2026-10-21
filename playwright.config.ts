@@ -52,6 +52,9 @@ export default defineConfig({
 			PORT: '4173',
 			ORIGIN: 'http://localhost:4173',
 			AUTH_DEV_LOGIN: 'true',
+			DISPLAY_TOKEN: '',
+			DISPLAY_REDIRECT_URL: 'http://localhost:4173/healthz',
+			DISPLAY_REDIRECT_SECONDS: '8',
 			TZ: 'Europe/Rome',
 			DATABASE_URL: databaseUrl
 		}

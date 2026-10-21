@@ -28,6 +28,8 @@
 
 <svelte:head><title>{m.nav_admin()} — {m.app_name()}</title></svelte:head>
 <h1>{m.nav_admin()}</h1>
+<label for="display-url">{m.admin_display_link()}</label>
+<input id="display-url" type="url" readonly value={data.displayUrl} />
 <dl>
 	<dt>{m.admin_active_week()}</dt>
 	<dd>{data.settings.activeWeek}</dd>
