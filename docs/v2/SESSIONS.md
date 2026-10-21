@@ -1309,3 +1309,31 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Pubblicare i commit e verificare tutti i sei job CI; aggiungere la chiusura della revisione nel diario. Non iniziare M9.
+
+## 2026-10-21 — Revisione M7–M8 — chiusura
+
+**Fatto**
+- Completati e pubblicati R8, R9, Ponytail 15–20 e la copertura WebKit richiesta. Rapporto per ciascun punto nella voce precedente; note originali e voce di interruzione preservate. Nessun punto già completamente risolto all'inizio della revisione.
+- Token esclusi dagli access log nginx, ICS futuri riservati agli admin, formattazione condivisa e action iscrizione senza seconda lettura del form. Dialog originale mantenuto dopo le prove WebKit con e senza JavaScript.
+- M9 non iniziato. Piano invariato, nessuna modifica a schema, dipendenze npm o legacy.
+
+**Commit**
+- `0b3a460` `fix(display): omit query strings from nginx access logs`.
+- `9ecc155` `fix(calendar): hide future-week event downloads from users`.
+- `4d4708d` `refactor: share calendar formatting and verify native dialogs in webkit`.
+- `62f47a6` `docs: record M7-M8 review validation and webkit coverage`.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 106 unit, 217 integration e 62 e2e; lint/check e build verdi, svelte-check senza errori o warning.
+- CI [run 39595322379](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39595322379) verde su `62f47a6`: tutti i sei job lint, unit, integration, e2e, legacy-import e docker completati con successo. `gh run watch --exit-status` terminato con exit code 0; installazione WebKit e relativi sei test inclusi nel job e2e.
+- Stack HTTPS aggiornato e lasciato attivo su 8080/8443; app/Postgres healthy e nginx running. Health 200, admin anonimo 303, ICS anonimo 401 e redirect HTTP 308 verificati con CA locale esplicita. R8 verificato con token di prova assente dai log nginx, conservando gli URI richiesti. Nessun dato applicativo modificato o volume eliminato dalla prova.
+- Working tree pulito prima di questa registrazione finale.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Login 42 reale ancora da verificare manualmente da Ismail. WebKit provato nel motore Playwright su Linux; nessuna prova su un dispositivo Safari fisico.
+
+**Prossimo passo**
+- M9: real-time SSE, da avviare alla prossima richiesta.
