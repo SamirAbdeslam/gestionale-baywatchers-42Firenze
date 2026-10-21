@@ -70,6 +70,8 @@ export async function downloadIcs(
 	if (!event) error(404, m.error_event_not_found());
 	const [config] = await database.select().from(settings).where(eq(settings.id, 1));
 	if (!config) throw new Error('Settings row is missing');
+	if (actor.role !== 'admin' && event.week > config.activeWeek)
+		error(404, m.error_event_not_found());
 	const date = concreteDate(event, config.poolStart);
 	if (!date) error(409, m.error_event_date_unset());
 	return { id, content: createIcs(event, date, now) };

@@ -201,3 +201,17 @@ it('returns the registered id only after a successful action and keeps failure r
 	expect(duplicate).not.toHaveProperty('registeredEventId');
 	expect(await client`SELECT * FROM action_logs`).toHaveLength(1);
 });
+
+it('hides future-week ICS from users while preserving admin access', async () => {
+	const future = await event({ week: 4, eventDate: '2099-01-01' });
+	await expect(downloadIcs(database, user, future.id, now)).rejects.toMatchObject({
+		status: 404,
+		body: { message: 'Evento non trovato' }
+	});
+	const response = await GET({
+		locals: { user: admin },
+		params: { id: String(future.id) }
+	} as Parameters<typeof GET>[0]);
+	expect(response.status).toBe(200);
+	expect(await response.text()).toContain('SUMMARY:Fixture');
+});
