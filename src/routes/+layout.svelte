@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { onNavigate } from '$app/navigation';
 	import Toast from '#lib/components/Toast.svelte';
 	import { asset, resolve } from '$app/paths';
 	import { m } from '#lib/paraglide/messages.js';
@@ -7,6 +8,14 @@
 	import type { LayoutProps } from './$types';
 	let { children, data }: LayoutProps = $props();
 	let menuOpen = $state(false);
+	// Invalidation clears page.form; keep action feedback until the next navigation.
+	let messages = $state(page.form?.messages ?? []);
+	$effect(() => {
+		if (page.form) messages = page.form.messages ?? [];
+	});
+	onNavigate(() => {
+		messages = [];
+	});
 </script>
 
 <svelte:head><link rel="icon" href={asset('badge.png')} /></svelte:head>
@@ -49,9 +58,7 @@
 	</header>
 {/if}
 <main id="main" class:display={page.route.id === '/display'}>
-	{#if page.route.id !== '/display'}<Toast
-			messages={page.form?.messages ?? []}
-		/>{/if}{@render children()}
+	{#if page.route.id !== '/display'}<Toast {messages} />{/if}{@render children()}
 </main>
 
 <style>

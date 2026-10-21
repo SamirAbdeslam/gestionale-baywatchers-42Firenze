@@ -186,8 +186,9 @@ it('loads native redirect configuration and exposes the complete encoded TV URL 
 	const load = (actor: User | null) =>
 		adminLoad({
 			locals: { user: actor },
-			url: new URL('https://localhost:8443/admin')
-		} as Parameters<typeof adminLoad>[0]);
+			url: new URL('https://localhost:8443/admin'),
+			depends: vi.fn()
+		} as unknown as Parameters<typeof adminLoad>[0]);
 	const data = await load(admin);
 	expect(data).toHaveProperty(
 		'displayUrl',

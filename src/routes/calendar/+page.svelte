@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { invalidate } from '$app/navigation';
+	import { listenRealtime } from '#lib/realtime.ts';
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import EventCard from '#lib/components/EventCard.svelte';
@@ -10,6 +13,14 @@
 	let { data, form }: PageProps = $props();
 
 	const registered = $derived(data.events.find((event) => event.id === form?.registeredEventId));
+	let activated = $state<{ week: number } | null>(null);
+	onMount(() =>
+		listenRealtime((event) => {
+			if (event.type === 'log_created') return;
+			if (event.type === 'week_activated') activated = { week: event.week };
+			void invalidate('app:calendar');
+		})
+	);
 </script>
 
 <svelte:head><title>{m.nav_calendar()} — {m.app_name()}</title></svelte:head>
@@ -37,6 +48,17 @@
 			>
 		</p>
 	</Dialog>
+{/if}
+{#if activated}
+	{#key activated}
+		<Dialog
+			label={m.calendar_week_activated({ week: formatNumber(activated.week) })}
+			title={m.calendar_week_activated({ week: formatNumber(activated.week) })}
+			open
+		>
+			<p>{m.calendar_week_activated({ week: formatNumber(activated.week) })}</p>
+		</Dialog>
+	{/key}
 {/if}
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (The scrollable calendar needs keyboard focus.) -->
 <div class="calendar" role="region" aria-label={m.calendar_events()} tabindex="0">

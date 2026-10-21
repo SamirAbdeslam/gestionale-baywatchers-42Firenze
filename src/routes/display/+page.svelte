@@ -1,10 +1,22 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { page } from '$app/state';
+	import { invalidate } from '$app/navigation';
+	import { listenRealtime } from '#lib/realtime.ts';
 	import EventCard from '#lib/components/EventCard.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { weekdays } from '#lib/weekdays.ts';
 	import { formatNumber } from '#lib/format.ts';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
+	onMount(() =>
+		listenRealtime(
+			(event) => {
+				if (event.type !== 'log_created') void invalidate('app:display');
+			},
+			page.url.searchParams.get('token') ?? ''
+		)
+	);
 </script>
 
 <svelte:head>

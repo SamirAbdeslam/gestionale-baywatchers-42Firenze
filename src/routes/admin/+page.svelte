@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { invalidate } from '$app/navigation';
+	import { listenRealtime } from '#lib/realtime.ts';
 	import { enhance } from '$app/forms';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import { weekdays } from '#lib/weekdays.ts';
@@ -15,6 +18,11 @@
 		welcome: m.event_kind_welcome,
 		custom: m.event_kind_custom
 	};
+	onMount(() =>
+		listenRealtime(() => {
+			void invalidate('app:admin');
+		})
+	);
 </script>
 
 <svelte:head><title>{m.nav_admin()} — {m.app_name()}</title></svelte:head>

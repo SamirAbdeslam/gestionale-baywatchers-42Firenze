@@ -29,7 +29,8 @@ import { getLocale } from '#lib/paraglide/runtime.js';
 import { formatEventDate } from '#lib/server/domain/dates.ts';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, url }) => {
+export const load: PageServerLoad = async ({ locals, url, depends }) => {
+	depends('app:admin');
 	const { db } = await import('#lib/server/db/index.ts');
 	try {
 		const { dayDates, ...data } = await getAdminSettings(
