@@ -1161,3 +1161,41 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M8: display pubblico, da avviare alla prossima richiesta. Real-time resta in M9.
+
+## 2026-10-21 — M8 — implementazione e controlli locali
+
+**Fatto**
+- Ripresa dal punto corrente, riletti piano e note; branch `v2.0.0`, D2/D4 confermate. Implementato §8.6 senza real-time M9.
+- Dominio `display.ts`: autorizzazione prima di leggere o avanzare le impostazioni. Con DISPLAY_TOKEN vuota accesso pubblico; se valorizzata, confronto a tempo costante tramite il guard esistente e 404 generico per token mancante o errato. Admin autenticato sempre ammesso. Nessuna registrazione del token nei log applicativi o nel payload del display.
+- `advanceDisplayWeek(database, now)` blocca settings con SELECT FOR UPDATE. Nessun avanzamento senza inizio pool; settimana vuota avanti di un solo passo per richiesta; settimana terminata avanti soltanto se la successiva contiene eventi; limite alla quarta settimana. Settimana attiva indipendente e invariata, updatedAt modificato soltanto quando avanza displayWeek.
+- Display con colonne lunedì–venerdì, sabato/domenica solo quando popolati, date concrete e ordinamento per giorno/ora. Titolo, orario, compenso, posti liberi calcolati su tutte le iscrizioni D1 e stato Passato/Completo/posti liberi. Soltanto login presenti, anche per l'admin; nessuna identità assente nel payload.
+- Pagina in sola lettura senza navigazione, login, form o pulsanti, anche con sessione admin. Testo più grande e griglia orizzontale su TV; impaginazione mobile senza overflow. Redirect configurato con meta refresh nativo, operativo anche senza JavaScript.
+- Pannello admin con URL completo della TV in campo readonly copiabile, token codificato nei parametri dell'URL e origine canonica configurata.
+- Estratta la lettura eventi/iscrizioni già presente in `events.ts` in `readWeekEvents`, riutilizzata dai caricamenti autorizzati admin, calendario e display. Condiviso il calcolo delle colonne weekend in `visibleWeekDays`. Nuovo `EventCard.svelte` usato ora da due pagine: calendario e display, conservando azioni e comportamento M7.
+
+**Commit**
+- `20ade83` `feat(display): add guarded week views and automatic advancement`.
+- `28ea717` `feat(display): add responsive read-only TV screen and native redirect`.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 104 unit, 216 integration, 56 e2e; lint/check e build verdi, svelte-check senza errori o warning.
+- Cinque nuovi unit: pool non impostato, settimane vuote con singolo passo e limite a quattro, prossima settimana obbligatoriamente popolata, data specifica rispetto al pool, eventi futuri e istante esatto di fine in Europe/Rome.
+- Quattordici nuove integration: richieste concorrenti serializzate senza perdita di avanzamenti, impostazioni invariate quando non avanza, lettura successiva all'avanzamento, indipendenza dalla settimana attiva/query, colonne weekend e ordinamento, conteggio degli assenti e sovracapienza, precedenza degli stati, quattro varianti di token errato senza scritture, token corretto e bypass admin, configurazione redirect e URL TV accessibile solo all'admin. Corretti due confronti iniziali dei timestamp dei test tra postgres.js e Drizzle, senza cambiare la logica applicativa.
+- Otto nuovi e2e desktop/mobile con e senza JavaScript: accesso pubblico, sola lettura anche per admin, link TV copiabile, redazione assenti nell'HTML, XSS come testo, conteggi D1, stati, weekend, date, nessun overflow a 360/768/1280 px e colonne allineate su TV. Meta refresh verificato fino all'effettiva navigazione a healthz. Fixture del server Playwright esplicita: token vuoto, redirect locale di prova dopo otto secondi; nessuna modifica alle variabili dell'applicazione locale.
+- Tutti i test precedenti del calendario, dei dialog e della matrice di autorizzazione ancora verdi. I test browser ripristinano impostazioni, eventi e iscrizioni preesistenti nel DB di test.
+- `git diff --check`: verde. Nessuna modifica a schema, dipendenze o legacy; note precedenti preservate.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nuovo dominio display e relativi test previsti dal modulo. EventCard introdotto soltanto al secondo uso effettivo, senza altre astrazioni UI. Nessuna nuova dipendenza.
+- Avanzamento automatico senza attore mantenuto nel dominio del display; nessun evento SSE anticipato rispetto a M9.
+- Graphify consultato per display_calendar, auto_update_display_week e is_event_passed legacy; grafo pre-spostamento interpretato con i percorsi sotto legacy, senza ricostruirlo. Applicati Ponytail e Caveman.
+
+**Domande / blocchi**
+- Nessun blocco tecnico nei controlli locali. Login 42 reale resta la verifica manuale di Ismail già prevista.
+
+**Prossimo passo**
+- Terminare ricostruzione e prova HTTPS, pubblicare M8 e verificare tutti i sei job CI, quindi aggiornare soltanto lo Stato di M8 nel piano e registrare la chiusura. Non iniziare M9.
+
+**Verifica stack HTTPS dopo la ricostruzione**
+- `docker compose up -d --build --wait`: exit code 0, app/Postgres healthy e nginx running sulle porte 8080/8443; nessun volume eliminato.
+- Con CA locale esplicita e TLS attivo: health HTTPS 200, admin anonimo 303, ICS anonimo 401, redirect HTTP 8080 verso HTTPS 8443 su `/display?check=m8` con 308 e percorso/query preservati. Nessuna richiesta al caricamento del display sul DB applicativo durante questa prova, per evitare l'avanzamento automatico previsto; display e redirect già verificati sul DB di test. Nessuna scrittura sul database applicativo.

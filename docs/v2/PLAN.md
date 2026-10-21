@@ -994,7 +994,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M5 Iscrizioni e presenze | completato (bddc6e2) |
 | M6 Whitelist | completato (8723c27) |
 | M7 Calendario utente e .ics | completato (1890810) |
-| M8 Display pubblico | da fare |
+| M8 Display pubblico | in corso |
 | M9 Real-time | da fare |
 | M10 Template e import CSV | da fare |
 | M11 Riepilogo ed export | da fare |
