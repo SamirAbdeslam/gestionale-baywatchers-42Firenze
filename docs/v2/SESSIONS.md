@@ -1525,3 +1525,30 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Pubblicare M10, attendere tutti i sei job CI, poi aggiornare Stato e registrare la chiusura. Non iniziare M11 senza richiesta.
+
+
+## 2026-10-21 — M10 — chiusura
+
+**Fatto**
+- Completato e pubblicato M10, con tutte le condizioni confermate da Ismail sul builder. Nessuna bozza persistita, campi normali nello stesso form, add/remove locali con JavaScript o restituiti dalla action senza scritture, validazione Zod dell'oggetto intero e conservazione dei valori su errore.
+- Lista, builder, applicazione con/senza overwrite, snapshot audit, eliminazione, esempio e import CSV completi. Aggiornata soltanto la colonna Stato di M10 in §19 al commit funzionale f2d0e78. Note originali e precedenti voci conservate. M11 non iniziato.
+
+**Commit**
+- `f0a9acf` dominio e CSV con unit/integration.
+- `f2d0e78` builder progressivo, UI e matrice/e2e.
+- `914153e` decisioni confermate, controlli locali e diario.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 146 unit, 237 integration, 74 e2e; lint/check e build verdi, nessun errore o warning svelte-check. Dettaglio e correzioni dei fixture nella voce precedente.
+- CI [run 39623616561](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39623616561) su `914153e`: tutti i sei job lint, unit, integration, e2e, legacy-import e docker verdi; `gh run watch --exit-status` exit code 0.
+- Stack M10 ricostruito e lasciato healthy su 8080/8443. HTTPS con CA locale: health 200, pagine template anonime 303 e CSV anonimo 401; redirect HTTP 308. Flussi completi verificati sul DB di test, nessuna scrittura sul DB applicativo durante lo smoke HTTPS e nessun volume eliminato.
+- Working tree pulito prima di questa registrazione finale. Nessuna nuova dipendenza, migrazione o modifica legacy.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione oltre alla conferma sul builder. Graphify, Ponytail e Caveman applicati.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Login 42 reale resta da verificare manualmente da Ismail; nessuna nuova verifica manuale bloccante.
+
+**Prossimo passo**
+- M11: riepilogo partecipanti ed export, da avviare alla prossima richiesta.
