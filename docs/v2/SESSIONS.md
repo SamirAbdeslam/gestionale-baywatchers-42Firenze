@@ -1438,3 +1438,90 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Push e verifica dei sei job CI; registrare la chiusura della revisione, poi iniziare M10 come richiesto.
+
+
+## 2026-10-21 — Revisione M9 — chiusura
+
+**Fatto**
+- Completati e pubblicati R10–R12 e Ponytail 21–23; dettagli nella voce precedente. Nessun punto saltato, note originali preservate.
+
+**Commit**
+- `61ca6dd` correzioni real-time; `1f26007` controlli locali e diario.
+
+**Controlli**
+- `pnpm ci:local`: verde, 123 unit, 217 integration, 70 e2e.
+- CI [run 39620048679](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39620048679) su `1f26007`: tutti i sei job verdi; `gh run watch --exit-status` exit code 0.
+- Stack HTTPS healthy su 8080/8443, verificato con CA locale; token assente dai log nginx. Nessuna scrittura sul DB applicativo durante la prova.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Bus per singola istanza e login 42 reale manuale come già registrato.
+
+**Prossimo passo**
+- Avvio M10 autorizzato da Ismail: template e import CSV.
+
+
+## 2026-10-21 — M10 — bloccato sul builder, lavoro locale conservato
+
+**Fatto**
+- Avviato M10 dopo la chiusura della revisione M9 e CI verde; nessun avvio di M11.
+- Implementazione locale di domain/templates.ts: elenco con conteggio e ordinamento, creazione da payload JSON validato, applicazione con warning e sovrascrittura, eliminazione in cascata, import raggruppato per settimana. Audit nella transazione, ruolo admin ricontrollato sotto lock e pubblicazione dopo commit. Date specifiche escluse dagli eventi applicati.
+- Riutilizzato deletionSnapshot di events.ts per l'audit della sovrascrittura, esportando la funzione esistente. Un template legacy vuoto lascia intatta la settimana: nel legacy il DELETE precedente al warning non era seguito da commit.
+- Aggiunto domain/csv.ts: parser senza nuove dipendenze, BOM, UTF-8/latin-1, separatore, campi tra virgolette e multilinea, righe scartate e relativi numeri, limiti 1 MB/2000 righe; writer con escaping richiesto da §13.
+- Collegati lista, applicazione, eliminazione, import e CSV di esempio alle route esistenti, con i18n e toast. Dopo applicazione la pagina mostra il collegamento alla settimana admin. Builder e relativa action save restano segnaposto in attesa della risposta; matrice dei permessi ancora da aggiornare per M10.
+- Graphify consultato per save_template/apply_template/import_csv_templates, poi verificato il sorgente sotto legacy/. Ponytail e Caveman applicati; grafo non ricostruito.
+
+**Commit**
+- Nessun commit o push M10: modifiche e nuovi test conservati nel working tree. La chiusura M9 del diario è locale, i commit funzionali M9 e la sua validazione sono già pubblicati.
+
+**Controlli**
+- `pnpm check`: verde, zero errori e warning dopo il collegamento della lista.
+- Unit CSV: 23 test verdi. Integration template su DB separato: 20 test verdi, inclusi creazione/lista, applicazione senza/con sovrascrittura, cascata e snapshot delle iscrizioni, template vuoto, eliminazione, import end-to-end, input/file errati, righe scartate, 404, accesso negato, ruolo declassato e rollback quando l'audit fallisce.
+- Controlli M10 completi e browser non ancora eseguiti; nessun `pnpm ci:local` o CI M10. Nessuna conclusione sul funzionamento browser del nuovo elenco.
+- Stack di test fermato e stack completo M9 riavviato senza rebuild: app/Postgres/nginx healthy su 8080/8443. L'immagine attiva contiene la revisione M9 già verificata, non M10 parziale. Nessun volume eliminato o dato applicativo modificato dai test.
+
+**Decisioni prese dentro il perimetro del piano**
+- Moduli csv/templates e relativi test richiesti dal piano; nessuna nuova dipendenza o modifica di schema/legacy. Nessun salvataggio persistente di bozze introdotto.
+
+**Domande / blocchi**
+- Chiesta conferma per conciliare il singolo payload JSON del builder (§8.9) con il funzionamento senza JavaScript (§8.15): proposta aggiunta/modifica/rimozione tramite POST al server, bozza mantenuta nel form, salvataggio finale del JSON completo. Alternativa da autorizzare: builder che richiede JavaScript. Risposta non ancora ricevuta; nessuna scelta applicata autonomamente.
+
+**Prossimo passo**
+- Ricevuta la risposta, completare builder/action save e aggiornare matrice; e2e desktop/mobile anche senza JavaScript secondo la scelta, fixture CSV prevista, controlli completi, stack HTTPS ricostruito, commit piccoli, push e sei job CI verdi, chiusura M10 e aggiornamento Stato. Non iniziare M11.
+
+**Ultimo controllo locale**
+- `pnpm lint`: exit code 0 dopo la correzione dei collegamenti con resolve, coerenti con il calendario esistente. `git diff --check`: verde.
+
+
+## 2026-10-21 — M10 — implementazione e controlli locali completati
+
+**Fatto**
+- Blocco sul builder risolto dalla conferma di Ismail: nessuna bozza in database, cookie o altro storage server. Unico form con campi normali events.<indice>.<campo>, senza JSON nascosto. Pulsanti submit intent=add/remove:<indice>/save.
+- Senza JavaScript, add/remove ricostruiscono i campi ricevuti e restituiscono il form senza scritture o audit. Con JavaScript, gli stessi pulsanti modificano le righe nel browser, annullando l'invio. Save ricostruisce un oggetto unico e lo valida integralmente con templateSchema Zod; su errore torna 400 con messaggio i18n e tutti i valori originali. Solo dopo validazione vengono aperte transazione e scrittura CREATE_TEMPLATE.
+- Completato §8.9: lista ordinata per data con conteggio, builder con tutti i campi e default previsti, applicazione con warning senza overwrite, sovrascrittura/cascata e snapshot delle iscrizioni nell'audit, eventi applicati senza eventDate, eliminazione del template, CSV di esempio, import con raggruppamento per settimana e messaggi delle righe scartate.
+- Riutilizzati formAction, Toast, Dialog, weekdays, controlli admin e deletionSnapshot esistenti. Il piccolo modulo src/lib/template-form.ts condivide campi grezzi e default tra browser e action senza importare il dominio server nel client. Il dominio riceve direttamente l'oggetto aggregato, non una stringa JSON.
+- Eliminazione per gli ID dello snapshot, coerente con le eliminazioni in massa già presenti, per conservare nell'audit tutti gli eventi effettivamente cancellati. Template legacy vuoti non eliminano la settimana e non producono log.
+- Matrice dei permessi aggiornata per tutte le action M10 e per il CSV di esempio implementato; input degli id template deliberatamente invalido nella prova admin, senza mutazioni. Fixture tests/fixtures/import.csv prevista da §13 aggiunta esplicitamente nonostante l'ignore globale dei CSV.
+
+**Commit**
+- `f0a9acf` `feat(templates): add validated templates and CSV import`.
+- `f2d0e78` `feat(templates): add progressive builder and admin workflows`.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0; 146 unit, 237 integration, 74 e2e. Lint/check/build verdi, zero errori e warning svelte-check. Ripetuti lint/check dopo il controllo finale della cancellazione per ID: entrambi verdi.
+- 23 unit CSV e 20 integration template, descritti nella voce precedente; aggiornati gli input di creazione all'oggetto unico confermato da Ismail. Nessuna nuova dipendenza o migrazione.
+- Quattro nuovi e2e, desktop/mobile con JavaScript acceso/spento: aggiunta di due righe, rimozione di una, zero POST add/remove con JS e tre senza JS, nessuna scrittura di template o audit, nessun cookie bozza; valori di tutti i campi conservati su errore di compenso, salvataggio finale con un evento, warning su settimana occupata, overwrite, collegamento /admin?week=4, data specifica esclusa, esempio CSV esatto, import della fixture con una riga scartata, eliminazione e sequenza esatta dei quattro audit. Dati di test ripristinati nel finally.
+- Primo giro fermato da formattazione/chiavi each dei nuovi file, corretti. I nuovi e2e hanno poi evidenziato un'aspettativa troppo rigida del test sui cookie: Paraglide può aggiungere il cookie lingua e il cookie sessione può ricevere una nuova scadenza. Test corretto per ammettere soltanto sessione/lingua e verificare il token sessione invariato; nessuna modifica applicativa ai cookie. Due prove mirate verdi, poi suite completa verde.
+- Stack ricostruito con docker compose up -d --build --wait: app/Postgres/nginx healthy su 8080/8443. Con CA locale esplicita: health 200, entrambe le pagine template anonime 303, CSV anonimo 401, redirect HTTP 308. Nessuna scrittura sul DB applicativo o eliminazione di volumi; flussi completi browser verificati sul DB di test.
+- git diff --check verde. CI M10 ancora da eseguire; legacy e dipendenze invariati.
+
+**Decisioni prese dentro il perimetro del piano**
+- Applicate tutte le condizioni della conferma sul builder. Graphify, Ponytail e Caveman applicati; nessuna ricostruzione del grafo. Nessuna implementazione M11.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Login OAuth 42 reale resta la verifica manuale già prevista.
+
+**Prossimo passo**
+- Pubblicare M10, attendere tutti i sei job CI, poi aggiornare Stato e registrare la chiusura. Non iniziare M11 senza richiesta.
