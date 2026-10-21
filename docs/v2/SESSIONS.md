@@ -1064,3 +1064,31 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 **Verifica stack HTTPS dopo la ricostruzione**
 - `docker compose up -d --build --wait`: exit code 0, app/Postgres healthy e nginx running sulle porte 8080/8443; nessun volume eliminato.
 - Health HTTPS 200, admin anonimo 303 e redirect HTTP 8080 verso HTTPS 8443 con 308, verificati con CA locale esplicita e TLS attivo. Nessuna scrittura sul database applicativo durante la prova.
+
+## 2026-10-21 — Revisioni M4–M6 — chiusura
+
+**Fatto**
+- Completati e pubblicati tutti i punti delle due note: R1–R7 e Ponytail 1–14. Prima revisione nei commit fino a `3252bb5`; seconda revisione nei commit fino a `fc4be42`.
+- Validazione e sicurezza aggiornate, snapshot delle eliminazioni comprensivi delle iscrizioni, messaggi corretti, adattatore form unico e semplificazioni richieste operative. Dialog nativi mantenuti dopo le verifiche con e senza JavaScript su desktop e mobile.
+- M7 non iniziato. Nessuna modifica a piano, schema, dipendenze o legacy. Note originali, interruzioni e blocchi precedenti preservati.
+
+**Commit**
+- Prima revisione: `974c4b3`, `697bab9`, `5e7b5c8`, `3252bb5`.
+- Seconda revisione: `c4465e6` `fix(events): enforce matching specific dates and weekdays`.
+- `b20f12d` `refactor: reuse admin guards and native event confirmations`.
+- `fc4be42` `docs: record resumed M4-M6 review validation`.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 92 unit, 186 integration e 40 e2e; lint/check e build verdi, svelte-check senza errori o warning.
+- CI [run 39564856309](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39564856309) verde su `fc4be42`: tutti i sei job lint, unit, integration, e2e, legacy-import e docker completati con successo. `gh run watch --exit-status` terminato con exit code 0. Questa esecuzione verifica insieme entrambe le revisioni; la precedente run 39448520312 resta annullata.
+- Stack completo ricostruito e lasciato attivo su 8080/8443; app/Postgres healthy e nginx running. Health HTTPS 200, admin anonimo 303 e redirect HTTP 308 verificati con CA locale esplicita e TLS attivo. Nessun volume eliminato o dato applicativo modificato dalla prova HTTPS.
+- Working tree pulito prima di questa registrazione finale. Rapporto per ciascuno dei 21 punti nelle voci delle due revisioni.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Login 42 reale ancora da verificare manualmente da Ismail.
+
+**Prossimo passo**
+- M7: calendario utente e ICS, da avviare alla prossima richiesta. La regola sugli snapshot in APPLY_TEMPLATE sarà applicata nel modulo template; SSE resta in M9.
