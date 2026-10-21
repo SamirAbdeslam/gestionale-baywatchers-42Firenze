@@ -63,7 +63,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 						.replace('%paraglide.dir%', getTextDirection(locale))
 			}
 		);
-		response.headers.set('Cache-Control', 'private, no-store');
+		if (!response.headers.get('Content-Type')?.startsWith('text/event-stream'))
+			response.headers.set('Cache-Control', 'private, no-store');
 		return response;
 	});
 };

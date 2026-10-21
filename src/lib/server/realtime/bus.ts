@@ -1,16 +1,10 @@
 import { EventEmitter } from 'node:events';
 
-export type RealtimeEvent =
-	| {
-			type: 'event_changed';
-			eventId: number | null;
-			week: number | null;
-			action: 'create' | 'update' | 'delete' | 'bulk_delete';
-	  }
-	| { type: 'week_activated'; week: number }
-	| { type: 'log_created'; id: number };
+import type { RealtimeEvent } from '#lib/realtime.ts';
+export type { RealtimeEvent } from '#lib/realtime.ts';
 // shortcut: in-process bus supports one instance; use Postgres LISTEN/NOTIFY before scaling out.
-const emitter = new EventEmitter();
+// Streams can have more than ten simultaneous subscribers.
+const emitter = new EventEmitter().setMaxListeners(0);
 export function publish(event: RealtimeEvent) {
 	for (const listener of emitter.listeners('event')) {
 		try {
