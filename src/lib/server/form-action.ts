@@ -42,7 +42,9 @@ export async function formAction(
 				cause instanceof z.ZodError
 					? cause.issues.every((issue) => issue.message === 'error_pool_end_before_start')
 						? 'error_pool_end_before_start'
-						: 'error_invalid_input'
+						: cause.issues.every((issue) => issue.message === 'error_event_date_weekday')
+							? 'error_event_date_weekday'
+							: 'error_invalid_input'
 					: options.notFound!;
 			return fail(cause instanceof z.ZodError ? 400 : 404, {
 				ok: false,

@@ -13,6 +13,7 @@
 			| 'admin_events_deleted'
 			| 'error_pool_end_before_start'
 			| 'error_invalid_input'
+			| 'error_event_date_weekday'
 			| 'error_event_not_found'
 			| 'error_whitelist_not_found';
 		params: Record<string, never>;

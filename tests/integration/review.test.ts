@@ -202,3 +202,38 @@ it('warns on missing admin removal but keeps own unregistration silent, without 
 	expect(await client`SELECT * FROM action_logs`).toHaveLength(0);
 	expect(messages).toEqual([]);
 });
+
+it('rejects incoherent specific dates on create and update with 400 and the dedicated message', async () => {
+	const form = Object.fromEntries(
+		Object.entries({ ...input, weekday: 3, eventDate: '2026-10-26' }).map(([key, value]) => [
+			key,
+			String(value)
+		])
+	);
+	expect(await post(adminActions.createEvent, form)).toMatchObject({
+		status: 400,
+		data: { messages: [{ key: 'error_event_date_weekday' }] }
+	});
+	expect(await client`SELECT * FROM events`).toHaveLength(0);
+	const coherent = { ...form, weekday: '1' };
+	expect(await post(adminActions.createEvent, coherent)).toMatchObject({ ok: true });
+	const [before] = await database.select().from(schema.events);
+	const previousLogs = await client`SELECT * FROM action_logs ORDER BY id`;
+	const previousMessages = [...messages];
+	const update = Object.fromEntries(
+		Object.entries({ ...changes, id: before.id, weekday: 3 }).map(([key, value]) => [
+			key,
+			String(value)
+		])
+	);
+	expect(await post(adminActions.updateEvent, update)).toMatchObject({
+		status: 400,
+		data: { messages: [{ key: 'error_event_date_weekday' }] }
+	});
+	expect(await database.select().from(schema.events)).toEqual([before]);
+	expect(await client`SELECT * FROM action_logs ORDER BY id`).toEqual(previousLogs);
+	expect(messages).toEqual(previousMessages);
+	expect(await post(adminActions.updateEvent, { ...update, weekday: '1' })).toMatchObject({
+		ok: true
+	});
+});

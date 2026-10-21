@@ -403,13 +403,13 @@ it('concurrent admin additions of the same normalized login remain unique', asyn
 	expect(await client`SELECT * FROM action_logs`).toHaveLength(1);
 });
 it('shares user-before-event lock order with concurrent event updates and audit', async () => {
-	const row = await event({ maxSlots: 100 });
+	const row = await event({ maxSlots: 100, weekday: 2 });
 	await database.insert(schema.whitelist).values({ login: admin.login });
 	const updates = {
 		id: row.id,
 		title: 'Updated',
 		description: '',
-		weekday: 1,
+		weekday: 2,
 		startTime: '09:00',
 		endTime: '12:00',
 		maxSlots: 100,

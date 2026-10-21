@@ -2,8 +2,8 @@ import { error } from '@sveltejs/kit';
 import { and, eq, inArray, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import type { db, Transaction } from '../db/index.ts';
-import { events, registrations, users } from '../db/schema.ts';
-import { assertAdmin } from '../auth/guards.ts';
+import { events, registrations } from '../db/schema.ts';
+import { assertAdmin, lockAdmin } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { publish } from '../realtime/bus.ts';
@@ -29,23 +29,37 @@ const editable = {
 };
 const timeOrder = (value: { startTime: string; endTime: string }) =>
 	value.startTime < value.endTime;
+const datedWeekday = z
+	.object({ weekday: weekdayNumber, eventDate: isoDate.nullable() })
+	.refine(
+		({ weekday, eventDate }) =>
+			eventDate === null || (new Date(`${eventDate}T00:00:00Z`).getUTCDay() || 7) === weekday,
+		{ message: 'error_event_date_weekday' }
+	);
+const createFields = {
+	...editable,
+	week,
+	eventDate: z
+		.union([isoDate, z.literal('')])
+		.nullish()
+		.transform((value) => value || null)
+};
 const createSchema = z
-	.strictObject({
-		...editable,
-		title: z.string().trim().max(120).optional(),
-		description: description.optional(),
-		compensation: editable.compensation.optional(),
-		week,
-		kind: z.enum(EVENT_KINDS),
-		eventDate: z
-			.union([isoDate, z.literal('')])
-			.nullish()
-			.transform((value) => value || null)
-	})
+	.discriminatedUnion('kind', [
+		z.strictObject({ ...createFields, kind: z.literal('custom') }),
+		z.strictObject({
+			...createFields,
+			kind: z.enum(EVENT_KINDS).exclude(['custom']),
+			title: z.string().trim().max(120).optional(),
+			description: description.optional(),
+			compensation: editable.compensation.optional()
+		})
+	])
 	.refine(timeOrder)
 	.superRefine((value, context) => {
-		if (value.kind === 'custom' && (!value.title || value.compensation === undefined))
-			context.addIssue({ code: 'custom', message: 'Custom events require title and compensation' });
+		const result = datedWeekday.safeParse(value);
+		if (!result.success)
+			context.addIssue({ code: 'custom', message: 'error_event_date_weekday', path: ['weekday'] });
 	});
 const updateSchema = z.strictObject({ id, ...editable }).refine(timeOrder);
 const deleteSchema = z.strictObject({ id });
@@ -96,23 +110,19 @@ export async function createEvent(
 	const details =
 		parsed.kind === 'custom'
 			? {
-					title: text.parse(parsed.title),
+					title: parsed.title,
 					description: parsed.description || 'Evento personalizzato',
-					compensation: parsed.compensation!
+					compensation: parsed.compensation
 				}
 			: PRESETS[parsed.kind];
 	const { event, logId } = await database.transaction(async (tx) => {
 		// Match registration lock order before event writes and the audit's user FK.
-		const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
-		if (!user) error(401, m.error_unauthorized());
-		assertAdmin(user);
+		const user = await lockAdmin(tx, actor);
 		const [event] = await tx
 			.insert(events)
 			.values({
 				...parsed,
 				...details,
-				title: capitalizeFirst(details.title),
-				description: capitalizeFirst(details.description),
 				createdAt: now,
 				updatedAt: now
 			})
@@ -144,11 +154,10 @@ export async function updateEvent(
 	const { id, ...changes } = updateSchema.parse(input);
 	const { event, logId } = await database.transaction(async (tx) => {
 		// Match registration lock order before event writes and the audit's user FK.
-		const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
-		if (!user) error(401, m.error_unauthorized());
-		assertAdmin(user);
+		const user = await lockAdmin(tx, actor);
 		const [before] = await tx.select().from(events).where(eq(events.id, id)).for('update');
 		if (!before) error(404, m.error_event_not_found());
+		datedWeekday.parse({ weekday: changes.weekday, eventDate: before.eventDate });
 		const [event] = await tx
 			.update(events)
 			.set({ ...changes, updatedAt: now })
@@ -201,9 +210,7 @@ export async function deleteEvent(
 	const { id } = deleteSchema.parse(input);
 	const { event, logId } = await database.transaction(async (tx) => {
 		// Match registration lock order before event writes and the audit's user FK.
-		const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
-		if (!user) error(401, m.error_unauthorized());
-		assertAdmin(user);
+		const user = await lockAdmin(tx, actor);
 		const oldValue = await deletionSnapshot(tx, eq(events.id, id));
 		const [event] = oldValue;
 		if (!event) error(404, m.error_event_not_found());
@@ -227,27 +234,16 @@ async function deleteMatching(
 	database: typeof db,
 	actor: User,
 	scope: { week?: number; weekday?: number },
-	info: RequestInfo
+	info: RequestInfo,
+	entry: {
+		actionType: 'DELETE_DAY_EVENTS' | 'DELETE_WEEK_EVENTS' | 'DELETE_ALL_EVENTS';
+		description: string;
+		resourceId?: string;
+	}
 ) {
-	const actionType =
-		scope.weekday !== undefined
-			? 'DELETE_DAY_EVENTS'
-			: scope.week !== undefined
-				? 'DELETE_WEEK_EVENTS'
-				: 'DELETE_ALL_EVENTS';
-	const resourceId =
-		scope.weekday !== undefined ? `${scope.week}-${scope.weekday}` : scope.week?.toString();
-	const description =
-		scope.weekday !== undefined
-			? `Eliminati tutti gli eventi del giorno '${scope.weekday}' della settimana ${scope.week}.`
-			: scope.week !== undefined
-				? `Eliminati tutti gli eventi della settimana ${scope.week}.`
-				: 'Eliminati TUTTI gli eventi da TUTTE le settimane.';
 	const logId = await database.transaction(async (tx) => {
 		// Match registration lock order before event writes and the audit's user FK.
-		const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
-		if (!user) error(401, m.error_unauthorized());
-		assertAdmin(user);
+		const user = await lockAdmin(tx, actor);
 		const where = and(
 			scope.week === undefined ? undefined : eq(events.week, scope.week),
 			scope.weekday === undefined ? undefined : eq(events.weekday, scope.weekday)
@@ -263,10 +259,8 @@ async function deleteMatching(
 		return audit(tx, {
 			...info,
 			actor: user,
-			actionType,
-			description,
+			...entry,
 			resourceType: 'event',
-			resourceId,
 			oldValue
 		});
 	});
@@ -286,7 +280,11 @@ export async function deleteDayEvents(
 ) {
 	assertAdmin(actor);
 	const { week, weekday } = bulkSchema.parse(input);
-	await deleteMatching(database, actor, { week, weekday }, info);
+	await deleteMatching(database, actor, { week, weekday }, info, {
+		actionType: 'DELETE_DAY_EVENTS',
+		resourceId: `${week}-${weekday}`,
+		description: `Eliminati tutti gli eventi del giorno '${weekday}' della settimana ${week}.`
+	});
 }
 export async function deleteWeekEvents(
 	database: typeof db,
@@ -296,7 +294,11 @@ export async function deleteWeekEvents(
 ) {
 	assertAdmin(actor);
 	const { week } = bulkSchema.omit({ weekday: true }).parse(input);
-	await deleteMatching(database, actor, { week }, info);
+	await deleteMatching(database, actor, { week }, info, {
+		actionType: 'DELETE_WEEK_EVENTS',
+		resourceId: String(week),
+		description: `Eliminati tutti gli eventi della settimana ${week}.`
+	});
 }
 export async function deleteAllEvents(
 	database: typeof db,
@@ -306,5 +308,8 @@ export async function deleteAllEvents(
 ) {
 	assertAdmin(actor);
 	bulkSchema.pick({ confirm: true }).parse(input);
-	await deleteMatching(database, actor, {}, info);
+	await deleteMatching(database, actor, {}, info, {
+		actionType: 'DELETE_ALL_EVENTS',
+		description: 'Eliminati TUTTI gli eventi da TUTTE le settimane.'
+	});
 }

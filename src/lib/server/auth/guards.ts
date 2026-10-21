@@ -1,3 +1,6 @@
+import { eq } from 'drizzle-orm';
+import { users } from '../db/schema.ts';
+import type { Transaction } from '../db/index.ts';
 import { timingSafeEqual } from 'node:crypto';
 import { error } from '@sveltejs/kit';
 import { m } from '#lib/paraglide/messages.js';
@@ -26,4 +29,13 @@ export function matchesDisplayToken(actual: string | null, expected: string) {
 	const left = Buffer.from(actual ?? ''),
 		right = Buffer.from(expected);
 	return left.length === right.length && timingSafeEqual(left, right);
+}
+
+export const loginPattern = /^[a-z0-9_-]{1,32}$/;
+
+export async function lockAdmin(tx: Transaction, actor: User) {
+	const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
+	if (!user) error(401, m.error_unauthorized());
+	assertAdmin(user);
+	return user;
 }

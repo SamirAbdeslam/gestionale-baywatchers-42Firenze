@@ -140,5 +140,6 @@
 	"whitelist_remove": "Rimuovi dalla whitelist",
 	"whitelist_empty": "La whitelist è vuota",
 	"whitelist_added_at": "Aggiunto il",
-	"registration_not_registered_login": "{login} non è iscritto a questo evento"
+	"registration_not_registered_login": "{login} non è iscritto a questo evento",
+	"error_event_date_weekday": "La data specifica non corrisponde al giorno della settimana"
 }

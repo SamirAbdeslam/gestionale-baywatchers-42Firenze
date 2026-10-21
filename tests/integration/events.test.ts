@@ -114,7 +114,7 @@ it('creates custom events with defaults, capitalization and a fixed date indepen
 	const event = await createEvent(
 		database,
 		actor,
-		{ ...input, description: ' ', eventDate: '2027-01-01' },
+		{ ...input, weekday: 5, description: ' ', eventDate: '2027-01-01' },
 		info,
 		now
 	);
