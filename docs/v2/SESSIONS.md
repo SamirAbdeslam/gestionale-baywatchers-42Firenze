@@ -1374,3 +1374,31 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Pubblicare M9 e verificare tutti i sei job CI, poi aggiornare soltanto lo Stato di M9 nel piano e registrare la chiusura. Non iniziare M10.
+
+## 2026-10-21 — M9 — chiusura
+
+**Fatto**
+- Completato e pubblicato M9 sul branch `v2.0.0`; aggiornata soltanto la colonna Stato di §19 al commit funzionale `1fe2bc9`. M10 non iniziato.
+- Stream SSE con token/sessione, filtro dei log admin, payload senza dati personali, heartbeat e cleanup. Unico helper EventSource con riconnessione nativa; aggiornamenti di calendario/display/admin/log senza reload e dialog di attivazione settimana.
+- Feedback dei form conservato durante l'invalidazione SSE. UI completa e banner dei log restano previsti per M13. Dettagli e copertura nella voce precedente.
+- Nessuna modifica a schema, dipendenze o legacy; note originali preservate.
+
+**Commit**
+- `98e6357`: stream filtrato, schema/helper condiviso e unit.
+- `1fe2bc9`: collegamenti alle pagine, dialog settimana, feedback dei form e browser.
+- `1925100`: controlli locali e diario.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 121 unit, 217 integration e 68 e2e; lint/check e build verdi, svelte-check senza errori o warning.
+- CI [run 39602664325](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39602664325) verde su `1925100`: tutti i sei job lint, unit, integration, e2e, legacy-import e docker completati con successo. `gh run watch --exit-status` terminato con exit code 0.
+- Stack completo ricostruito e lasciato attivo su 8080/8443; app/Postgres healthy e nginx running. Con CA locale esplicita: stream HTTPS 200 e heartbeat reale a 25 secondi attraverso nginx; token assente dai log. Health 200, admin anonimo 303, ICS anonimo 401 e HTTP 308 verificati. Nessun dato applicativo modificato o volume eliminato durante la prova.
+- Working tree pulito prima di questa registrazione finale.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Bus in memoria previsto per una sola istanza applicativa. Login 42 reale ancora da verificare manualmente da Ismail.
+
+**Prossimo passo**
+- M10: template e import CSV, da avviare alla prossima richiesta.
