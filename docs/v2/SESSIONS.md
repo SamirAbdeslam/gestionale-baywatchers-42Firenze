@@ -1236,3 +1236,76 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M9: real-time SSE, da avviare alla prossima richiesta.
+
+## 2026-10-21 — Revisione M7–M8 — bloccato su dipendenze WebKit
+
+**Fatto**
+- Durante la chiusura di M8 è arrivato il commit di Ismail `61fecc2` con la nuova revisione. La CI del commit di chiusura `3e3b40b` (run 39592960782) è stata annullata dalla concorrenza del nuovo push; la run successiva 39593032328 su `61fecc2` ha tutti i sei job verdi. La precedente verifica funzionale M8 39592470352 rimane verde.
+- Iniziata la revisione richiesta dopo M8 e prima di M9. Nessun punto già completamente risolto all'inizio. Modifiche salvate nel working tree, ancora da validare e non committate o pubblicate.
+- R8: configurato log_format/access_log nginx con metodo, URI senza query, protocollo, stato e dimensione; omessi request completo, args e referer. Verifica con token e ricostruzione dello stack ancora da eseguire.
+- R9: aggiunto 404 ICS per un utente non admin quando event.week supera activeWeek; aggiunto integration per utente respinto e admin ammesso, non ancora eseguito.
+- Ponytail 15–17: introdotti `src/lib/weekdays.ts` e `src/lib/format.ts` per giorni e numeri condivisi; `formatWeekDates` in dates.ts riutilizzato nei due caricamenti. Aggiunti due unit per formato, conservazione dei campi e input immutato, non ancora eseguiti.
+- Ponytail 18: datedWeekday sostituito con matchesWeekday, conservando errore Zod dedicato in create/update e lock esistente.
+- Ponytail 19: registeredEventId nel risultato di successo del dominio; action senza clone/rilettura del form. Aggiornati tipo dell'adattatore e aspettativa integration.
+- Ponytail 20: controllo iniziale conservato solo in nextDisplayWeek; rimosso il duplicato nella transazione, test unit esistenti invariati.
+- Aggiunto progetto `webkit-shared` per eventi e calendario, serializzato dopo mobile-shared e prima dei test paralleli; workflow predisposto per installare Chromium e WebKit. Nessuna modifica al Dialog prima della prova WebKit.
+
+**Commit**
+- Nessun nuovo commit per la revisione; tutte le modifiche restano locali.
+
+**Controlli**
+- `pnpm check` della revisione: due errori in admin/+page.svelte, rimasti due `each days` da rinominare `each weekdays` dopo l'estrazione dell'array. Correzione e nuova verifica ancora da eseguire; arresto al blocco di ambiente come richiesto.
+- `pnpm ci:local` della revisione non ancora eseguito. Unit/integration/browser della revisione non ancora eseguiti.
+- `pnpm exec playwright install webkit`: exit code 0, WebKit 27.2 v2370 scaricato. Il comando ha gestito internamente due errori DNS su un mirror, poi completato il download. Validazione host segnala dipendenze mancanti: libevent-2.1-7t64, libgstreamer-plugins-bad1.0-0, libflite1, libavif16.
+- Nessun tentativo di sudo, installazione di pacchetti di sistema o metodo alternativo dopo il blocco.
+- Stack HTTPS M8 lasciato attivo su 8080/8443; l'immagine applicativa e la configurazione nginx caricata non contengono ancora la revisione. Nessun volume eliminato. M9 non iniziato.
+
+**Decisioni prese dentro il perimetro del piano**
+- Helper minimi condivisi dove richiesti dalle note; nessuna nuova dipendenza npm o modifica di schema/legacy. Graphify consultato, nessuna ricostruzione del grafo. Ponytail e Caveman applicati.
+
+**Domande / blocchi**
+- Per provare WebKit servono le dipendenze di sistema. Dalla root del repository, Ismail può eseguire: `sudo "$(command -v node)" node_modules/playwright/cli.js install-deps webkit`.
+- Nessuna conclusione sul supporto WebKit a command/commandfor: browser non ancora avviato. Non modificare Dialog prima della prova e dell'eventuale segnalazione richiesta dalla nota.
+
+**Prossimo passo**
+- Dopo la conferma dell'installazione: correggere i due riferimenti days, completare check e test; verificare WebKit e registrare l'esito prima di cambiare il componente. Poi ci:local, prova R8 con token e log nginx, commit piccoli, push e CI verde, diario di chiusura. Non iniziare M9.
+
+## 2026-10-21 — Revisione M7–M8 — ripresa e controlli locali completati
+
+**Fatto**
+- Ripresa dopo la conferma di Ismail. WebKit avviato e chiuso correttamente: dipendenze di sistema disponibili, blocco risolto. Corretti i due riferimenti residui days/weekday nella pagina admin. Conservate la nota originale e la voce di interruzione.
+- Completati tutti i punti della revisione: R8, R9, Ponytail 15–20 e progetto WebKit. Nessun punto era già completamente risolto all'inizio. M9 non iniziato.
+- **R8:** nginx usa un formato di accesso basato su metodo, `$uri`, protocollo, stato e dimensione; niente `$request`, query o referer. Vale anche per il redirect HTTP e per il futuro stream. Richieste di prova con token eseguite; URI presenti nei log e valore del token assente da `docker compose logs nginx`.
+- **R9:** ICS delle settimane successive ad activeWeek respinti con 404 `error_event_not_found` per utenti non admin; download admin conservato. Nessuna modifica al contenuto dei file o agli altri controlli.
+- **Ponytail 15:** `src/lib/weekdays.ts` esporta le sette funzioni i18n, riutilizzate da admin, calendario e display. I nomi italiani destinati all'audit del dominio iscrizioni rimangono dati di audit.
+- **Ponytail 16:** helper `formatWeekDates` in dates.ts usato dai due caricamenti; date formattate una volta conservando gli altri campi e lasciando invariati gli input. Date ISO nel dominio e controlli di autorizzazione conservati.
+- **Ponytail 17:** `src/lib/format.ts` con formatNumber, riutilizzato nelle tre pagine, EventCard e Toast; locale letta a ogni chiamata. Nessuna duplicazione di Intl.NumberFormat rimasta nei chiamanti indicati.
+- **Ponytail 18:** matchesWeekday condiviso tra refine di creazione e modifica sotto lock; conservate chiave dedicata, risposta 400 e assenza di scritture/audit/notifiche in caso di incoerenza.
+- **Ponytail 19:** id dell'evento validato restituito soltanto dopo iscrizione riuscita dal dominio; action ridotta a formAction, senza clone/rilettura. Tipi aggiornati; errori e altre operazioni non ricevono l'id di successo.
+- **Ponytail 20:** unico controllo pool non impostato/settimana quattro nella funzione nextDisplayWeek; test unit originali conservati. La transazione mantiene il lock prima di leggere e aggiornare la configurazione.
+- **WebKit:** aggiunto `webkit-shared` con i sei test di eventi/calendario, eseguito dopo mobile-shared e prima delle prove parallele. Workflow installa Chromium e WebKit. Apertura, annullamento e conferma dei dialog nativi funzionano anche con JavaScript disabilitato; nessuna modifica al componente Dialog.
+
+**Commit**
+- `0b3a460` `fix(display): omit query strings from nginx access logs`.
+- `9ecc155` `fix(calendar): hide future-week event downloads from users`.
+- `4d4708d` `refactor: share calendar formatting and verify native dialogs in webkit`.
+
+**Controlli**
+- `pnpm ci:local`: exit code 0, 106 unit, 217 integration, 62 e2e. Lint/check e build verdi, svelte-check senza errori o warning.
+- Due nuovi unit su numeri/giorni nella locale attuale e formattazione condivisa delle due raccolte di date, con conservazione dei campi e degli input. Il primo tentativo assumeva il separatore delle migliaia per quattro cifre: corretto il fixture a cinque cifre, coerente con Intl/CLDR, senza cambiare il formato applicativo.
+- Nuova integration R9: utente normale 404 su settimana futura e admin 200 con ICS valido. Test del dominio iscrizioni aggiornato con registeredEventId; test action già esistente verifica id soltanto su successo e assenza su errore. Test R7, concorrenza e avanzamento display ancora verdi.
+- Sei nuove prove WebKit: quattro calendario e due eventi; passano flussi con e senza JavaScript, iscrizione/dialog/download/disiscrizione e conferme admin. Totale browser passato da 56 a 62.
+- `docker compose up -d --build --wait`: exit code 0; app/Postgres healthy, nginx running su 8080/8443. Nessun volume eliminato.
+- R8 con token di prova: GET HTTP `/display?token=...` risponde 308 preservando percorso/query; GET HTTPS `/api/stream?token=...` risponde ancora 501, previsto prima di M9. Entrambi gli URI compaiono negli access log, il valore del token non compare nei log nginx. Non eseguito il caricamento display sul DB applicativo, evitando avanzamenti automatici durante la prova.
+- Con CA locale esplicita e TLS attivo: health 200, admin anonimo 303, ICS anonimo 401. Nessuna scrittura sul DB applicativo durante la prova HTTPS.
+- `git diff --check`: verde. Nessuna nuova dipendenza npm, modifica di schema o legacy; piano invariato.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nuovi moduli weekdays/format richiesti dalle note e relativo test unit; helper date nel modulo esistente. Nessun componente UI nuovo o cambiamento di comportamento oltre R8/R9.
+- Graphify già consultato per localizzare il riferimento legacy; nessuna ricostruzione. Applicati Ponytail e Caveman.
+
+**Domande / blocchi**
+- Blocco WebKit risolto. Nessun altro blocco tecnico nei controlli locali. Login 42 reale resta la verifica manuale prevista per Ismail.
+
+**Prossimo passo**
+- Pubblicare i commit e verificare tutti i sei job CI; aggiungere la chiusura della revisione nel diario. Non iniziare M9.
