@@ -1,9 +1,9 @@
 import { error } from '@sveltejs/kit';
 import { and, count, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import type { db } from '../db/index.ts';
+import type { db, Transaction } from '../db/index.ts';
 import { users, events, registrations, settings, whitelist } from '../db/schema.ts';
-import { assertAdmin, assertUser } from '../auth/guards.ts';
+import { assertAdmin, assertUser, lockAdmin, loginPattern } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { concreteDate, digits, isPassed } from './dates.ts';
@@ -42,11 +42,7 @@ const idSchema = z.strictObject({
 	id: digits(10).pipe(z.number().int().positive().max(2147483647))
 });
 const participantSchema = idSchema.extend({
-	login: z
-		.string()
-		.trim()
-		.toLowerCase()
-		.regex(/^[a-z0-9_-]{1,32}$/)
+	login: z.string().trim().toLowerCase().regex(loginPattern)
 });
 const attendanceSchema = participantSchema.extend({
 	attended: z.union([z.boolean(), z.enum(['true', 'false']).transform((value) => value === 'true')])
@@ -58,6 +54,12 @@ const failure = (
 	params: { count?: number } = {}
 ): RegistrationResult => ({ ok: false, status, messages: [{ type: 'error', key, params }] });
 type Operation = 'register' | 'unregister' | 'add' | 'remove' | 'attendance';
+
+async function passed(tx: Transaction, event: typeof events.$inferSelect, now: Date) {
+	const [config] = await tx.select().from(settings).where(eq(settings.id, 1));
+	if (!config) throw new Error('Settings row is missing');
+	return { config, isPassed: isPassed(concreteDate(event, config.poolStart), event.endTime, now) };
+}
 
 async function changeRegistration(
 	database: typeof db,
@@ -84,9 +86,10 @@ async function changeRegistration(
 			| { result: RegistrationResult; event: typeof events.$inferSelect; logId: number }
 		> => {
 			// All registration mutations lock the acting user before the event.
-			const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
+			const [user] = admin
+				? [await lockAdmin(tx, actor)]
+				: await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
 			if (!user) error(401, m.error_unauthorized());
-			if (admin) assertAdmin(user);
 			const [event] = await tx.select().from(events).where(eq(events.id, parsed.id)).for('update');
 			if (!event) return failure('error_event_not_found', 404);
 			const login = parsed.login ?? user.login;
@@ -110,10 +113,8 @@ async function changeRegistration(
 					.from(whitelist)
 					.where(eq(whitelist.login, login));
 				if (!allowed) return failure('error_not_whitelisted', 403);
-				const [config] = await tx.select().from(settings).where(eq(settings.id, 1));
-				if (!config) throw new Error('Settings row is missing');
-				if (isPassed(concreteDate(event, config.poolStart), event.endTime, now))
-					return failure('error_event_passed');
+				const { config, isPassed: ended } = await passed(tx, event, now);
+				if (ended) return failure('error_event_passed');
 				if (config.maxEventsPerUser > 0) {
 					const [total] = await tx
 						.select({ n: count() })
@@ -133,12 +134,6 @@ async function changeRegistration(
 					.from(registrations)
 					.where(eq(registrations.eventId, event.id));
 				if (total.n >= event.maxSlots) return failure('error_event_full');
-				await tx.insert(registrations).values({
-					eventId: event.id,
-					participantLogin: login,
-					attended: true,
-					registeredAt: now
-				});
 				actionType = 'REGISTER_EVENT';
 				description = `Utente '${login}' registrato all'evento ${details}`;
 				result = {
@@ -161,12 +156,6 @@ async function changeRegistration(
 							}
 						]
 					};
-				await tx.insert(registrations).values({
-					eventId: event.id,
-					participantLogin: login,
-					attended: true,
-					registeredAt: now
-				});
 				actionType = 'ADMIN_ADD_PARTICIPANT';
 				description = `Admin ha aggiunto '${login}' all'evento ${details}`;
 				result = {
@@ -195,9 +184,7 @@ async function changeRegistration(
 				};
 			} else {
 				if (operation === 'unregister' && user.role !== 'admin') {
-					const [config] = await tx.select().from(settings).where(eq(settings.id, 1));
-					if (!config) throw new Error('Settings row is missing');
-					if (isPassed(concreteDate(event, config.poolStart), event.endTime, now))
+					if ((await passed(tx, event, now)).isPassed)
 						return failure('error_event_passed_unregister');
 				}
 				const [removed] = await tx
@@ -228,6 +215,13 @@ async function changeRegistration(
 								messages: [{ type: 'success', key: 'registration_removed', params: { login } }]
 							};
 			}
+			if (operation === 'register' || operation === 'add')
+				await tx.insert(registrations).values({
+					eventId: event.id,
+					participantLogin: login,
+					attended: true,
+					registeredAt: now
+				});
 			const logId = await audit(tx, {
 				...info,
 				actor: user,

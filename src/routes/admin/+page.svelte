@@ -5,6 +5,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
+	const weeks = [1, 2, 3, 4];
 	const kindLabels = {
 		exam: m.event_kind_exam,
 		icebreaker: m.event_kind_icebreaker,
@@ -44,7 +45,7 @@
 <form method="GET">
 	<label for="view-week">{m.admin_view_week()}</label>
 	<select id="view-week" name="week" value={data.week}
-		>{#each [1, 2, 3, 4] as week (week)}<option value={week}>{week}</option>{/each}</select
+		>{#each weeks as week (week)}<option value={week}>{week}</option>{/each}</select
 	>
 	<button type="submit">{m.admin_show_week()}</button>
 </form>
@@ -81,7 +82,7 @@
 			id="active-week"
 			name="week"
 			value={data.settings.activeWeek}
-			>{#each [1, 2, 3, 4] as week (week)}<option value={week}>{week}</option>{/each}</select
+			>{#each weeks as week (week)}<option value={week}>{week}</option>{/each}</select
 		>
 		<button type="submit">{m.admin_activate()}</button>
 	</form>
@@ -169,7 +170,7 @@
 	<form method="POST" action={`?/createEvent&week=${data.week}`} use:enhance>
 		<label for="create-week">{m.admin_event_week()}</label>
 		<select id="create-week" name="week" value={data.week}>
-			{#each [1, 2, 3, 4] as week (week)}<option value={week}>{week}</option>{/each}
+			{#each weeks as week (week)}<option value={week}>{week}</option>{/each}
 		</select>
 		<label for="create-kind">{m.admin_event_kind()}</label>
 		<select id="create-kind" name="kind">
@@ -183,52 +184,38 @@
 		<button type="submit">{m.admin_create_event()}</button>
 	</form>
 </section>
+{#snippet confirmDelete(action: string, hidden: Record<string, number>)}
+	<form method="POST" action={`?/${action}&week=${data.week}`} use:enhance>
+		{#each Object.entries(hidden) as [name, value] (name)}<input
+				type="hidden"
+				{name}
+				{value}
+			/>{/each}
+		<label
+			><input
+				type="checkbox"
+				name="confirm"
+				value="yes"
+				required
+			/>{m.admin_confirm_checkbox()}</label
+		>
+		<button type="submit">{m.admin_confirm_delete()}</button>
+	</form>
+{/snippet}
+
 <section aria-labelledby="events-title">
 	<h2 id="events-title">{m.admin_events()}</h2>
 	<Dialog label={m.admin_delete_week()} title={m.admin_confirm_delete_week()}>
-		<form method="POST" action={`?/deleteWeekEvents&week=${data.week}`} use:enhance>
-			<input type="hidden" name="week" value={data.week} />
-			<label
-				><input
-					type="checkbox"
-					name="confirm"
-					value="yes"
-					required
-				/>{m.admin_confirm_checkbox()}</label
-			>
-			<button type="submit">{m.admin_confirm_delete()}</button>
-		</form>
+		{@render confirmDelete('deleteWeekEvents', { week: data.week })}
 	</Dialog>
 	<Dialog label={m.admin_delete_all()} title={m.admin_confirm_delete_all()}>
-		<form method="POST" action={`?/deleteAllEvents&week=${data.week}`} use:enhance>
-			<label
-				><input
-					type="checkbox"
-					name="confirm"
-					value="yes"
-					required
-				/>{m.admin_confirm_checkbox()}</label
-			>
-			<button type="submit">{m.admin_confirm_delete()}</button>
-		</form>
+		{@render confirmDelete('deleteAllEvents', {})}
 	</Dialog>
 	{#each days as day, index (index)}
 		<section aria-labelledby={`day-${index + 1}`}>
 			<h3 id={`day-${index + 1}`}>{day()}</h3>
 			<Dialog label={m.admin_delete_day()} title={m.admin_confirm_delete_day()}>
-				<form method="POST" action={`?/deleteDayEvents&week=${data.week}`} use:enhance>
-					<input type="hidden" name="week" value={data.week} />
-					<input type="hidden" name="weekday" value={index + 1} />
-					<label
-						><input
-							type="checkbox"
-							name="confirm"
-							value="yes"
-							required
-						/>{m.admin_confirm_checkbox()}</label
-					>
-					<button type="submit">{m.admin_confirm_delete()}</button>
-				</form>
+				{@render confirmDelete('deleteDayEvents', { week: data.week, weekday: index + 1 })}
 			</Dialog>
 			{#each data.events.filter((event) => event.weekday === index + 1) as event (event.id)}
 				<article aria-label={event.title} data-kind={event.kind}>

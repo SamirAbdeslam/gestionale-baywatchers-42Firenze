@@ -90,6 +90,11 @@ test(
 			await article.getByLabel('Giorno', { exact: true }).selectOption('1');
 			await article.getByLabel('Posti', { exact: true }).fill('1');
 			await article.getByRole('button', { name: 'Salva evento', exact: true }).click();
+			await expect(page.getByRole('alert')).toContainText(
+				'La data specifica non corrisponde al giorno della settimana'
+			);
+			await article.getByLabel('Giorno', { exact: true }).selectOption('7');
+			await article.getByRole('button', { name: 'Salva evento', exact: true }).click();
 			article = page.getByRole('article', { name: 'M4 modificato', exact: true });
 			await expect(article).toBeVisible();
 			await expect(article).toContainText('Iscritti: 2 / 1');
@@ -186,6 +191,16 @@ test(
 			const article = page.getByRole('article', { name: title, exact: true });
 			await expect(article).toBeVisible();
 			await expect(page.getByLabel('Settimana visualizzata')).toHaveValue('2');
+			await page
+				.getByRole('button', { name: 'Elimina eventi della settimana', exact: true })
+				.click();
+			await expect(page.getByRole('dialog')).toBeVisible();
+			await page.getByRole('dialog').getByRole('checkbox').check();
+			await page.getByRole('dialog').getByRole('button', { name: 'Annulla', exact: true }).click();
+			await expect(page.getByRole('dialog')).not.toBeVisible();
+			await article.getByText('Elimina evento', { exact: true }).click();
+			await page.getByRole('dialog').getByRole('button', { name: 'Annulla', exact: true }).click();
+			await expect(page.getByRole('dialog')).not.toBeVisible();
 			await article.getByText('Elimina evento', { exact: true }).click();
 			await article.getByRole('button', { name: 'Conferma eliminazione', exact: true }).click();
 			await expect(article).toHaveCount(0);

@@ -1,3 +1,4 @@
+import { loginPattern } from '../auth/guards.ts';
 import { randomInt } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
@@ -14,11 +15,7 @@ export const devLoginSchema = z.discriminatedUnion('mode', [
 	z.object({ mode: z.literal('existing'), userId: z.coerce.number().int().positive() }),
 	z.object({
 		mode: z.literal('create'),
-		login: z
-			.string()
-			.trim()
-			.toLowerCase()
-			.regex(/^[a-z0-9_-]{1,32}$/),
+		login: z.string().trim().toLowerCase().regex(loginPattern),
 		admin: z.enum(['on']).optional()
 	})
 ]);

@@ -2,8 +2,8 @@ import { error } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { db } from '../db/index.ts';
-import { users, whitelist } from '../db/schema.ts';
-import { assertAdmin } from '../auth/guards.ts';
+import { whitelist } from '../db/schema.ts';
+import { assertAdmin, lockAdmin, loginPattern } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { publish } from '../realtime/bus.ts';
@@ -45,17 +45,16 @@ export async function addLogins(
 		.toLowerCase()
 		.split(/[,\s]+/)
 		.filter(Boolean);
-	const invalid = [...new Set(tokens.filter((login) => !/^[a-z0-9_-]{1,32}$/.test(login)))];
-	const valid = [...new Set(tokens.filter((login) => /^[a-z0-9_-]{1,32}$/.test(login)))];
+	const invalid = new Set<string>(),
+		valid = new Set<string>();
+	for (const login of tokens) (loginPattern.test(login) ? valid : invalid).add(login);
 	const { added, duplicates, logIds } = await database.transaction(async (tx) => {
-		const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
-		if (!user) error(401, m.error_unauthorized());
-		assertAdmin(user);
+		const user = await lockAdmin(tx, actor);
 		const added: string[] = [],
 			duplicates: string[] = [],
 			logIds: number[] = [];
 		// A fixed order also prevents conflicts between overlapping concurrent batches.
-		for (const login of valid.sort()) {
+		for (const login of [...valid].sort()) {
 			const [row] = await tx
 				.insert(whitelist)
 				.values({ login, addedAt: now })
@@ -78,7 +77,7 @@ export async function addLogins(
 				})
 			);
 		}
-		return { added, duplicates: [...new Set(duplicates)], logIds };
+		return { added, duplicates, logIds };
 	});
 	for (const id of logIds) publish({ type: 'log_created', id });
 	const messages: WhitelistNotice[] = [];
@@ -94,11 +93,11 @@ export async function addLogins(
 			key: 'whitelist_duplicates',
 			params: { logins: duplicates.join(', ') }
 		});
-	if (invalid.length)
+	if (invalid.size)
 		messages.push({
 			type: 'warning',
 			key: 'whitelist_invalid',
-			params: { logins: invalid.join(', ') }
+			params: { logins: [...invalid].join(', ') }
 		});
 	return { ok: added.length > 0, messages };
 }
@@ -112,9 +111,7 @@ export async function removeLogin(
 	assertAdmin(actor);
 	const { id } = removeSchema.parse(input);
 	const { row, logId } = await database.transaction(async (tx) => {
-		const [user] = await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
-		if (!user) error(401, m.error_unauthorized());
-		assertAdmin(user);
+		const user = await lockAdmin(tx, actor);
 		const [row] = await tx.delete(whitelist).where(eq(whitelist.id, id)).returning();
 		if (!row) error(404, m.error_whitelist_not_found());
 		const logId = await audit(tx, {
