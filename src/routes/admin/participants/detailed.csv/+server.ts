@@ -1,4 +1,11 @@
-import { error } from '@sveltejs/kit';
-import { m } from '#lib/paraglide/messages.js';
+import { getParticipants, detailedCsv } from '#lib/server/domain/reports.ts';
 import type { RequestHandler } from './$types';
-export const GET: RequestHandler = () => error(501, m.error_not_implemented());
+export const GET: RequestHandler = async ({ locals }) => {
+	const { db } = await import('#lib/server/db/index.ts');
+	return new Response(detailedCsv(await getParticipants(db, locals.user)), {
+		headers: {
+			'Content-Type': 'text/csv; charset=utf-8',
+			'Content-Disposition': 'attachment; filename="partecipanti_dettagliato.csv"'
+		}
+	});
+};

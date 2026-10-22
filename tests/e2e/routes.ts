@@ -62,18 +62,21 @@ export const adminRoutes = [
 	},
 	{
 		id: '/admin/participants/summary.csv',
+		implementedEndpoint: true,
 		url: '/admin/participants/summary.csv',
 		endpoint: true,
 		actions: []
 	},
 	{
 		id: '/admin/participants/detailed.csv',
+		implementedEndpoint: true,
 		url: '/admin/participants/detailed.csv',
 		endpoint: true,
 		actions: []
 	},
 	{
 		id: '/admin/participants/[login].csv',
+		implementedEndpoint: true,
 		url: '/admin/participants/dev_user.csv',
 		endpoint: true,
 		actions: []
