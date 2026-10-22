@@ -8,6 +8,13 @@
 			"when": 1792155198737,
 			"tag": "0000_nappy_sleeper",
 			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1792651762650,
+			"tag": "0001_clean_kitty_pryde",
+			"breakpoints": true
 		}
 	]
 }

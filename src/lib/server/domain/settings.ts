@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { db } from '../db/index.ts';
 import { settings } from '../db/schema.ts';
-import { assertAdmin } from '../auth/guards.ts';
+import { assertAdmin, lockAdmin } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { publish } from '../realtime/bus.ts';
@@ -51,6 +51,7 @@ async function saveSettings(
 	now: Date
 ) {
 	const logId = await database.transaction(async (tx) => {
+		await lockAdmin(tx, actor);
 		const [before] = await tx.select().from(settings).where(eq(settings.id, 1)).for('update');
 		if (!before) throw new Error('Settings row is missing');
 		const keys = Object.keys(changes) as (keyof typeof changes)[];

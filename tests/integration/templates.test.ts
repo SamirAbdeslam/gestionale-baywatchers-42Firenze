@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { afterAll, afterEach, beforeEach, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as schema from '../../src/lib/server/db/schema.ts';
 import type { User } from '../../src/lib/server/auth/session.ts';
 import {
@@ -12,6 +12,9 @@ import {
 	listTemplates
 } from '../../src/lib/server/domain/templates.ts';
 import { subscribe, type RealtimeEvent } from '../../src/lib/server/realtime/bus.ts';
+import { actions } from '../../src/routes/admin/templates/new/+page.server.ts';
+import { setMaxEvents } from '../../src/lib/server/domain/settings.ts';
+vi.mock('#lib/server/db/index.ts', () => ({ db: database }));
 assert.equal(new URL(process.env.DATABASE_URL!).pathname, '/baywatchers_test');
 const client = postgres(process.env.DATABASE_URL!, { onnotice: () => {} });
 const database = drizzle(client, { schema });
@@ -272,4 +275,82 @@ it('rechecks the role in the transaction and rolls back when audit cannot be sto
 	expect(await client`SELECT * FROM week_templates`).toHaveLength(0);
 	expect(await client`SELECT * FROM template_events`).toHaveLength(0);
 	expect(messages).toEqual([]);
+});
+
+it('serializes different admins applying different templates to the same empty week', async () => {
+	const [secondAdmin] = await database
+		.insert(schema.users)
+		.values({ intraId: 3, login: 'other_staff', role: 'admin' })
+		.returning();
+	await createTemplate(database, admin, payload(), info, now);
+	await createTemplate(database, secondAdmin, payload({ name: 'Other template' }), info, now);
+	messages = [];
+	const results = await Promise.all([
+		applyTemplate(database, admin, { id: 1 }, info, now),
+		applyTemplate(database, secondAdmin, { id: 2 }, info, now)
+	]);
+	expect(results.filter((result) => result.ok)).toHaveLength(1);
+	expect(results.find((result) => !result.ok)).toMatchObject({
+		messages: [{ key: 'template_existing', params: { count: 1, week: 2 } }]
+	});
+	expect(await client`SELECT * FROM events`).toHaveLength(1);
+	expect(await client`SELECT * FROM action_logs WHERE action_type='APPLY_TEMPLATE'`).toHaveLength(
+		1
+	);
+	expect(messages.filter((message) => message.type === 'event_changed')).toHaveLength(1);
+});
+it('uses user then settings locks for concurrent settings and template writes', async () => {
+	await createTemplate(database, admin, payload(), info, now);
+	await Promise.all([
+		applyTemplate(database, admin, { id: 1 }, info, now),
+		setMaxEvents(database, admin, { maxEvents: '5' }, info, now)
+	]);
+	expect(await client`SELECT * FROM events`).toHaveLength(1);
+	expect(
+		(await client`SELECT max_events_per_user FROM settings WHERE id=1`)[0].max_events_per_user
+	).toBe(5);
+});
+it.each(['rows', 'description'] as const)(
+	'rejects the builder %s limit with 400 and preserves input without writes',
+	async (limit) => {
+		const form = new FormData();
+		form.set('intent', 'save');
+		form.set('name', 'Limits');
+		form.set('targetWeek', '1');
+		form.set('description', limit === 'description' ? 'x'.repeat(501) : '');
+		for (let index = 0; index < (limit === 'rows' ? 201 : 1); index++)
+			for (const [key, value] of Object.entries(entry))
+				form.set(`events.${index}.${key}`, String(value));
+		const save = actions.save!;
+		const result = await save({
+			request: new Request('http://localhost/admin/templates/new?/save', {
+				method: 'POST',
+				body: form
+			}),
+			locals: { user: admin },
+			getClientAddress: () => info.ipAddress
+		} as Parameters<typeof save>[0]);
+		expect(result).toMatchObject({
+			status: 400,
+			data: { ok: false, messages: [{ key: 'error_invalid_input' }], values: { name: 'Limits' } }
+		});
+		expect(await client`SELECT * FROM week_templates`).toHaveLength(0);
+		expect(await client`SELECT * FROM template_events`).toHaveLength(0);
+		expect(await client`SELECT * FROM action_logs`).toHaveLength(0);
+		expect(messages).toEqual([]);
+	}
+);
+it('accepts exactly 200 rows and 500 description characters and enforces the database constraint', async () => {
+	await createTemplate(
+		database,
+		admin,
+		payload({ description: 'x'.repeat(500), events: Array.from({ length: 200 }, () => entry) }),
+		info,
+		now
+	);
+	expect(await client`SELECT * FROM template_events`).toHaveLength(200);
+	await expect(
+		client`INSERT INTO week_templates(name,description,target_week) VALUES ('Too long',${'x'.repeat(501)},1)`
+	).rejects.toThrow();
+	expect(await client`SELECT * FROM week_templates`).toHaveLength(1);
 });

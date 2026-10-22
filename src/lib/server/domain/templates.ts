@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { db } from '../db/index.ts';
 import type { User } from '../auth/session.ts';
 import { assertAdmin, lockAdmin } from '../auth/guards.ts';
-import { events, templateEvents, weekTemplates } from '../db/schema.ts';
+import { events, settings, templateEvents, weekTemplates } from '../db/schema.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { digits, weekNumber } from './dates.ts';
 import { parseTemplateCsv, templateEventSchema } from './csv.ts';
@@ -16,9 +16,9 @@ import { m } from '#lib/paraglide/messages.js';
 const id = digits(10).pipe(z.number().int().min(1).max(2147483647));
 export const templateSchema = z.object({
 	name: z.string().trim().min(1).max(120),
-	description: z.string().trim().default(''),
+	description: z.string().trim().max(500).default(''),
 	targetWeek: digits(1).pipe(weekNumber),
-	events: z.array(templateEventSchema).min(1)
+	events: z.array(templateEventSchema).min(1).max(200)
 });
 export type TemplateNotice = {
 	type: 'success' | 'warning';
@@ -112,6 +112,7 @@ export async function applyTemplate(
 	const parsed = z.object({ id, overwrite: z.literal('true').optional() }).parse(input);
 	const result = await database.transaction(async (tx) => {
 		const user = await lockAdmin(tx, actor);
+		await tx.select().from(settings).where(eq(settings.id, 1)).for('update');
 		const [template] = await tx
 			.select()
 			.from(weekTemplates)
@@ -232,9 +233,7 @@ export async function importTemplates(
 	assertAdmin(actor);
 	const { file } = z
 		.object({
-			file: z
-				.instanceof(File)
-				.refine((file) => /\.csv$/i.test(file.name) && file.size > 0 && file.size <= 1024 * 1024)
+			file: z.instanceof(File).refine((file) => /\.csv$/i.test(file.name) && file.size > 0)
 		})
 		.parse(input);
 	const { grouped, skipped } = parseTemplateCsv(new Uint8Array(await file.arrayBuffer()));

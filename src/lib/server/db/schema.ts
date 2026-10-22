@@ -126,6 +126,7 @@ export const weekTemplates = pgTable(
 	},
 	(t) => [
 		check('templates_name_length', sql`char_length(${t.name}) BETWEEN 1 AND 120`),
+		check('templates_description_length', sql`char_length(${t.description}) <= 500`),
 		check('templates_week_range', sql`${t.targetWeek} BETWEEN 1 AND 4`)
 	]
 );
