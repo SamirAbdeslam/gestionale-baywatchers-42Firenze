@@ -16,18 +16,19 @@ export const templateEventSchema = z
 	})
 	.refine(timeOrder);
 
-export function writeCsv(rows: (string | number | null)[][]) {
+export function writeCsv(rows: (string | number | null)[][], lineEnding: '\n' | '\r\n' = '\n') {
 	return (
 		rows
 			.map((row) =>
 				row
 					.map((value) => {
-						const text = String(value ?? '');
+						const raw = String(value ?? '');
+						const text = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
 						return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 					})
 					.join(',')
 			)
-			.join('\n') + '\n'
+			.join(lineEnding) + lineEnding
 	);
 }
 

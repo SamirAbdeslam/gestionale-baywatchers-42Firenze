@@ -87,3 +87,12 @@ it('writes exact CSV escaping commas, quotes, newlines and nulls', () => {
 		])
 	).toBe('one,two\n"a,b","""quoted"""\n"a\nb",\n1,0\n');
 });
+
+it.each(['=1+1', '+SUM(A1)', '-2', '@cmd'])('neutralizes spreadsheet formula %s', (value) => {
+	expect(writeCsv([[value]])).toBe("'" + value + '\n');
+});
+it('quotes neutralized formulas and preserves CRLF inside a cell', () => {
+	expect(writeCsv([['=SUM(1,2)', 'line\r\nbreak']], '\r\n')).toBe(
+		'"\'=SUM(1,2)","line\r\nbreak"\r\n'
+	);
+});
