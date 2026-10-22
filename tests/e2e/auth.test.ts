@@ -168,14 +168,14 @@ test('dev login has accessible forms, responsive navigation and POST logout', as
 	await expect(page).toHaveURL('/calendar');
 	await page.setViewportSize({ width: 360, height: 800 });
 	const menu = page.getByRole('button', { name: 'Menu', exact: true });
-	await expect(menu).toHaveAttribute('aria-expanded', 'false');
+	await expect(menu).toMatchAriaSnapshot('- button "Menu"');
 	await menu.click();
-	await expect(menu).toHaveAttribute('aria-expanded', 'true');
+	await expect(menu).toMatchAriaSnapshot('- button "Menu" [expanded]');
 	await expect(page.getByRole('link', { name: 'Whitelist', exact: true })).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 	await page.getByRole('link', { name: 'Profilo', exact: true }).click();
 	await expect(page).toHaveURL('/profile');
-	await expect(menu).toHaveAttribute('aria-expanded', 'false');
+	await expect(menu).toMatchAriaSnapshot('- button "Menu"');
 	const cookie = (await page.context().cookies()).find((c) => c.name === 'session');
 	expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'Lax', path: '/' });
 	expect(cookie?.value).toMatch(/^[a-z2-7]{32}$/);

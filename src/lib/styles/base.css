@@ -53,13 +53,14 @@ h1 {
 header {
 	flex-wrap: wrap;
 }
-nav {
-	display: none;
-	flex-basis: 100%;
+nav[popover] {
+	padding: var(--space-md);
+	background: var(--color-background);
+	color: var(--color-text);
 	flex-direction: column;
 	gap: var(--space-md);
 }
-nav.open {
+nav:popover-open {
 	display: flex;
 }
 nav a {
@@ -98,9 +99,18 @@ button {
 	.menu-toggle {
 		display: none;
 	}
-	nav,
-	nav.open {
+	nav[popover] {
 		display: flex;
+		position: static;
+		inset: auto;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		background: none;
+		width: auto;
+		height: auto;
+		overflow: visible;
+		flex-basis: 100%;
 		flex-direction: row;
 		flex-wrap: wrap;
 		align-items: center;

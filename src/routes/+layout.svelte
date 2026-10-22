@@ -7,7 +7,7 @@
 	import '#lib/styles/base.css';
 	import type { LayoutProps } from './$types';
 	let { children, data }: LayoutProps = $props();
-	let menuOpen = $state(false);
+	let nav = $state<HTMLElement>();
 	// Invalidation clears page.form; keep action feedback until the next navigation.
 	let messages = $state(page.form?.messages ?? []);
 	$effect(() => {
@@ -15,6 +15,7 @@
 	});
 	onNavigate(() => {
 		messages = [];
+		nav?.hidePopover();
 	});
 </script>
 
@@ -27,29 +28,19 @@
 			></a
 		>
 		{#if data.user}
-			<button
-				class="menu-toggle"
-				type="button"
-				aria-expanded={menuOpen}
-				aria-controls="main-navigation"
-				onclick={() => (menuOpen = !menuOpen)}>{m.nav_menu()}</button
+			<button class="menu-toggle" type="button" popovertarget="main-navigation"
+				>{m.nav_menu()}</button
 			>
-			<nav id="main-navigation" aria-label={m.nav_main()} class:open={menuOpen}>
-				<a href={resolve('/calendar')} onclick={() => (menuOpen = false)}>{m.nav_calendar()}</a>
+			<nav id="main-navigation" popover aria-label={m.nav_main()} bind:this={nav}>
+				<a href={resolve('/calendar')}>{m.nav_calendar()}</a>
 				{#if data.user.role === 'admin'}
-					<a href={resolve('/admin')} onclick={() => (menuOpen = false)}>{m.nav_admin()}</a>
-					<a href={resolve('/admin/templates')} onclick={() => (menuOpen = false)}
-						>{m.nav_templates()}</a
-					>
-					<a href={resolve('/admin/participants')} onclick={() => (menuOpen = false)}
-						>{m.nav_participants()}</a
-					>
-					<a href={resolve('/admin/whitelist')} onclick={() => (menuOpen = false)}
-						>{m.nav_whitelist()}</a
-					>
-					<a href={resolve('/admin/logs')} onclick={() => (menuOpen = false)}>{m.nav_logs()}</a>
+					<a href={resolve('/admin')}>{m.nav_admin()}</a>
+					<a href={resolve('/admin/templates')}>{m.nav_templates()}</a>
+					<a href={resolve('/admin/participants')}>{m.nav_participants()}</a>
+					<a href={resolve('/admin/whitelist')}>{m.nav_whitelist()}</a>
+					<a href={resolve('/admin/logs')}>{m.nav_logs()}</a>
 				{/if}
-				<a href={resolve('/profile')} onclick={() => (menuOpen = false)}>{m.nav_profile()}</a>
+				<a href={resolve('/profile')}>{m.nav_profile()}</a>
 				<form method="POST" action={resolve('/auth/logout')}>
 					<button type="submit">{m.nav_logout()}</button>
 				</form>

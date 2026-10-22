@@ -32,7 +32,7 @@ export default defineConfig({
 		},
 		{
 			name: 'webkit-shared',
-			testMatch: ['events.test.ts', 'calendar.test.ts'],
+			testMatch: ['events.test.ts', 'calendar.test.ts', 'navigation.test.ts'],
 			fullyParallel: false,
 			workers: 1,
 			dependencies: ['mobile-shared'],
