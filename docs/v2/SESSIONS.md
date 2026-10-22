@@ -1559,3 +1559,103 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M11: riepilogo partecipanti ed export, da avviare alla prossima richiesta.
+
+
+## 2026-10-22 — Revisione M10 — bloccato: Docker non disponibile in WSL
+
+**Fatto**
+- Riletti piano, note di revisione M10 e ultima chiusura. Ismail ha autorizzato la revisione e poi M11; ordine mantenuto. Stato iniziale pulito sul branch v2.0.0, ultimo commit d5f0902 con le note.
+- Modifiche locali non ancora validate: R13 lock della riga settings dopo lockAdmin in applyTemplate; R14 massimo 200 eventi e descrizione di 500 caratteri nello schema, vincolo DB e migrazione Drizzle generata; Ponytail 24 editable/timeOrder esportati e riusati dal template; Ponytail 25 salvataggio delegato a formAction con input già letto e values restituiti; Ponytail 26 limite byte conservato nel solo parser CSV.
+- Controllati i percorsi dei lock: nessun percorso blocca settings dopo aver bloccato eventi. Individuato nel salvataggio impostazioni un lock implicito sull'utente dovuto alla FK dell'audit, successivo a settings. Aggiunto lockAdmin prima di settings anche a saveSettings per mantenere l'ordine utente → settings e prevenire l'inversione introdotta dalla serializzazione R13. Modifica locale ancora da verificare con test.
+- Graphify consultato per localizzare i report legacy, senza modificare codice M11 o ricostruire il grafo. Ponytail e Caveman applicati.
+
+**Commit**
+- Nessun nuovo commit o push; modifiche conservate nel working tree. M11 non iniziato.
+
+**Controlli**
+- db:generate completato: generata drizzle/0001_clean_kitty_pryde.sql con il vincolo della descrizione template e relativi metadati. Migrazione non applicata.
+- Preflight previsto sul DB applicativo, solo in lettura, per verificare descrizioni già oltre 500 caratteri: non eseguito perché Docker non disponibile.
+- Errore del comando docker compose exec: “The command 'docker' could not be found in this WSL 2 distro.” Il messaggio richiede WSL integration in Docker Desktop.
+- Stop al primo blocco di ambiente, senza installare Docker, cambiare metodo o toccare configurazioni di sistema. Nessuna scrittura sul DB applicativo o eliminazione di volumi.
+- Lint/check, nuovi test R13/R14, migrazione sul test DB e ci:local ancora da eseguire. Nessuna conclusione sulla correttezza delle modifiche locali.
+
+**Decisioni prese dentro il perimetro del piano**
+- formAction accetta un input già ricostruito per evitare una seconda lettura del body e riusare la mappatura degli errori. L'action mantiene add/remove e aggiunge values alla risposta del salvataggio.
+
+**Domande / blocchi**
+- Avviare Docker Desktop e abilitare l'integrazione WSL per questa distro. Verificare dalla stessa shell con docker version; poi confermare per riprendere. Non serve installare un Docker alternativo nella distro.
+
+**Prossimo passo**
+- Docker disponibile: completare revisione e test (concorrenza fra due admin/template e limiti con risposta 400 senza scritture), verificare migrazione e lock, lint/check/ci:local, stack HTTPS, commit piccoli, push e CI verde, chiusura revisione. Solo dopo iniziare M11, inclusa protezione CSV injection già richiesta dalle note. Non iniziare M12.
+
+## 2026-10-22 — Revisione M10 — bloccato: database dello stack fermo
+
+**Fatto**
+- Ripresa dopo la conferma di avvio Docker. docker version ora risponde con client e server Docker Desktop; precedente blocco WSL risolto.
+- Nessuna ulteriore modifica al codice o migrazione dalla precedente interruzione. Revisione conservata nel working tree, nessun commit/push; M11 non iniziato.
+
+**Controlli**
+- docker compose ps: app restarting, nessun db attivo.
+- Preflight delle descrizioni template non eseguito: docker compose exec db fallisce con service db is not running. Stop al primo fallimento di ambiente come richiesto da PLAN §1.2.
+- Nessuna migrazione applicata, nessuna scrittura applicativa, test ancora da eseguire.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione. Nessun tentativo alternativo o eliminazione di volumi.
+
+**Domande / blocchi**
+- Avviare lo stack esistente dalla root con docker compose up -d --wait (senza --build), quindi confermare l'esito. Se fallisce, fornire l'output per diagnosticare il blocco prima di modificare l'ambiente.
+
+**Prossimo passo**
+- Stack disponibile: preflight descrizioni oltre 500 caratteri, completamento revisione R13/R14 e Ponytail 24–26, nuovi test, controlli e CI verde; poi M11 come già autorizzato.
+
+## 2026-10-22 — Stack Docker — diagnosi dopo avvio manuale
+
+**Fatto**
+- Controllo richiesto da Ismail dopo il fallimento di docker compose up --wait. Applicata investigate-first, solo letture e nessuna modifica di configurazione o riavvio di container.
+- Il primo comando eseguito dopo cd nella home non trovava il file Compose. Il successivo comando dalla repo ha avviato Postgres; l'app ha inizialmente continuato a fallire la connessione e poi ha completato l'avvio.
+
+**Controlli**
+- Postgres running/healthy. App ora running/healthy, FailingStreak 0. GET interno /healthz risponde 200 con status ok.
+- Log app: precedenti CONNECT_TIMEOUT db:5432 durante init/migrazioni, seguiti da Listening on http://0.0.0.0:3000. Il problema di connessione osservato non è più presente al momento della prova.
+- nginx exited, codice 1. Ultimo avvio fallito con host not found in upstream app:3000 in nginx.conf:21. Il proxy non si è ripreso dopo l'avvio riuscito dell'app.
+- Nessuna prova HTTPS esterna in questa diagnosi: nginx è fermo. Nessun test o migrazione della revisione M10 eseguiti; M11 non iniziato.
+
+**Decisioni prese dentro il perimetro del piano**
+- Causa del fallimento nginx identificata dai log; nessuna correzione del codice applicativo indicata dalle prove raccolte. Nessuna modifica automatica del Compose durante la richiesta di controllo.
+
+**Domande / blocchi**
+- Ora che l'app è healthy, riavviare il proxy con docker compose up -d --wait nginx dalla root della repo. Poi verificare HTTPS e riprendere la revisione autorizzata. Un eventuale cambiamento alla sequenza di avvio Compose resta da concordare, fuori dalla revisione template.
+
+**Prossimo passo**
+- Ripristino nginx e verifica stack, poi revisione M10 e successivamente M11 come già autorizzato.
+
+
+## 2026-10-22 — Revisione M10 — controlli locali e ricostruzione completa riusciti
+
+**Fatto**
+- Ismail ha precisato che avvio, arresto, riavvio e ricostruzione ordinari dei container vanno gestiti autonomamente. Ha richiesto di fermare lo stack, ricostruirlo interamente e rieseguire i test. Gestiti questi comandi senza nuove conferme, conservando i volumi.
+- Completati R13, R14 e Ponytail 24–26. Nessun punto era già risolto. Protezione CSV injection lasciata a M11 come indicato nelle note; M11 non ancora iniziato.
+- R13: applyTemplate blocca utente, settings id 1, template ed eventi. Due admin con due template diversi sulla settimana vuota sono serializzati. Verificati tutti i percorsi: nessun lock settings dopo eventi. Allineato anche saveSettings al lock utente prima di settings, evitando il successivo lock implicito sull'utente dovuto alla FK audit e una possibile inversione.
+- R14: templateSchema limita gli eventi a 200 e la descrizione a 500 caratteri; vincolo DB con migrazione Drizzle 0001_clean_kitty_pryde. Preflight applicativo: zero descrizioni esistenti oltre 500 caratteri, nessuna correzione/troncamento di dati necessaria.
+- Ponytail 24: editable/timeOrder esportati dal dominio eventi e riutilizzati per i template, conservando default 2/0 e data facoltativa. Ponytail 25: action save delegata a formAction con input già aggregato, values conservati nel fail e svuotati solo su successo. Add/remove senza scritture invariati. Ponytail 26: unico limite byte in parseTemplateCsv, refine file limitato a estensione e non vuoto.
+
+**Commit**
+- `76f74b4` fix(templates): serialize applications and bound builder input.
+- `5a48909` refactor(templates): reuse event validation and form error handling.
+
+**Controlli**
+- pnpm ci:local: exit code 0, 146 unit, 242 integration, 74 e2e. Lint/check/build verdi, svelte-check senza errori o warning. Test precedenti del builder, anche senza JavaScript, ancora verdi.
+- Cinque nuovi integration: applicazioni concorrenti di due admin/template, un solo successo e un warning template_existing con un solo evento/audit pubblico; aggiornamento impostazioni contemporaneo all'applicazione; 201 eventi e descrizione di 501 caratteri tramite action → 400, nessuna scrittura e valori restituiti; accettazione di 200/500 e rifiuto DB della descrizione eccessiva.
+- Stack completo arrestato con compose down, test eseguiti sullo stack dev poi arrestato. docker compose build --no-cache: exit code 0. Download iniziale Corepack lento; prove isolate di registry, archivio pnpm e versione Corepack riuscite. Nessuna modifica di rete, mirror o TLS necessaria.
+- docker compose up -d --wait dopo ricostruzione: exit code 0. Avvio a freddo riuscito senza riavvii manuali del proxy; app/Postgres healthy, nginx running. Vincolo templates_description_length presente e convalidated=true sul DB applicativo.
+- HTTPS con CA locale esplicita: health 200, pagine template anonime 303, CSV anonimo 401; HTTP 8080 → HTTPS 8443 con 308. SSE 200 con ping immediato e heartbeat reale dopo 25 secondi attraverso nginx, cache no-cache e token assente dagli access log. Nessuna scrittura applicativa dai controlli HTTP; applicata soltanto la migrazione richiesta, senza modificare righe applicative.
+- Nessun volume eliminato, legacy o dipendenza modificati. git diff --check verde. Nessuna modifica Compose necessaria per questa ricostruzione; gli errori precedenti erano relativi all'avvio parziale dello stack. Questa prova non simula il riavvio di Docker Desktop.
+
+**Decisioni prese dentro il perimetro del piano**
+- Riutilizzati helper/schema esistenti. Graphify, Ponytail, Caveman e investigate-first applicati; nessuna ricostruzione del grafo.
+
+**Domande / blocchi**
+- Blocchi Docker precedenti risolti. Nessun altro blocco tecnico; OAuth 42 reale resta una verifica manuale già prevista.
+
+**Prossimo passo**
+- Pubblicare revisione e verificare tutti i sei job CI, registrare la chiusura; poi avviare M11 come autorizzato. Non avviare M12.
