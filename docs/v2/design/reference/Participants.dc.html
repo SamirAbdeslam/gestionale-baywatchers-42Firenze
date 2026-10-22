@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Partecipanti · 42 Baywatchers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&amp;family=Instrument+Sans:wght@400..700&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0;background:#0b1422}
+a{color:#ff8a63}a:hover{color:#eef3fa}
+</style>
+</helmet>
+<div style="min-height: 1160px; background: #0b1422; color: #eef3fa; font-family: 'Instrument Sans', system-ui, sans-serif">
+  <header style="border-bottom: 1px solid #2b3e5c">
+    <div style="height: 4px; background: #ff6a3d"></div>
+    <div style="max-width: 1360px; margin: 0 auto; padding: 0 40px; height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap">
+      <a href="#" aria-label="42 Baywatchers, calendario" style="color: #eef3fa; display: flex">
+        <svg aria-hidden="true" viewBox="0 0 1480.71 120" style="height: 20px; width: auto; display: block"><g fill="currentColor" transform="translate(0 0) scale(0.357143) translate(-17 -79)"><path d="M193 79H281L105 255H281V415H193V327H17V255Z"></path><path d="M319 79H406L319 166Z"></path><path d="M407 79H495V167L407 255V343H319V255L407 167Z"></path><path d="M495 255V343H407Z"></path></g><g fill="currentColor" fill-rule="evenodd"><path d="M218.71 0H298.71L318.71 20V45L306.71 60L318.71 75V100L298.71 120H218.71ZM248.71 30H288.71V46H248.71ZM248.71 74H288.71V90H248.71Z"></path><path d="M332.71 120V30L362.71 0H432.71V120H402.71V82H362.71V120ZM362.71 30V52H402.71V30Z"></path><path d="M446.71 0H476.71V45H516.71V0H546.71V60L531.71 75H511.71V120H481.71V75H461.71L446.71 60Z"></path><path d="M560.71 0H590.71V90H615.71V30H645.71V90H670.71V0H700.71V100L680.71 120H580.71L560.71 100Z"></path><path d="M714.71 120V30L744.71 0H814.71V120H784.71V82H744.71V120ZM744.71 30V52H784.71V30Z"></path><path d="M828.71 0H928.71V30H893.71V120H863.71V30H828.71Z"></path><path d="M972.71 0H1038.71V30H972.71V90H1038.71V120H972.71L942.71 90V30Z"></path><path d="M1052.71 0H1082.71V45H1122.71V0H1152.71V120H1122.71V75H1082.71V120H1052.71Z"></path><path d="M1166.71 0H1256.71V30H1196.71V46H1241.71V74H1196.71V90H1256.71V120H1166.71Z"></path><path d="M1270.71 0H1350.71L1370.71 20V50L1354.71 66L1370.71 82V120H1340.71V94L1322.71 76H1300.71V120H1270.71ZM1300.71 30H1340.71V46H1300.71Z"></path><path d="M1404.71 0H1480.71V30H1414.71V46H1460.71L1480.71 66V100L1460.71 120H1384.71V90H1450.71V74H1404.71L1384.71 54V20Z"></path></g></svg>
+      </a>
+      <nav aria-label="Principale" style="display: flex; align-items: center; gap: 28px; font-size: 15px; font-weight: 600">
+        <a href="#" style="color: #9aabc4; text-decoration: none">Calendario</a>
+        <a href="#" style="color: #9aabc4; text-decoration: none">Profilo</a>
+        <a href="#" aria-current="page" style="color: #eef3fa; text-decoration: none; border-bottom: 3px solid #ff6a3d; padding: 24px 0 21px">Admin</a>
+      </nav>
+    </div>
+    <div style="max-width: 1360px; margin: 0 auto; padding: 0 40px">
+      <nav aria-label="Sezioni admin" style="display: flex; gap: 4px; overflow-x: auto">
+        <sc-for list="{{sections}}" as="s" hint-placeholder-count="5">
+          <a href="#" aria-current="{{s.current}}" style="padding: 14px 16px; font-size: 14px; font-weight: 700; text-decoration: none; color: {{s.fg}}; border-bottom: 3px solid {{s.rule}}; white-space: nowrap">{{s.label}}</a>
+        </sc-for>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 1360px; margin: 0 auto; padding: 36px 40px 64px; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 44px; font-weight: 800; letter-spacing: -0.02em; line-height: 1">Partecipanti</h1>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #9aabc4">38 persone · 212 h · 31 450 ₳ maturati nel pool</span>
+      </div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap">
+        <a href="#" style="min-height: 44px; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; border: 2px solid #eef3fa; color: #eef3fa; text-decoration: none; font-size: 14px; font-weight: 700">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+          CSV sintetico
+        </a>
+        <a href="#" style="min-height: 44px; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; background: #ff6a3d; color: #0b1422; text-decoration: none; font-size: 14px; font-weight: 700">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+          CSV dettagliato
+        </a>
+      </div>
+    </div>
+
+    <label style="align-self: flex-start; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 2px solid #2b3e5c; background: #121f33; font-size: 0">Cerca partecipante
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9aabc4" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input type="search" placeholder="cerca login" style="width: 260px; border: 0; background: transparent; color: #eef3fa; font-family: 'IBM Plex Mono', monospace; font-size: 14px">
+    </label>
+
+    <div role="table" aria-label="Partecipanti" style="overflow-x: auto; border-radius: 18px; border: 1px solid #2b3e5c; background: #121f33">
+      <div role="row" style="display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 1.2fr 0.8fr; align-items: center; background: #0b1422; color: #9aabc4; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em">
+        <span role="columnheader" style="padding: 14px 18px">Login</span>
+        <span role="columnheader" style="padding: 14px 18px">Presenze</span>
+        <span role="columnheader" style="padding: 14px 18px; text-align: right">Turni</span>
+        <span role="columnheader" style="padding: 14px 18px; text-align: right">Ore</span>
+        <span role="columnheader" style="padding: 14px 18px; text-align: right">Altarian</span>
+        <span role="columnheader" style="padding: 14px 18px; text-align: right">File</span>
+      </div>
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+        <div role="rowgroup" style="border-top: 1px solid #2b3e5c; background: {{r.bg}}">
+          <div role="row" style="display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 1.2fr 0.8fr; align-items: center; font-size: 15px">
+            <span role="cell" style="padding: 10px 18px">
+              <button type="button" aria-expanded="{{r.expanded}}" style="display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 0; border: 0; background: transparent; color: #eef3fa; font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; cursor: pointer">
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate({{r.chevron}})"><path d="m9 18 6-6-6-6"></path></svg>
+                @{{r.login}}
+              </button>
+            </span>
+            <span role="cell" style="padding: 10px 18px; display: flex; gap: 3px">
+              <sc-for list="{{r.marks}}" as="m" hint-placeholder-count="6">
+                <span style="width: 12px; height: 12px; border-radius: 3px; {{m}}"></span>
+              </sc-for>
+            </span>
+            <span role="cell" style="padding: 10px 18px; text-align: right; font-family: 'IBM Plex Mono', monospace">{{r.events}}</span>
+            <span role="cell" style="padding: 10px 18px; text-align: right; font-family: 'IBM Plex Mono', monospace">{{r.hours}}</span>
+            <span role="cell" style="padding: 10px 18px; text-align: right; font-family: 'IBM Plex Mono', monospace; font-weight: 600">{{r.alt}} ₳</span>
+            <span role="cell" style="padding: 10px 18px; text-align: right"><a href="#" style="font-size: 13px; font-weight: 700" aria-label="Scarica CSV di {{r.login}}">CSV</a></span>
+          </div>
+          <sc-if value="{{r.isOpen}}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 4px 18px 18px 46px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+              <sc-for list="{{r.detail}}" as="w" hint-placeholder-count="3">
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #9aabc4">{{w.title}}</span>
+                  <sc-for list="{{w.items}}" as="i" hint-placeholder-count="2">
+                    <div style="display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 8px 10px; border-radius: 10px; background: #0b1422; opacity: {{i.opacity}}">
+                      <span>{{i.label}}</span>
+                      <span style="font-family: 'IBM Plex Mono', monospace; color: {{i.color}}">{{i.value}}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <span style="font-size: 13px; color: #9aabc4">Quadratino pieno = presente, rosso barrato = assente. Ore e Altarian contano solo le presenze.</span>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1160}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const ok = 'background: #5ee0b5;';
+    const no = 'background: #43191a; border: 1px solid #ff8f87; box-sizing: border-box;';
+    const marks = (p, a) => [...Array(p).fill(ok), ...Array(a).fill(no)];
+    const row = (login, p, a, hours, alt, open) => ({
+      login, marks: marks(p, a), events: p, hours, alt, isOpen: !!open,
+      expanded: open ? 'true' : 'false', chevron: open ? '90deg' : '0deg', bg: open ? '#1c2c45' : '#121f33',
+      detail: open ? [
+        { title: 'Settimana 1', items: [
+          { label: 'Accoglienza · lun 5', value: '300 ₳', color: '#eef3fa', opacity: 1 },
+          { label: 'Icebreaker · mer 7', value: '150 ₳', color: '#eef3fa', opacity: 1 }
+        ] },
+        { title: 'Settimana 2', items: [
+          { label: 'Esami · lun 12', value: '200 ₳', color: '#eef3fa', opacity: 1 },
+          { label: 'Rush · mar 13', value: '300 ₳', color: '#eef3fa', opacity: 1 },
+          { label: 'Esami · gio 15', value: 'assente', color: '#ff8f87', opacity: 0.6 }
+        ] },
+        { title: 'Settimana 3', items: [
+          { label: 'Icebreaker · mar 20', value: 'in programma', color: '#9aabc4', opacity: 1 }
+        ] }
+      ] : []
+    });
+    return {
+      sections: ['Settimane', 'Template', 'Partecipanti', 'Whitelist', 'Log'].map((label, i) => ({
+        label, current: i === 2 ? 'page' : 'false', fg: i === 2 ? '#eef3fa' : '#9aabc4', rule: i === 2 ? '#ff6a3d' : 'transparent'
+      })),
+      rows: [
+        row('acosta', 9, 0, 21, 1650),
+        row('dgialli', 6, 1, 15, 1300),
+        row('ecolombo', 5, 0, 12, 1050),
+        row('fneri', 7, 2, 14.5, 1100),
+        row('lbianchi', 4, 1, 10.5, 950, true),
+        row('mrossi', 8, 0, 19, 1700),
+        row('pmarino', 3, 0, 8, 750),
+        row('sferri', 6, 0, 16, 1350)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

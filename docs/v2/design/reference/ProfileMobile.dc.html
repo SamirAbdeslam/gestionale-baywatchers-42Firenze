@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Profilo mobile · 42 Baywatchers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&amp;family=Instrument+Sans:wght@400..700&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0;background:#0b1422}
+a{color:#ff8a63}a:hover{color:#eef3fa}
+</style>
+</helmet>
+<div style="width: 390px; height: 1400px; box-sizing: border-box; background: #0b1422; color: #eef3fa; font-family: 'Instrument Sans', system-ui, sans-serif; display: flex; flex-direction: column">
+  <header style="flex-shrink: 0">
+    <div style="height: 4px; background: #ff6a3d"></div>
+    <div style="height: 60px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #2b3e5c">
+      <a href="#" aria-label="42 Baywatchers, calendario" style="color: #eef3fa; display: flex">
+        <svg aria-hidden="true" viewBox="0 0 1480.71 120" style="height: 15px; width: auto; display: block"><g fill="currentColor" transform="translate(0 0) scale(0.357143) translate(-17 -79)"><path d="M193 79H281L105 255H281V415H193V327H17V255Z"></path><path d="M319 79H406L319 166Z"></path><path d="M407 79H495V167L407 255V343H319V255L407 167Z"></path><path d="M495 255V343H407Z"></path></g><g fill="currentColor" fill-rule="evenodd"><path d="M218.71 0H298.71L318.71 20V45L306.71 60L318.71 75V100L298.71 120H218.71ZM248.71 30H288.71V46H248.71ZM248.71 74H288.71V90H248.71Z"></path><path d="M332.71 120V30L362.71 0H432.71V120H402.71V82H362.71V120ZM362.71 30V52H402.71V30Z"></path><path d="M446.71 0H476.71V45H516.71V0H546.71V60L531.71 75H511.71V120H481.71V75H461.71L446.71 60Z"></path><path d="M560.71 0H590.71V90H615.71V30H645.71V90H670.71V0H700.71V100L680.71 120H580.71L560.71 100Z"></path><path d="M714.71 120V30L744.71 0H814.71V120H784.71V82H744.71V120ZM744.71 30V52H784.71V30Z"></path><path d="M828.71 0H928.71V30H893.71V120H863.71V30H828.71Z"></path><path d="M972.71 0H1038.71V30H972.71V90H1038.71V120H972.71L942.71 90V30Z"></path><path d="M1052.71 0H1082.71V45H1122.71V0H1152.71V120H1122.71V75H1082.71V120H1052.71Z"></path><path d="M1166.71 0H1256.71V30H1196.71V46H1241.71V74H1196.71V90H1256.71V120H1166.71Z"></path><path d="M1270.71 0H1350.71L1370.71 20V50L1354.71 66L1370.71 82V120H1340.71V94L1322.71 76H1300.71V120H1270.71ZM1300.71 30H1340.71V46H1300.71Z"></path><path d="M1404.71 0H1480.71V30H1414.71V46H1460.71L1480.71 66V100L1460.71 120H1384.71V90H1450.71V74H1404.71L1384.71 54V20Z"></path></g></svg>
+      </a>
+      <form style="margin: 0">
+        <button type="submit" style="min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #2b3e5c; background: transparent; color: #eef3fa; font: inherit; font-size: 14px; font-weight: 600">Esci</button>
+      </form>
+    </div>
+  </header>
+
+  <main style="flex: 1; overflow: hidden; padding: 24px 16px; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; align-items: center; gap: 16px">
+      <div aria-hidden="true" style="width: 72px; height: 72px; border-radius: 999px; background: #1c2c45; border: 3px solid #ff6a3d; display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800">TL</div>
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800; line-height: 1.05">[Nome Cognome]</h1>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #ff8a63">@tuologin</span>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <sc-for list="{{stats}}" as="s" hint-placeholder-count="4">
+        <div style="padding: 14px; border-radius: 14px; background: #121f33; border: 1px solid {{s.border}}; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #9aabc4">{{s.label}}</span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 24px; font-weight: 600; line-height: 1">{{s.value}}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <sc-for list="{{weeks}}" as="w" hint-placeholder-count="2">
+      <section style="display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #eef3fa; padding-bottom: 8px">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800">{{w.title}}</h2>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #9aabc4">{{w.summary}}</span>
+        </div>
+        <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+          <sc-for list="{{w.rows}}" as="r" hint-placeholder-count="3">
+            <li style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #2b3e5c; opacity: {{r.opacity}}">
+              <span style="width: 10px; align-self: stretch; border-radius: 3px; background: {{r.fill}}"></span>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+                <span style="font-size: 15px; font-weight: 600">{{r.title}}</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #9aabc4">{{r.day}} · {{r.time}}</span>
+              </div>
+              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; text-decoration: {{r.strike}}">{{r.comp}}</span>
+                <span style="font-size: 11px; font-weight: 700; color: {{r.stateFg}}">{{r.state}}</span>
+              </div>
+            </li>
+          </sc-for>
+        </ul>
+      </section>
+    </sc-for>
+  </main>
+
+  <nav aria-label="Principale" style="flex-shrink: 0; height: 76px; border-top: 1px solid #2b3e5c; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr))">
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #9aabc4; text-decoration: none; font-size: 12px; font-weight: 600">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 11h18"></path></svg>
+      Calendario
+    </a>
+    <a href="#" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #ff8a63; text-decoration: none; font-size: 12px; font-weight: 700; border-top: 3px solid #ff6a3d; margin-top: -1px">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg>
+      Profilo
+    </a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #9aabc4; text-decoration: none; font-size: 12px; font-weight: 600">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 7v6c0 4 3.5 7 8 8 4.5-1 8-4 8-8V7z"></path></svg>
+      Admin
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const C = { exam: '#3d3aa8', ice: '#f06ba8', rush: '#ffcf2e', cluster: '#17a589', welcome: '#9bd34a', custom: '#5cc8f0' };
+    const row = (day, time, k, title, comp, state) => ({
+      day, time, title, comp, fill: C[k],
+      state: state === 'ok' ? 'Partecipato' : state === 'no' ? 'Non partecipato' : 'In programma',
+      stateFg: state === 'ok' ? '#5ee0b5' : state === 'no' ? '#ff8f87' : '#9aabc4',
+      opacity: state === 'no' ? 0.6 : 1,
+      strike: state === 'no' ? 'line-through' : 'none'
+    });
+    return {
+      stats: [
+        { label: 'Turni', value: '9', border: '#2b3e5c' },
+        { label: 'Ore', value: '17.5', border: '#2b3e5c' },
+        { label: 'Altarian', value: '1300', border: '#ff6a3d' },
+        { label: 'Wallet intra', value: '2340', border: '#2b3e5c' }
+      ],
+      weeks: [
+        { title: 'Settimana 3', summary: 'in programma', rows: [
+          row('mar 20 ott', '14:00–16:00', 'ice', 'Icebreaker', '150 ₳', 'plan'),
+          row('gio 22 ott', '09:00–11:00', 'cluster', 'Presenza cluster', '100 ₳', 'plan')
+        ] },
+        { title: 'Settimana 2', summary: '7 h · 600 ₳', rows: [
+          row('lun 12 ott', '09:00–11:00', 'exam', 'Sorveglianza esami', '200 ₳', 'ok'),
+          row('mar 13 ott', '16:00–19:00', 'rush', 'Correzioni rush', '300 ₳', 'ok'),
+          row('gio 15 ott', '14:00–16:00', 'exam', 'Sorveglianza esami', '200 ₳', 'no'),
+          row('ven 16 ott', '09:00–11:00', 'cluster', 'Presenza cluster', '100 ₳', 'ok')
+        ] },
+        { title: 'Settimana 1', summary: '10.5 h · 700 ₳', rows: [
+          row('lun 5 ott', '08:30–12:00', 'welcome', 'Accoglienza primo giorno', '300 ₳', 'ok'),
+          row('mer 7 ott', '14:00–16:00', 'ice', 'Icebreaker', '150 ₳', 'ok'),
+          row('ven 9 ott', '09:00–14:00', 'custom', 'Supporto piscine', '250 ₳', 'ok')
+        ] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

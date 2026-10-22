@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Display TV · 42 Baywatchers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&amp;family=Instrument+Sans:wght@400..700&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0;background:#0b1422}
+a{color:#ff8a63}a:hover{color:#eef3fa}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; box-sizing: border-box; background: #0b1422; color: #eef3fa; font-family: 'Instrument Sans', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <div style="height: 8px; background: #ff6a3d; flex-shrink: 0"></div>
+  <header style="flex-shrink: 0; padding: 36px 64px 28px; display: flex; align-items: center; justify-content: space-between; gap: 48px; border-bottom: 2px solid #2b3e5c">
+    <div style="display: flex; align-items: center; gap: 48px">
+      <svg role="img" aria-label="42 Baywatchers" viewBox="0 0 1351.57 264" style="height: 84px; width: auto; display: block; color: #eef3fa"><g fill="currentColor" transform="translate(0 0) scale(0.785714) translate(-17 -79)"><path d="M193 79H281L105 255H281V415H193V327H17V255Z"></path><path d="M319 79H406L319 166Z"></path><path d="M407 79H495V167L407 255V343H319V255L407 167Z"></path><path d="M495 255V343H407Z"></path></g><g fill="currentColor" fill-rule="evenodd"><path d="M431.57 0H511.57L531.57 20V45L519.57 60L531.57 75V100L511.57 120H431.57ZM461.57 30H501.57V46H461.57ZM461.57 74H501.57V90H461.57Z"></path><path d="M545.57 120V30L575.57 0H645.57V120H615.57V82H575.57V120ZM575.57 30V52H615.57V30Z"></path><path d="M659.57 0H689.57V45H729.57V0H759.57V60L744.57 75H724.57V120H694.57V75H674.57L659.57 60Z"></path><path d="M431.57 144H461.57V234H486.57V174H516.57V234H541.57V144H571.57V244L551.57 264H451.57L431.57 244Z"></path><path d="M585.57 264V174L615.57 144H685.57V264H655.57V226H615.57V264ZM615.57 174V196H655.57V174Z"></path><path d="M699.57 144H799.57V174H764.57V264H734.57V174H699.57Z"></path><path d="M843.57 144H909.57V174H843.57V234H909.57V264H843.57L813.57 234V174Z"></path><path d="M923.57 144H953.57V189H993.57V144H1023.57V264H993.57V219H953.57V264H923.57Z"></path><path d="M1037.57 144H1127.57V174H1067.57V190H1112.57V218H1067.57V234H1127.57V264H1037.57Z"></path><path d="M1141.57 144H1221.57L1241.57 164V194L1225.57 210L1241.57 226V264H1211.57V238L1193.57 220H1171.57V264H1141.57ZM1171.57 174H1211.57V190H1171.57Z"></path><path d="M1275.57 144H1351.57V174H1285.57V190H1331.57L1351.57 210V244L1331.57 264H1255.57V234H1321.57V218H1275.57L1255.57 198V164Z"></path></g></svg>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding-left: 48px; border-left: 2px solid #2b3e5c">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 22px; color: #ff8a63">19 – 23 ottobre</span>
+        <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 64px; line-height: 0.95; font-weight: 800; letter-spacing: -0.03em">Settimana 3</h1>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 72px; font-weight: 600; line-height: 1">10:42</span>
+      <span style="font-size: 22px; color: #9aabc4">lunedì 19 ottobre</span>
+    </div>
+  </header>
+
+  <main style="flex: 1; padding: 32px 64px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 28px; align-items: start">
+    <sc-for list="{{days}}" as="d" hint-placeholder-count="5">
+      <section style="display: flex; flex-direction: column; gap: 18px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 12px; border-bottom: 3px solid {{d.rule}}">
+          <div style="display: flex; align-items: baseline; gap: 12px">
+            <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 48px; font-weight: 800; line-height: 1">{{d.num}}</span>
+            <span style="font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #9aabc4">{{d.name}}</span>
+          </div>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 20px; color: #ff8a63">{{d.tag}}</span>
+        </div>
+        <sc-for list="{{d.events}}" as="ev" hint-placeholder-count="2">
+          <article style="border-radius: 18px; overflow: hidden; background: #121f33; border: 1px solid #2b3e5c; opacity: {{ev.opacity}}">
+            <div style="background: {{ev.fill}}; color: {{ev.ink}}; padding: 14px 20px; display: flex; justify-content: space-between; align-items: baseline">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 30px; font-weight: 600">{{ev.start}}–{{ev.end}}</span>
+              <span style="font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em">{{ev.kind}}</span>
+            </div>
+            <div style="padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+              <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 700; line-height: 1.15">{{ev.title}}</h2>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+                <div style="display: flex; gap: 5px">
+                  <sc-for list="{{ev.seats}}" as="s" hint-placeholder-count="4">
+                    <span style="{{s.style}}"></span>
+                  </sc-for>
+                </div>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 600; color: {{ev.statusColor}}">{{ev.status}}</span>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                <sc-for list="{{ev.people}}" as="p" hint-placeholder-count="2">
+                  <span style="display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #2b3e5c; font-family: 'IBM Plex Mono', monospace; font-size: 17px">@{{p}}</span>
+                </sc-for>
+              </div>
+            </div>
+          </article>
+        </sc-for>
+      </section>
+    </sc-for>
+  </main>
+
+  <footer style="flex-shrink: 0; padding: 20px 64px; border-top: 2px solid #2b3e5c; display: flex; justify-content: space-between; align-items: center; font-size: 20px; color: #9aabc4">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 12px; height: 12px; border-radius: 999px; background: #5ee0b5"></span>
+      <span>Aggiornato in tempo reale</span>
+    </div>
+    <span>Prendi un turno dall'app: <span style="font-family: 'IBM Plex Mono', monospace; color: #eef3fa">[indirizzo dell'app]</span></span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const K = {
+      exam: { kind: 'Esame', fill: '#3d3aa8', ink: '#ffffff' },
+      ice: { kind: 'Icebreaker', fill: '#f06ba8', ink: '#1f0612' },
+      rush: { kind: 'Rush', fill: '#ffcf2e', ink: '#1f1700' },
+      cluster: { kind: 'Cluster', fill: '#17a589', ink: '#03180f' },
+      custom: { kind: 'Extra', fill: '#5cc8f0', ink: '#04202c' }
+    };
+    const seat = (t) => ({ style: 'display: inline-block; width: 20px; height: 20px; border-radius: 5px; box-sizing: border-box; ' + (t ? 'background: #eef3fa;' : 'border: 3px solid #2b3e5c;') });
+    const ev = (k, start, end, title, taken, total, people, past) => {
+      const free = total - taken;
+      return {
+        ...K[k], start, end, title, people,
+        seats: Array.from({ length: total }, (_, i) => seat(i < taken)),
+        status: past ? 'concluso' : free === 0 ? 'completo' : free + (free === 1 ? ' libero' : ' liberi'),
+        statusColor: past ? '#9aabc4' : free === 0 ? '#ff8f87' : '#5ee0b5',
+        opacity: past ? 0.45 : 1
+      };
+    };
+    const days = [
+      { num: '19', name: 'lun', tag: 'oggi', rule: '#ff6a3d', events: [
+        ev('cluster', '08:30', '10:30', 'Presenza cluster', 2, 2, ['acosta', 'fneri'], true),
+        ev('exam', '11:00', '13:00', 'Sorveglianza esami', 2, 4, ['mrossi', 'lbianchi'], false)
+      ] },
+      { num: '20', name: 'mar', tag: '', rule: '#2b3e5c', events: [
+        ev('ice', '14:00', '16:00', 'Icebreaker', 3, 6, ['tuologin', 'acosta', 'fneri'], false),
+        ev('rush', '16:00', '19:00', 'Correzioni rush', 5, 5, ['mrossi', 'dgialli', 'sferri', 'pmarino', 'ecolombo'], false)
+      ] },
+      { num: '21', name: 'mer', tag: '', rule: '#2b3e5c', events: [
+        ev('exam', '09:00', '11:00', 'Sorveglianza esami', 1, 4, ['gverdi'], false),
+        ev('custom', '15:00', '18:00', 'Open day', 0, 3, [], false)
+      ] },
+      { num: '22', name: 'gio', tag: '', rule: '#2b3e5c', events: [
+        ev('cluster', '09:00', '11:00', 'Presenza cluster', 1, 2, ['tuologin'], false)
+      ] },
+      { num: '23', name: 'ven', tag: '', rule: '#2b3e5c', events: [
+        ev('rush', '10:00', '13:00', 'Correzioni rush', 3, 5, ['lbianchi', 'sferri', 'pmarino'], false),
+        ev('exam', '14:00', '16:00', 'Sorveglianza esami', 4, 4, ['mrossi', 'dgialli', 'acosta', 'ecolombo'], false)
+      ] }
+    ];
+    return { days };
+  }
+}
+</script>
+</body>
+</html>

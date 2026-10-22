@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Accedi · 42 Baywatchers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&amp;family=Instrument+Sans:wght@400..700&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0;background:#0b1422}
+a{color:#ff8a63}a:hover{color:#eef3fa}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #0b1422; color: #eef3fa; font-family: 'Instrument Sans', system-ui, sans-serif; display: flex; flex-direction: column">
+  <div style="height: 4px; background: #ff6a3d"></div>
+  <main style="flex: 1; max-width: 1360px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 72px 40px; display: flex; flex-wrap: wrap; align-items: center; gap: 64px">
+
+    <section style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 40px">
+      <svg role="img" aria-label="42 Baywatchers" viewBox="0 0 1351.57 264" style="width: 100%; max-width: 640px; height: auto; display: block; color: #eef3fa"><g fill="currentColor" transform="translate(0 0) scale(0.785714) translate(-17 -79)"><path d="M193 79H281L105 255H281V415H193V327H17V255Z"></path><path d="M319 79H406L319 166Z"></path><path d="M407 79H495V167L407 255V343H319V255L407 167Z"></path><path d="M495 255V343H407Z"></path></g><g fill="currentColor" fill-rule="evenodd"><path d="M431.57 0H511.57L531.57 20V45L519.57 60L531.57 75V100L511.57 120H431.57ZM461.57 30H501.57V46H461.57ZM461.57 74H501.57V90H461.57Z"></path><path d="M545.57 120V30L575.57 0H645.57V120H615.57V82H575.57V120ZM575.57 30V52H615.57V30Z"></path><path d="M659.57 0H689.57V45H729.57V0H759.57V60L744.57 75H724.57V120H694.57V75H674.57L659.57 60Z"></path><path d="M431.57 144H461.57V234H486.57V174H516.57V234H541.57V144H571.57V244L551.57 264H451.57L431.57 244Z"></path><path d="M585.57 264V174L615.57 144H685.57V264H655.57V226H615.57V264ZM615.57 174V196H655.57V174Z"></path><path d="M699.57 144H799.57V174H764.57V264H734.57V174H699.57Z"></path><path d="M843.57 144H909.57V174H843.57V234H909.57V264H843.57L813.57 234V174Z"></path><path d="M923.57 144H953.57V189H993.57V144H1023.57V264H993.57V219H953.57V264H923.57Z"></path><path d="M1037.57 144H1127.57V174H1067.57V190H1112.57V218H1067.57V234H1127.57V264H1037.57Z"></path><path d="M1141.57 144H1221.57L1241.57 164V194L1225.57 210L1241.57 226V264H1211.57V238L1193.57 220H1171.57V264H1141.57ZM1171.57 174H1211.57V190H1171.57Z"></path><path d="M1275.57 144H1351.57V174H1285.57V190H1331.57L1351.57 210V244L1331.57 264H1255.57V234H1321.57V218H1275.57L1255.57 198V164Z"></path></g></svg>
+      <p style="margin: 0; font-size: 22px; line-height: 1.45; color: #9aabc4; max-width: 560px">I turni dei Baywatchers di 42 Firenze. Scegli quando esserci, guarda chi c'è con te, tieni il conto degli Altarian.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+        <a href="#" style="min-height: 56px; padding: 0 28px; display: inline-flex; align-items: center; gap: 12px; border-radius: 999px; background: #ff6a3d; color: #0b1422; text-decoration: none; font-size: 17px; font-weight: 700">
+          Accedi con l'intra 42
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>
+        </a>
+        <span style="font-size: 14px; color: #9aabc4">Usa il tuo account della scuola.</span>
+      </div>
+    </section>
+
+    <aside aria-label="Anteprima turni" style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #ff8a63">questa settimana</span>
+      <sc-for list="{{preview}}" as="p" hint-placeholder-count="3">
+        <div style="position: relative; display: flex; align-items: stretch; border-radius: 16px; background: #121f33; border: 1px solid #2b3e5c; transform: rotate({{p.tilt}})">
+          <div style="width: 88px; flex-shrink: 0; background: {{p.fill}}; color: {{p.ink}}; border-radius: 15px 0 0 15px; padding: 14px 10px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px">
+            <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em">{{p.kind}}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600">{{p.start}}</span>
+          </div>
+          <div style="flex: 1; padding: 14px 16px; border-left: 2px dashed #2b3e5c; display: flex; flex-direction: column; gap: 8px">
+            <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 700">{{p.title}}</span>
+            <div style="display: flex; gap: 3px">
+              <sc-for list="{{p.seats}}" as="s" hint-placeholder-count="4">
+                <span style="{{s.style}}"></span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </aside>
+  </main>
+  <footer style="max-width: 1360px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 24px 40px; border-top: 1px solid #2b3e5c; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 13px; color: #9aabc4">
+    <span>42 Firenze · Baywatchers</span>
+    <a href="#" style="color: #9aabc4">Display per la TV</a>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const seat = (taken) => ({ style: 'display: inline-block; width: 14px; height: 14px; border-radius: 4px; box-sizing: border-box; ' + (taken ? 'background: #eef3fa;' : 'border: 2px solid #2b3e5c;') });
+    const seats = (t, n) => Array.from({ length: n }, (_, i) => seat(i < t));
+    return {
+      preview: [
+        { kind: 'Esame', start: '11:00', title: 'Sorveglianza esami', fill: '#3d3aa8', ink: '#ffffff', seats: seats(2, 4), tilt: '-1.5deg' },
+        { kind: 'Icebreaker', start: '14:00', title: 'Icebreaker', fill: '#f06ba8', ink: '#1f0612', seats: seats(3, 6), tilt: '1deg' },
+        { kind: 'Rush', start: '16:00', title: 'Correzioni rush', fill: '#ffcf2e', ink: '#1f1700', seats: seats(5, 5), tilt: '-0.5deg' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

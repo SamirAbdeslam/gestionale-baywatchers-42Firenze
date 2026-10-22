@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Log · 42 Baywatchers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&amp;family=Instrument+Sans:wght@400..700&amp;family=IBM+Plex+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0;background:#0b1422}
+a{color:#ff8a63}a:hover{color:#eef3fa}
+</style>
+</helmet>
+<div style="min-height: 1160px; background: #0b1422; color: #eef3fa; font-family: 'Instrument Sans', system-ui, sans-serif">
+  <header style="border-bottom: 1px solid #2b3e5c">
+    <div style="height: 4px; background: #ff6a3d"></div>
+    <div style="max-width: 1360px; margin: 0 auto; padding: 0 40px; height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap">
+      <a href="#" aria-label="42 Baywatchers, calendario" style="color: #eef3fa; display: flex">
+        <svg aria-hidden="true" viewBox="0 0 1480.71 120" style="height: 20px; width: auto; display: block"><g fill="currentColor" transform="translate(0 0) scale(0.357143) translate(-17 -79)"><path d="M193 79H281L105 255H281V415H193V327H17V255Z"></path><path d="M319 79H406L319 166Z"></path><path d="M407 79H495V167L407 255V343H319V255L407 167Z"></path><path d="M495 255V343H407Z"></path></g><g fill="currentColor" fill-rule="evenodd"><path d="M218.71 0H298.71L318.71 20V45L306.71 60L318.71 75V100L298.71 120H218.71ZM248.71 30H288.71V46H248.71ZM248.71 74H288.71V90H248.71Z"></path><path d="M332.71 120V30L362.71 0H432.71V120H402.71V82H362.71V120ZM362.71 30V52H402.71V30Z"></path><path d="M446.71 0H476.71V45H516.71V0H546.71V60L531.71 75H511.71V120H481.71V75H461.71L446.71 60Z"></path><path d="M560.71 0H590.71V90H615.71V30H645.71V90H670.71V0H700.71V100L680.71 120H580.71L560.71 100Z"></path><path d="M714.71 120V30L744.71 0H814.71V120H784.71V82H744.71V120ZM744.71 30V52H784.71V30Z"></path><path d="M828.71 0H928.71V30H893.71V120H863.71V30H828.71Z"></path><path d="M972.71 0H1038.71V30H972.71V90H1038.71V120H972.71L942.71 90V30Z"></path><path d="M1052.71 0H1082.71V45H1122.71V0H1152.71V120H1122.71V75H1082.71V120H1052.71Z"></path><path d="M1166.71 0H1256.71V30H1196.71V46H1241.71V74H1196.71V90H1256.71V120H1166.71Z"></path><path d="M1270.71 0H1350.71L1370.71 20V50L1354.71 66L1370.71 82V120H1340.71V94L1322.71 76H1300.71V120H1270.71ZM1300.71 30H1340.71V46H1300.71Z"></path><path d="M1404.71 0H1480.71V30H1414.71V46H1460.71L1480.71 66V100L1460.71 120H1384.71V90H1450.71V74H1404.71L1384.71 54V20Z"></path></g></svg>
+      </a>
+      <nav aria-label="Principale" style="display: flex; align-items: center; gap: 28px; font-size: 15px; font-weight: 600">
+        <a href="#" style="color: #9aabc4; text-decoration: none">Calendario</a>
+        <a href="#" style="color: #9aabc4; text-decoration: none">Profilo</a>
+        <a href="#" aria-current="page" style="color: #eef3fa; text-decoration: none; border-bottom: 3px solid #ff6a3d; padding: 24px 0 21px">Admin</a>
+      </nav>
+    </div>
+    <div style="max-width: 1360px; margin: 0 auto; padding: 0 40px">
+      <nav aria-label="Sezioni admin" style="display: flex; gap: 4px; overflow-x: auto">
+        <sc-for list="{{sections}}" as="s" hint-placeholder-count="5">
+          <a href="#" aria-current="{{s.current}}" style="padding: 14px 16px; font-size: 14px; font-weight: 700; text-decoration: none; color: {{s.fg}}; border-bottom: 3px solid {{s.rule}}; white-space: nowrap">{{s.label}}</a>
+        </sc-for>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 1360px; margin: 0 auto; padding: 36px 40px 64px; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 44px; font-weight: 800; letter-spacing: -0.02em; line-height: 1">Log</h1>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #9aabc4">1 284 azioni registrate</span>
+      </div>
+      <a href="#" style="min-height: 44px; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; border: 2px solid #eef3fa; color: #eef3fa; text-decoration: none; font-size: 14px; font-weight: 700">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+        Scarica CSV filtrato
+      </a>
+    </div>
+
+    <form style="margin: 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; padding: 16px; border-radius: 16px; background: #121f33; border: 1px solid #2b3e5c">
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700">Giorno
+        <input type="date" style="min-height: 44px; box-sizing: border-box; padding: 0 10px; border-radius: 12px; border: 2px solid #2b3e5c; background: #0b1422; color: #9aabc4; font-family: 'IBM Plex Mono', monospace; font-size: 13px">
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700">Utente
+        <select style="min-width: 180px; min-height: 44px; padding: 0 10px; border-radius: 12px; border: 2px solid #2b3e5c; background: #0b1422; color: #eef3fa; font-family: 'IBM Plex Mono', monospace; font-size: 13px"><option>tutti</option></select>
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700">Azione
+        <select style="min-width: 220px; min-height: 44px; padding: 0 10px; border-radius: 12px; border: 2px solid #2b3e5c; background: #0b1422; color: #eef3fa; font-family: 'IBM Plex Mono', monospace; font-size: 13px"><option>tutte</option></select>
+      </label>
+      <button type="submit" style="min-height: 44px; padding: 0 20px; border-radius: 999px; border: 0; background: #ff6a3d; color: #0b1422; font: inherit; font-size: 14px; font-weight: 700">Filtra</button>
+      <a href="#" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; font-size: 14px; font-weight: 600; color: #9aabc4">Azzera</a>
+    </form>
+
+    <button type="button" style="min-height: 44px; border-radius: 12px; border: 1px dashed #ff6a3d; background: transparent; color: #ff8a63; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer">3 nuove azioni da quando hai aperto la pagina · mostra</button>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+      <div role="table" aria-label="Azioni registrate" style="flex: 999 1 640px; min-width: 0; overflow-x: auto; border-radius: 16px; border: 1px solid #2b3e5c; background: #121f33">
+        <div role="row" style="display: grid; grid-template-columns: 150px 120px 190px minmax(0, 1fr) 48px; background: #0b1422; color: #9aabc4; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em">
+          <span role="columnheader" style="padding: 12px 16px">Quando</span>
+          <span role="columnheader" style="padding: 12px 16px">Chi</span>
+          <span role="columnheader" style="padding: 12px 16px">Azione</span>
+          <span role="columnheader" style="padding: 12px 16px">Descrizione</span>
+          <span role="columnheader" style="padding: 12px 8px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Dettagli</span></span>
+        </div>
+        <sc-for list="{{logs}}" as="l" hint-placeholder-count="10">
+          <div role="row" style="display: grid; grid-template-columns: 150px 120px 190px minmax(0, 1fr) 48px; align-items: center; border-top: 1px solid #2b3e5c; background: {{l.bg}}; font-size: 14px">
+            <span role="cell" style="padding: 12px 16px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #9aabc4">{{l.when}}</span>
+            <span role="cell" style="padding: 12px 16px; font-family: 'IBM Plex Mono', monospace; font-size: 13px">@{{l.who}}</span>
+            <span role="cell" style="padding: 12px 16px"><span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 6px; background: {{l.tagBg}}; color: {{l.tagFg}}; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600">{{l.type}}</span></span>
+            <span role="cell" style="padding: 12px 16px; line-height: 1.4">{{l.desc}}</span>
+            <span role="cell" style="padding: 8px">
+              <button type="button" aria-label="Dettagli azione {{l.id}}" style="width: 36px; height: 36px; border-radius: 999px; border: 1px solid #2b3e5c; background: transparent; color: #eef3fa; display: flex; align-items: center; justify-content: center">
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+              </button>
+            </span>
+          </div>
+        </sc-for>
+        <nav aria-label="Pagine" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-top: 1px solid #2b3e5c; font-size: 14px">
+          <span style="font-family: 'IBM Plex Mono', monospace; color: #9aabc4">pagina 1 di 26</span>
+          <div style="display: flex; gap: 8px">
+            <button type="button" disabled="disabled" style="min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #2b3e5c; background: transparent; color: #9aabc4; font: inherit; font-size: 14px; opacity: 0.5">Precedente</button>
+            <button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 999px; border: 2px solid #eef3fa; background: transparent; color: #eef3fa; font: inherit; font-size: 14px; font-weight: 700">Successiva</button>
+          </div>
+        </nav>
+      </div>
+
+      <aside aria-label="Dettagli azione" style="flex: 1 1 300px; max-width: 360px; padding: 18px; border-radius: 16px; background: #121f33; border: 2px solid #eef3fa; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800">Azione #1284</h2>
+          <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 6px; background: #1c2c45; color: #5cc8f0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600">UPDATE_EVENT</span>
+        </div>
+        <dl style="margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 13px">
+          <dt style="color: #9aabc4">Quando</dt><dd style="margin: 0; font-family: 'IBM Plex Mono', monospace">19/10 10:38:12</dd>
+          <dt style="color: #9aabc4">Chi</dt><dd style="margin: 0; font-family: 'IBM Plex Mono', monospace">@tuologin</dd>
+          <dt style="color: #9aabc4">Risorsa</dt><dd style="margin: 0; font-family: 'IBM Plex Mono', monospace">event 42</dd>
+          <dt style="color: #9aabc4">IP</dt><dd style="margin: 0; font-family: 'IBM Plex Mono', monospace">10.12.4.21</dd>
+          <dt style="color: #9aabc4">Browser</dt><dd style="margin: 0; font-size: 12px; color: #9aabc4; overflow-wrap: anywhere">Mozilla/5.0 (X11; Linux x86_64) Firefox/141.0</dd>
+        </dl>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 12px; font-weight: 700; color: #ff8f87">Prima</span>
+            <pre style="margin: 0; padding: 10px; border-radius: 10px; background: #0b1422; font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.5; white-space: pre-wrap; color: #eef3fa">{{before}}</pre>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 12px; font-weight: 700; color: #5ee0b5">Dopo</span>
+            <pre style="margin: 0; padding: 10px; border-radius: 10px; background: #0b1422; font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.5; white-space: pre-wrap; color: #eef3fa">{{after}}</pre>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1160}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const tag = (type) => {
+      if (/DELETE|REMOVE|UNREGISTER/.test(type)) return { tagBg: '#43191a', tagFg: '#ff8f87' };
+      if (/REGISTER|ADD/.test(type)) return { tagBg: '#0f3a33', tagFg: '#5ee0b5' };
+      if (/CREATE|APPLY|IMPORT/.test(type)) return { tagBg: '#2a2560', tagFg: '#b9b6ff' };
+      if (/SETTING|ACTIVATE|LOGIN/.test(type)) return { tagBg: '#3b2f0c', tagFg: '#ffd36b' };
+      return { tagBg: '#1c2c45', tagFg: '#5cc8f0' };
+    };
+    const log = (id, when, who, type, desc, fresh) => ({ id, when, who, type, desc, bg: fresh ? '#1c2c45' : '#121f33', ...tag(type) });
+    return {
+      sections: ['Settimane', 'Template', 'Partecipanti', 'Whitelist', 'Log'].map((label, i) => ({
+        label, current: i === 4 ? 'page' : 'false', fg: i === 4 ? '#eef3fa' : '#9aabc4', rule: i === 4 ? '#ff6a3d' : 'transparent'
+      })),
+      logs: [
+        log(1284, '19/10 10:38:12', 'tuologin', 'UPDATE_EVENT', "Aggiornato evento 'Sorveglianza esami (2 ore)' (ID: 42).", true),
+        log(1283, '19/10 10:31:47', 'mrossi', 'REGISTER_EVENT', "Utente 'mrossi' registrato all'evento 'Sorveglianza esami (2 ore)' (Lunedì, 11:00-13:00, ID: 42).", true),
+        log(1282, '19/10 10:30:02', 'tuologin', 'MARK_ABSENT', "Segnato 'fneri' come assente per l'evento 'Presenza cluster' (Lunedì, 08:30-10:30, ID: 40).", true),
+        log(1281, '19/10 09:58:40', 'lbianchi', 'REGISTER_EVENT', "Utente 'lbianchi' registrato all'evento 'Sorveglianza esami (2 ore)' (Lunedì, 11:00-13:00, ID: 42)."),
+        log(1280, '19/10 09:12:05', 'gverdi', 'UNREGISTER_EVENT', "Utente 'gverdi' disiscritto dall'evento 'Correzioni rush' (Martedì, 16:00-19:00, ID: 45)."),
+        log(1279, '19/10 08:00:00', 'tuologin', 'ACTIVATE_WEEK', 'Settimana 3 attivata'),
+        log(1278, '18/10 22:14:31', 'tuologin', 'APPLY_TEMPLATE', "Applicato template 'Settimana esami' alla settimana 3. Sovrascrittura: true."),
+        log(1277, '18/10 22:10:09', 'tuologin', 'WHITELIST_ADD', "Aggiunto 'tcosta' alla whitelist."),
+        log(1276, '18/10 21:55:44', 'acosta', 'LOGIN', 'Accesso con intra 42')
+      ],
+      before: '{\n  "max_slots": 3,\n  "end_time": "12:30"\n}',
+      after: '{\n  "max_slots": 4,\n  "end_time": "13:00"\n}'
+    };
+  }
+}
+</script>
+</body>
+</html>

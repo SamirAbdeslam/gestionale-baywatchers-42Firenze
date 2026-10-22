@@ -134,7 +134,7 @@ Solo quelle elencate in §4.1, più i loro plugin ufficiali (`@sveltejs/*`, `@ty
 ├── docs/v2/
 │   ├── PLAN.md                  # questo file
 │   ├── SESSIONS.md              # diario delle sessioni
-│   └── design/                  # token e specifiche UI (arrivano dal lavoro di design, §12)
+│   └── design/                  # design v1: token, font, schermate, specifiche UI (§12)
 ├── drizzle/                     # migrazioni SQL generate da drizzle-kit
 ├── messages/                    # it.json, en.json, fr.json (Paraglide)
 ├── nginx/nginx.conf
@@ -672,12 +672,12 @@ In `hooks.server.ts`, prima di ogni route:
 
 ## 12. UI e design
 
-- Il design (web e mobile, stessa web app responsive) viene preparato in parallelo da Ismail. Quando è pronto, i file arrivano in `docs/v2/design/` (token, componenti, schermate di riferimento).
+- **Design v1 approvato il 2026-10-22**, in `docs/v2/design/`: `README.md` (principi, temi chiaro e scuro, tipografia, componenti, pagine, accessibilità, ordine di lavoro), `tokens.css`, font self-hosted in `fonts/`, schermate in `screens/`, markup di riferimento in `reference/`, animazione del biglietto in `animation/`, logo in `logo/`. Punti aperti in `docs/v2/design/README.md` §8.
 - **Finché il design non c'è**, ogni modulo costruisce una UI funzionale e minimale:
   - HTML semantico e accessibile (label su ogni input, focus visibile, contrasto AA, navigazione da tastiera, dialog nativo `<dialog>`);
   - CSS scritto a mano, solo con le variabili di `src/lib/styles/tokens.css` (colori, spaziature, raggi, font, colori per `event_kind`), niente valori sparsi nei componenti;
   - mobile-first; breakpoint in `tokens.css` (`--bp-md: 768px`, `--bp-lg: 1200px`); nessuno scroll orizzontale della pagina a 360 px di larghezza (la griglia del calendario può scorrere dentro il suo contenitore).
-- Palette provvisoria in `tokens.css`, dal tema legacy: ciano 42 `#00babc`, nero `#1c1c1c`, bianco.
+- Palette provvisoria in `tokens.css`, dal tema legacy: ciano 42 `#00babc`, nero `#1c1c1c`, bianco. M14 la sostituisce con `docs/v2/design/tokens.css`.
 - Componenti condivisi minimi in `src/lib/components/`: `Toast`, `Dialog`, `EventCard`, `WeekNav`, `ParticipantBadge`. Non creare altri componenti "generici" finché non servono in almeno due pagine.
 - Quando il design arriva si esegue il modulo M14 (integrazione), che cambia solo `tokens.css`, CSS dei componenti e markup, non la logica.
 
@@ -944,8 +944,8 @@ Schema §7 e prima migrazione; `db/index.ts`; `legacy-schema.sql`; `make-fake-db
 ### M13 — Log di audit (2.5 g)
 §8.10 (pagina, filtri, paginazione, CSV, live).
 
-### M14 — Integrazione del design (3 g) — quando `docs/v2/design/` è pronto
-Applica token e specifiche. Nessuna modifica alla logica. Aggiorna gli screenshot di riferimento e verifica a 360 px, 768 px e 1280 px.
+### M14 — Integrazione del design (3 g)
+Applica `docs/v2/design/` seguendo l'ordine di lavoro del suo `README.md` §7: font e token (temi chiaro e scuro), navigazione, componenti condivisi (biglietto con perforazione e stati), pagine, animazione B (`docs/v2/design/animation/animation-b.md`). Font serviti dall'app, CSP invariata. Nessuna modifica alla logica. Aggiorna gli screenshot di riferimento e verifica a 360 px, 768 px e 1280 px contro `docs/v2/design/screens/`. Prima del passo 1 serve la decisione di Ismail sul meccanismo del tema (README §8).
 
 ### M15 — Stack locale finale e passaggio di consegne (2 g)
 `compose.yaml` definitivo, `scripts/backup.sh` (`pg_dump` compresso con data nel nome, conserva gli ultimi 14), `README.md` nuovo (setup, sviluppo, test, import legacy, backup e ripristino), runbook di cutover in `docs/v2/CUTOVER.md` (stop Flask, copia `calendar.db`, import con `--dry-run`, import reale, verify, avvio). Cancellazione di `legacy/` **solo** dopo conferma scritta di Ismail in `SESSIONS.md`.

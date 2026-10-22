@@ -1,0 +1,155 @@
+/*
+ * 42 Baywatchers v2 — design tokens (design v1, 2026-10-22).
+ * M14 replaces src/lib/styles/tokens.css with this file.
+ * Existing variable names are kept (same meaning, new values); new names are added below them.
+ * Source of every value: reference/Alt.dc.html ("fondamenta") and the screen sources in reference/.
+ *
+ * Themes: dark ("notte") is the reference theme of every screen; light ("giorno") has the same roles.
+ * OPEN POINT (README §2): how the theme is chosen (system preference, toggle, or both) is not decided.
+ * Until then the selectors below are `[data-theme='dark']` / `[data-theme='light']`; only the
+ * selectors change once it is decided, never the values.
+ */
+
+@import './fonts/fonts.css'; /* in the app: copy fonts/ next to tokens.css */
+
+/* Shared by both themes */
+:root {
+	/* event kinds: fill = stub background, ink = text on the stub (same in both themes) */
+	--color-exam: #3d3aa8;
+	--color-exam-ink: #ffffff;
+	--color-icebreaker: #f06ba8;
+	--color-icebreaker-ink: #1f0612;
+	--color-rush: #ffcf2e;
+	--color-rush-ink: #1f1700;
+	--color-cluster: #17a589;
+	--color-cluster-ink: #03180f;
+	--color-welcome: #9bd34a;
+	--color-welcome-ink: #132006;
+	--color-custom: #5cc8f0;
+	--color-custom-ink: #04202c;
+
+	/* fonts (self-hosted, see fonts.css) */
+	--font-body: 'Instrument Sans', system-ui, sans-serif;
+	--font-heading: 'Bricolage Grotesque', 'Instrument Sans', system-ui, sans-serif;
+	--font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+	--line-height: 1.5;
+
+	/* type scale (desktop; mobile values in README §3) */
+	--font-display: 4.5rem; /* 72px / 800 / -0.03em */
+	--font-title: 2.5rem; /* 40px / 800 / -0.02em */
+	--font-section: 1.5rem; /* 24px / 700 / -0.01em */
+	--font-size-body: 1rem; /* 16px / 400 */
+	--font-label: 0.8125rem; /* 13px / 700 / 0.06em uppercase */
+	--font-mono-lg: 1.625rem; /* 26px / 600: ticket times */
+	--font-mono-sm: 0.875rem; /* 14px / 400: seats, Altarian, logins */
+	--tracking-display: -0.03em;
+	--tracking-title: -0.02em;
+	--tracking-label: 0.06em;
+
+	/* spacing */
+	--space-xs: 0.25rem;
+	--space-sm: 0.5rem;
+	--space-md: 1rem;
+	--space-lg: 2rem;
+	--space-xl: 2.5rem;
+
+	/* shape */
+	--radius: 0.875rem; /* 14px: cards, tickets, panels */
+	--radius-sm: 0.375rem; /* 6px: log tags */
+	--radius-seat: 0.25rem; /* 4px at 14px seats, 5px at 18px seats */
+	--radius-pill: 999px; /* buttons, chips */
+	--border-width: 1px;
+	--border-strong: 2px; /* important things: active week, active field, mine, buttons with outline */
+	--control-height: 3rem; /* 48px pills; 40px inside tickets (--control-height-sm) */
+	--control-height-sm: 2.5rem;
+	--focus-width: 3px;
+
+	/* ticket */
+	--ticket-hole-step: 10px; /* perforation: one hole every 10px */
+	--ticket-hole-radius: 3px; /* soft edge to 3.6px */
+	--ticket-stub-height: 92px; /* vertical ticket (desktop) */
+	--ticket-stub-width: 88px; /* horizontal ticket: calendar 88px, admin 96px, dialog 84px */
+	--seat-size: 14px; /* 18px in large demos */
+
+	/* layout */
+	--header-height: 72px; /* desktop; mobile 60px */
+	--brand-bar: 4px; /* orange line at the top of every page */
+	--content-width: 85rem; /* 1360px */
+	--calendar-day-width: 16rem;
+	--logo-size: 20px; /* horizontal logo height in the header */
+	--profile-image-size: 6rem;
+	--opacity-muted: 0.5; /* past events */
+	--opacity-faint: 0.4; /* weeks not open yet */
+	--bp-md: 768px;
+	--bp-lg: 1200px;
+}
+
+/* Dark ("notte"): reference theme of every screen in screens/ */
+:root[data-theme='dark'] {
+	color-scheme: dark;
+	--color-background: #0b1422;
+	--color-surface: #121f33;
+	--color-raised: #1c2c45;
+	--color-border: #2b3e5c;
+	--color-text: #eef3fa;
+	--color-muted: #9aabc4;
+	--color-brand: #ff6a3d; /* primary button */
+	--color-on-brand: #0b1422;
+	--color-signal: #ff6a3d; /* you, active, focus */
+	--color-signal-text: #ff8a63;
+	--color-on-signal: #1a0700;
+	--color-focus: #ff6a3d;
+	--color-ok-bg: #0f3a33;
+	--color-ok: #5ee0b5;
+	--color-warn-bg: #3b2f0c;
+	--color-warn: #ffd36b;
+	--color-danger-bg: #43191a;
+	--color-danger: #ff8f87;
+	--color-ghost-fill: rgb(255 106 61 / 0.06);
+
+	/* admin log tags (reference/Logs.dc.html) */
+	--color-log-create-bg: #2a2560;
+	--color-log-create: #b9b6ff;
+	--color-log-update-bg: #1c2c45;
+	--color-log-update: #5cc8f0;
+	--color-log-delete-bg: var(--color-danger-bg);
+	--color-log-delete: var(--color-danger);
+	--color-log-register-bg: var(--color-ok-bg);
+	--color-log-register: var(--color-ok);
+	--color-log-new: #1c2c45; /* rows that arrived after the page was opened */
+}
+
+/* Light ("giorno") */
+:root[data-theme='light'] {
+	color-scheme: light;
+	--color-background: #f2f4f7;
+	--color-surface: #ffffff;
+	--color-raised: #e6eaf0;
+	--color-border: #cfd6df;
+	--color-text: #0e1a2b;
+	--color-muted: #4f5d70;
+	--color-brand: #0e1a2b;
+	--color-on-brand: #ffffff;
+	--color-signal: #ff4f1f;
+	--color-signal-text: #c2380f;
+	--color-on-signal: #1a0700;
+	--color-focus: #c2380f; /* signal #ff4f1f is under 3:1 on the light background */
+	--color-ok-bg: #dcf5ec;
+	--color-ok: #0b6b50;
+	--color-warn-bg: #fff1cc;
+	--color-warn: #7a5000;
+	--color-danger-bg: #fde4e1;
+	--color-danger: #b4231b;
+	--color-ghost-fill: rgb(255 79 31 / 0.06);
+
+	/* PROPOSAL, not in the canvas (README §2): the log page was drawn only in dark */
+	--color-log-create-bg: #e6e5fb;
+	--color-log-create: #3d3aa8;
+	--color-log-update-bg: var(--color-raised);
+	--color-log-update: #0b5f80;
+	--color-log-delete-bg: var(--color-danger-bg);
+	--color-log-delete: var(--color-danger);
+	--color-log-register-bg: var(--color-ok-bg);
+	--color-log-register: var(--color-ok);
+	--color-log-new: #fff1cc;
+}
