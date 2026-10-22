@@ -1,12 +1,14 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import { assertAdmin } from '#lib/server/auth/guards.ts';
+import { formAction } from '#lib/server/form-action.ts';
 import { createTemplate } from '#lib/server/domain/templates.ts';
 import { readTemplateForm, emptyTemplateEvent, emptyTemplateForm } from '#lib/template-form.ts';
 import type { Actions } from './$types';
 
 export const actions: Actions = {
-	save: async ({ request, locals, getClientAddress }) => {
+	save: async (event) => {
+		const { request, locals } = event;
 		assertAdmin(locals.user);
 		const form = await request.formData();
 		const values = readTemplateForm(form);
@@ -22,25 +24,15 @@ export const actions: Actions = {
 				return { ok: true, messages: [], values };
 			}
 		}
-		try {
-			z.literal('save').parse(intent);
-			const { db } = await import('#lib/server/db/index.ts');
-			const result = await createTemplate(
-				db,
-				locals.user,
-				values,
-				{ ipAddress: getClientAddress(), userAgent: request.headers.get('user-agent') },
-				new Date()
-			);
-			return { ...result, values: emptyTemplateForm() };
-		} catch (cause) {
-			if (cause instanceof z.ZodError)
-				return fail(400, {
-					ok: false,
-					messages: [{ type: 'error' as const, key: 'error_invalid_input' as const, params: {} }],
-					values
-				});
-			throw cause;
-		}
+		const result = await formAction(
+			event,
+			(db, actor, input, info, now) => {
+				z.literal('save').parse(intent);
+				return createTemplate(db, actor, input, info, now);
+			},
+			{ input: values }
+		);
+		if ('status' in result) return fail(result.status, { ...result.data, values });
+		return { ...result, values: emptyTemplateForm() };
 	}
 };

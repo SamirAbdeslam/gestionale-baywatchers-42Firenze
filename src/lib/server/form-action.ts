@@ -13,6 +13,7 @@ export async function formAction(
 	event: RequestEvent,
 	mutate: (...args: Parameters<typeof register>) => Promise<unknown>,
 	options: {
+		input?: unknown;
 		success?:
 			| 'admin_settings_saved'
 			| 'admin_event_created'
@@ -27,7 +28,7 @@ export async function formAction(
 		const result = await mutate(
 			db,
 			event.locals.user,
-			Object.fromEntries(await event.request.formData()),
+			options.input ?? Object.fromEntries(await event.request.formData()),
 			{
 				ipAddress: event.getClientAddress(),
 				userAgent: event.request.headers.get('user-agent')

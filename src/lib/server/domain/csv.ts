@@ -1,23 +1,20 @@
 import { z } from 'zod';
-import { digits, isoDate, weekNumber, weekdayNumber } from './dates.ts';
-import { inferKind, capitalizeFirst } from './kinds.ts';
+import { digits, isoDate, weekNumber } from './dates.ts';
+import { inferKind } from './kinds.ts';
 
-const integer = digits(10).pipe(z.number().int().max(2147483647));
+import { editable, timeOrder } from './events.ts';
+
 export const templateEventSchema = z
 	.object({
-		title: z.string().trim().min(1).max(120).transform(capitalizeFirst),
-		description: z.string().trim().max(500).default('').transform(capitalizeFirst),
-		weekday: digits(1).pipe(weekdayNumber),
+		...editable,
+		maxSlots: editable.maxSlots.default(2),
+		compensation: editable.compensation.default(0),
 		eventDate: z
 			.union([isoDate, z.literal('')])
 			.nullish()
-			.transform((value) => value || null),
-		startTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
-		endTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
-		maxSlots: integer.pipe(z.number().min(1)).default(2),
-		compensation: integer.pipe(z.number().min(0)).default(0)
+			.transform((value) => value || null)
 	})
-	.refine((value) => value.startTime < value.endTime);
+	.refine(timeOrder);
 
 export function writeCsv(rows: (string | number | null)[][]) {
 	return (

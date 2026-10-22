@@ -18,7 +18,7 @@ const id = integer.pipe(z.number().min(1));
 const time = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
 const text = z.string().trim().min(1).max(120).transform(capitalizeFirst);
 const description = z.string().trim().max(500).transform(capitalizeFirst);
-const editable = {
+export const editable = {
 	title: text,
 	description: description.default(''),
 	weekday,
@@ -27,7 +27,7 @@ const editable = {
 	maxSlots: integer.pipe(z.number().min(1)),
 	compensation: integer.pipe(z.number().min(0))
 };
-const timeOrder = (value: { startTime: string; endTime: string }) =>
+export const timeOrder = (value: { startTime: string; endTime: string }) =>
 	value.startTime < value.endTime;
 const matchesWeekday = (weekday: number, eventDate: string | null) =>
 	eventDate === null || (new Date(`${eventDate}T00:00:00Z`).getUTCDay() || 7) === weekday;
