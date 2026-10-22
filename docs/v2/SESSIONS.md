@@ -1719,3 +1719,32 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Push M11, tutti i sei job CI verdi, aggiornamento dello Stato e chiusura nel diario. Non iniziare M12 senza richiesta.
+
+
+## 2026-10-22 — M11 — chiusura
+
+**Fatto**
+- Completato e pubblicato M11 dopo revisione M10 e CI verde. Riepilogo partecipanti con totali delle presenze, dettagli settimanali comprensivi delle assenze, ricerca client e tre CSV amministrativi protetti dalla formula injection. Aggiornata soltanto la colonna Stato di M11 in §19 al commit 6258899.
+- Richiesta aggiuntiva di Ismail gestita autonomamente: arresto stack, test completi, ricostruzione senza cache, avvio a freddo e successiva ricostruzione con M11. Volumi conservati; nessuna modifica alla configurazione Compose.
+- Note originali e precedenti voci preservate. M12 non iniziato.
+
+**Commit**
+- 840cd9a: sicurezza/fine riga CSV.
+- a225022: totali, caricamento ed export, unit/integration.
+- 6258899: pagina e flussi browser.
+- 82ea0de: controlli locali e diario.
+
+**Controlli**
+- pnpm ci:local exit code 0: 156 unit, 252 integration, 78 e2e, totale 486 test. Lint/check/build verdi, zero errori e warning svelte-check; import e totali legacy conservati.
+- CI [run 39744443696](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39744443696) su 82ea0de: tutti i sei job lint, unit, integration, e2e, legacy-import e docker verdi; gh run watch --exit-status exit code 0.
+- Stack M11 ricostruito e lasciato attivo su 8080/8443. App/Postgres healthy, nginx running. App e nginx con RestartCount 0 al controllo successivo. HTTPS con CA locale: health 200, pagina anonima 303, tre CSV anonimi 401; redirect HTTP 308. Dati applicativi non modificati dalle prove HTTP; nessun volume eliminato.
+- Ricostruzione senza cache, migrazione R14 validata e heartbeat SSE a 25 secondi già documentati nella chiusura della revisione. Working tree pulito prima della registrazione finale. Nessuna nuova dipendenza, migrazione M11 o modifica legacy.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione. Graphify, Ponytail e Caveman applicati.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Non simulato un riavvio di Docker Desktop; provato l'avvio a freddo dello stack. OAuth 42 reale e apertura dei CSV in Excel restano verifiche manuali, senza bloccare la consegna del modulo.
+
+**Prossimo passo**
+- M12: profilo utente, da avviare alla prossima richiesta.
