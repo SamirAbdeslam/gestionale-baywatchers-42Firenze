@@ -64,7 +64,11 @@ Colori dei `kind`, uguali nei due temi (fondo matrice / testo matrice):
 - `light-dark()` richiede Chrome/Edge 123, Firefox 120, Safari 17.5 (2024). Va bene anche per il browser del display TV; se fosse più vecchio vedrebbe i colori di ripiego del browser: da verificare sul TV reale.
 - I tag del log in tema chiaro (proposti nel canvas solo in scuro) sono approvati da Ismail.
 
-> **PUNTO APERTO (Ismail): l'interruttore non è disegnato.** Proposta: pulsante a icona 40 px (sole / luna) nella barra in alto, prima dell'avatar su desktop e prima di "Esci" su mobile; ogni clic alterna chiaro / scuro, e nel Profilo un'opzione "Usa il tema del sistema" cancella il cookie. Da confermare prima di M14.
+**Interruttore** (approvato da Ismail il 2026-10-22, non disegnato nel canvas): pulsante a icona 40 px (sole / luna) nella barra in alto, prima dell'avatar su desktop e prima di "Esci" su mobile, con `aria-label` che dice il tema a cui si passa.
+- Alla prima apertura vale il tema del sistema (nessun cookie).
+- Finché l'utente non tocca l'interruttore, resta il tema del sistema, anche se il sistema cambia.
+- Un clic passa al tema opposto a quello mostrato e lo salva nel cookie; da quel momento resta il tema scelto.
+- Nessuna opzione "torna al sistema" (né nel Profilo né altrove).
 
 ## 3. Tipografia
 
@@ -193,4 +197,4 @@ Regole: nessun valore sparso nei componenti (solo variabili di `tokens.css`); ne
 
 ## 8. Punti aperti
 
-1. Posizione e forma dell'interruttore del tema (§2, proposta da confermare).
+Nessuno.
