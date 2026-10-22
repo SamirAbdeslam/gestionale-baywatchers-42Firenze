@@ -32,7 +32,7 @@ async function setup(page: Page) {
 	return {
 		base,
 		danger,
-		id: row.id as number,
+		id: Number(row.id),
 		cleanup: async () => {
 			await page.close();
 			await client.begin(async (tx) => {
@@ -65,10 +65,12 @@ for (const javaScriptEnabled of [true, false])
 					await expect(page.getByText('Pagina 1 di 2', { exact: true })).toBeVisible();
 					await expect(rows.first().getByRole('cell').nth(3)).toHaveText(fixture.danger);
 					await rows.first().getByRole('button', { name: 'Dettagli', exact: true }).click();
-					const dialog = page.getByRole('dialog', {
-						name: `Dettagli log #${fixture.id.toLocaleString('it')}`
-					});
+					const dialog = rows.first().getByRole('dialog');
 					await expect(dialog).toBeVisible();
+					await expect(dialog).toHaveAccessibleName(/^Dettagli log #/);
+					expect((await dialog.locator('dd').first().innerText()).replace(/\D/g, '')).toBe(
+						String(fixture.id)
+					);
 					await expect(dialog).toContainText(fixture.danger);
 					await expect(dialog).toContainText('127.0.0.1');
 					await expect(dialog.locator('dd').nth(7)).toHaveText(fixture.danger);
