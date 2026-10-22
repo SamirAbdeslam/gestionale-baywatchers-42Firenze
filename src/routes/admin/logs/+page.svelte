@@ -164,9 +164,6 @@
 	.register {
 		color: var(--color-log-register);
 	}
-	.setting {
-		color: var(--color-log-setting);
-	}
 	.other {
 		color: var(--color-text);
 	}

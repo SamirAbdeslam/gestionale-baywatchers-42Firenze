@@ -68,7 +68,6 @@ export function logCategory(action: string) {
 	if (/update|set|edit|mark|activate/.test(value)) return 'update';
 	if (/delete|remove|unregister/.test(value)) return 'delete';
 	if (/register/.test(value)) return 'register';
-	if (/setting/.test(value)) return 'setting';
 	return 'other';
 }
 const csvClock = new Intl.DateTimeFormat('sv-SE', {

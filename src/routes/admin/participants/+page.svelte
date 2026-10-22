@@ -10,12 +10,11 @@
 	let participants = $derived(
 		data.participants.filter((p) => p.login.includes(query.trim().toLowerCase()))
 	);
-	const dateTime = (date: Date) =>
-		new Intl.DateTimeFormat(getLocale(), {
-			dateStyle: 'medium',
-			timeStyle: 'short',
-			timeZone: 'Europe/Rome'
-		}).format(date);
+	const formatter = new Intl.DateTimeFormat(getLocale(), {
+		dateStyle: 'medium',
+		timeStyle: 'short',
+		timeZone: 'Europe/Rome'
+	});
 </script>
 
 <svelte:head><title>{m.nav_participants()} — {m.app_name()}</title></svelte:head>
@@ -79,7 +78,7 @@
 													<p>
 														{m.reports_registered_at()}:
 														<time datetime={event.registeredAt.toISOString()}
-															>{dateTime(event.registeredAt)}</time
+															>{formatter.format(event.registeredAt)}</time
 														>
 													</p>
 												</li>{/each}
