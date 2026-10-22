@@ -565,6 +565,7 @@ Riferimento: `legacy/app.py:1569`–`1938`, `legacy/templates/create_template.ht
 Riferimento: `legacy/app.py:2563`, `legacy/templates/user_profile.html`.
 - Dati utente: immagine, nome, login, wallet (valore 42 salvato al login).
 - Statistiche: eventi totali (tutte le iscrizioni), ore totali (solo `attended = true`, arrotondate a 1 decimale), Altarian guadagnati (somma compensi con `attended = true`).
+- Differenza accettata rispetto al legacy: le ore del profilo usano `toFixed(1)` invece di `round` di Python; per esempio 1 h 15 min (1,25 h) diventa 1,3 in v2 e 1,2 nel legacy.
 - Tabella per settimana (1–4, solo settimane con eventi): giorno, data concreta, orario, compenso, stato (Partecipato / Non partecipato, riga attenuata se assente).
 - Ordinamento: settimana, giorno, ora di inizio.
 - Niente sezione notifiche push.
