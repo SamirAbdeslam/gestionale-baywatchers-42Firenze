@@ -56,9 +56,15 @@ Colori dei `kind`, uguali nei due temi (fondo matrice / testo matrice):
 | `welcome` | Accoglienza | `#9bd34a` | `#132006` |
 | `custom` | Personalizzato / Extra | `#5cc8f0` | `#04202c` |
 
-> **PUNTO APERTO (Ismail): come si sceglie il tema.** Preferenza di sistema (`prefers-color-scheme`), interruttore nell'app, o entrambi (sistema come default più interruttore)? Finché non è deciso, `tokens.css` usa `[data-theme='dark']` / `[data-theme='light']` su `<html>`. Dopo la decisione cambiano solo i selettori, non i valori. Il canvas non ha disegnato un interruttore.
->
-> **PUNTO APERTO (Ismail): colori dei tag del log in tema chiaro.** La pagina log è disegnata solo in scuro. `tokens.css` propone valori chiari (segnati `PROPOSAL`) da confermare.
+**Come si sceglie il tema** (deciso da Ismail il 2026-10-22): preferenza di sistema come default, più un interruttore nell'app che la sovrascrive.
+
+- `tokens.css` scrive ogni colore una volta sola con `light-dark(<chiaro>, <scuro>)`. `:root` ha `color-scheme: light dark`, quindi senza scelta segue il sistema.
+- L'interruttore scrive un cookie `theme` (`light` o `dark`; assente = sistema). `hooks.server.ts` lo legge e mette `data-theme="light|dark"` su `<html>` nel `transformPageChunk` già usato per Paraglide: il tema giusto arriva con l'HTML, senza lampo. Il cambio sul client aggiorna subito `document.documentElement.dataset.theme` e il cookie.
+- Il cookie non è un dato sensibile: `SameSite=Lax`, `Path=/`, durata 1 anno, leggibile dal client. Valori diversi da `light`/`dark` si ignorano.
+- `light-dark()` richiede Chrome/Edge 123, Firefox 120, Safari 17.5 (2024). Va bene anche per il browser del display TV; se fosse più vecchio vedrebbe i colori di ripiego del browser: da verificare sul TV reale.
+- I tag del log in tema chiaro (proposti nel canvas solo in scuro) sono approvati da Ismail.
+
+> **PUNTO APERTO (Ismail): l'interruttore non è disegnato.** Proposta: pulsante a icona 40 px (sole / luna) nella barra in alto, prima dell'avatar su desktop e prima di "Esci" su mobile; ogni clic alterna chiaro / scuro, e nel Profilo un'opzione "Usa il tema del sistema" cancella il cookie. Da confermare prima di M14.
 
 ## 3. Tipografia
 
@@ -176,7 +182,7 @@ Le schermate dei dati usano esempi (nomi, numeri, "[Nome Cognome]", "[indirizzo 
 
 ## 7. Ordine di lavoro M14
 
-1. Font (`fonts/`) e `tokens.css` in `src/lib/styles/`, attributo del tema su `<html>` (in attesa della decisione del §2), `base.css` con colori, font e focus nuovi. Logo SVG nella barra.
+1. Font (`fonts/`) e `tokens.css` in `src/lib/styles/`; cookie `theme` e `data-theme` su `<html>` dal server (§2); `base.css` con colori, font e focus nuovi. Logo SVG nella barra. Test: unit sulla lettura del cookie (valori validi, assente, non validi), e2e che con il cookie `light` la pagina arriva già chiara.
 2. Navigazione desktop e mobile (§4.4).
 3. `EventCard` con le due forme, la perforazione, gli stati (§4.1) e i posti (§4.2). Poi `WeekNav`, `ParticipantBadge`, `Dialog`, `Toast`.
 4. Pagine nell'ordine: calendario, accesso, profilo, display, admin settimana, template, nuovo template, partecipanti, whitelist, log.
@@ -187,5 +193,4 @@ Regole: nessun valore sparso nei componenti (solo variabili di `tokens.css`); ne
 
 ## 8. Punti aperti
 
-1. Meccanismo del tema chiaro/scuro (§2). **Da decidere prima del passo 1 di M14.**
-2. Colori chiari dei tag del log (§2, proposta in `tokens.css`).
+1. Posizione e forma dell'interruttore del tema (§2, proposta da confermare).

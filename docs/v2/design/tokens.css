@@ -5,9 +5,7 @@
  * Source of every value: reference/Alt.dc.html ("fondamenta") and the screen sources in reference/.
  *
  * Themes: dark ("notte") is the reference theme of every screen; light ("giorno") has the same roles.
- * OPEN POINT (README §2): how the theme is chosen (system preference, toggle, or both) is not decided.
- * Until then the selectors below are `[data-theme='dark']` / `[data-theme='light']`; only the
- * selectors change once it is decided, never the values.
+ * Theme choice: system preference by default, overridden by the in-app switch (README §2).
  */
 
 @import './fonts/fonts.css'; /* in the app: copy fonts/ next to tokens.css */
@@ -84,72 +82,46 @@
 	--bp-lg: 1200px;
 }
 
-/* Dark ("notte"): reference theme of every screen in screens/ */
-:root[data-theme='dark'] {
-	color-scheme: dark;
-	--color-background: #0b1422;
-	--color-surface: #121f33;
-	--color-raised: #1c2c45;
-	--color-border: #2b3e5c;
-	--color-text: #eef3fa;
-	--color-muted: #9aabc4;
-	--color-brand: #ff6a3d; /* primary button */
-	--color-on-brand: #0b1422;
-	--color-signal: #ff6a3d; /* you, active, focus */
-	--color-signal-text: #ff8a63;
+/*
+ * Both themes in one place: light-dark(<light>, <dark>).
+ * Default = system preference (color-scheme: light dark). The in-app switch sets
+ * <html data-theme="light|dark"> and overrides it; no attribute = follow the system (README §2).
+ */
+:root {
+	color-scheme: light dark;
+	--color-background: light-dark(#f2f4f7, #0b1422);
+	--color-surface: light-dark(#ffffff, #121f33);
+	--color-raised: light-dark(#e6eaf0, #1c2c45);
+	--color-border: light-dark(#cfd6df, #2b3e5c);
+	--color-text: light-dark(#0e1a2b, #eef3fa);
+	--color-muted: light-dark(#4f5d70, #9aabc4);
+	--color-brand: light-dark(#0e1a2b, #ff6a3d);
+	--color-on-brand: light-dark(#ffffff, #0b1422);
+	--color-signal: light-dark(#ff4f1f, #ff6a3d);
+	--color-signal-text: light-dark(#c2380f, #ff8a63);
 	--color-on-signal: #1a0700;
-	--color-focus: #ff6a3d;
-	--color-ok-bg: #0f3a33;
-	--color-ok: #5ee0b5;
-	--color-warn-bg: #3b2f0c;
-	--color-warn: #ffd36b;
-	--color-danger-bg: #43191a;
-	--color-danger: #ff8f87;
-	--color-ghost-fill: rgb(255 106 61 / 0.06);
-
-	/* admin log tags (reference/Logs.dc.html) */
-	--color-log-create-bg: #2a2560;
-	--color-log-create: #b9b6ff;
-	--color-log-update-bg: #1c2c45;
-	--color-log-update: #5cc8f0;
+	--color-focus: light-dark(#c2380f, #ff6a3d); /* light: signal #ff4f1f is under 3:1 on the light background */
+	--color-ok-bg: light-dark(#dcf5ec, #0f3a33);
+	--color-ok: light-dark(#0b6b50, #5ee0b5);
+	--color-warn-bg: light-dark(#fff1cc, #3b2f0c);
+	--color-warn: light-dark(#7a5000, #ffd36b);
+	--color-danger-bg: light-dark(#fde4e1, #43191a);
+	--color-danger: light-dark(#b4231b, #ff8f87);
+	--color-ghost-fill: light-dark(rgb(255 79 31 / 0.06), rgb(255 106 61 / 0.06));
+	/* log tags: dark from reference/Logs.dc.html, light approved by Ismail 2026-10-22 */
+	--color-log-create-bg: light-dark(#e6e5fb, #2a2560);
+	--color-log-create: light-dark(#3d3aa8, #b9b6ff);
+	--color-log-update-bg: var(--color-raised);
+	--color-log-update: light-dark(#0b5f80, #5cc8f0);
 	--color-log-delete-bg: var(--color-danger-bg);
 	--color-log-delete: var(--color-danger);
 	--color-log-register-bg: var(--color-ok-bg);
 	--color-log-register: var(--color-ok);
-	--color-log-new: #1c2c45; /* rows that arrived after the page was opened */
+	--color-log-new: light-dark(#fff1cc, #1c2c45); /* rows that arrived after the page was opened */
 }
-
-/* Light ("giorno") */
 :root[data-theme='light'] {
 	color-scheme: light;
-	--color-background: #f2f4f7;
-	--color-surface: #ffffff;
-	--color-raised: #e6eaf0;
-	--color-border: #cfd6df;
-	--color-text: #0e1a2b;
-	--color-muted: #4f5d70;
-	--color-brand: #0e1a2b;
-	--color-on-brand: #ffffff;
-	--color-signal: #ff4f1f;
-	--color-signal-text: #c2380f;
-	--color-on-signal: #1a0700;
-	--color-focus: #c2380f; /* signal #ff4f1f is under 3:1 on the light background */
-	--color-ok-bg: #dcf5ec;
-	--color-ok: #0b6b50;
-	--color-warn-bg: #fff1cc;
-	--color-warn: #7a5000;
-	--color-danger-bg: #fde4e1;
-	--color-danger: #b4231b;
-	--color-ghost-fill: rgb(255 79 31 / 0.06);
-
-	/* PROPOSAL, not in the canvas (README §2): the log page was drawn only in dark */
-	--color-log-create-bg: #e6e5fb;
-	--color-log-create: #3d3aa8;
-	--color-log-update-bg: var(--color-raised);
-	--color-log-update: #0b5f80;
-	--color-log-delete-bg: var(--color-danger-bg);
-	--color-log-delete: var(--color-danger);
-	--color-log-register-bg: var(--color-ok-bg);
-	--color-log-register: var(--color-ok);
-	--color-log-new: #fff1cc;
+}
+:root[data-theme='dark'] {
+	color-scheme: dark;
 }
