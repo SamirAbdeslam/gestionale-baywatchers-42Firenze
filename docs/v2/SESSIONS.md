@@ -1781,3 +1781,32 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Push M12, verifica di tutti i sei job CI, aggiornamento dello Stato e chiusura nel diario. Non iniziare M13 senza richiesta.
+
+
+## 2026-10-22 — M12 — chiusura
+
+**Fatto**
+- Completato e pubblicato M12: profilo personale, statistiche e iscrizioni settimanali in sola lettura, con precisione e regole di §8.11. Dati di altri utenti esclusi dal caricamento anche per gli admin e in presenza di parametri di query contraffatti.
+- Completata anche la correzione del menu mobile autorizzata da Ismail: popover nativo funzionante con JavaScript acceso/spento, chiusura con Esc/clic esterno/navigazione, desktop sempre visibile. Eliminati stato manuale di apertura, onclick dei link e attributi ARIA manuali; nessun jsReady.
+- Aggiornata soltanto la colonna Stato di M12 al commit 2e6d514. Note originali e precedenti voci preservate integralmente; M13 non iniziato.
+
+**Commit**
+- 8a994c9: profilo e test.
+- 77633f7: menu popover e test Chromium/WebKit.
+- 2e6d514: aspettative del test di autenticazione adattate al menu nativo.
+- 8870099: controlli locali e diario.
+
+**Controlli**
+- pnpm ci:local exit code 0: 157 unit, 259 integration, 88 e2e, totale 504; lint/check/build verdi e zero errori/warning svelte-check. Dieci nuovi e2e: quattro profilo e sei navigazione, con JavaScript acceso/spento.
+- CI [run 39751225885](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39751225885) su 8870099: tutti i sei job lint, unit, integration, e2e, legacy-import e docker verdi; gh run watch --exit-status exit code 0.
+- Immagine M12 ricostruita e stack completo lasciato attivo su 8080/8443, app/Postgres healthy. HTTPS con CA locale e redirect HTTP verificati; profilo e risposta dati anonimi non espongono dati personali. Nessuna scrittura applicativa dai controlli HTTP, nessun volume eliminato, nessuna modifica a legacy/schema/dipendenze.
+- Verificato che SESSIONS.md conserva come prefisso l'intero documento precedente a M12; git diff --check verde.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione. Correzione popover autorizzata esplicitamente da Ismail; Graphify, Ponytail e Caveman applicati.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. OAuth 42 reale e dispositivi Safari fisici restano verifiche manuali; Chromium e WebKit automatizzati verificati.
+
+**Prossimo passo**
+- M13: pagina dei log di audit, da avviare alla prossima richiesta. Non iniziato in questa sessione.
