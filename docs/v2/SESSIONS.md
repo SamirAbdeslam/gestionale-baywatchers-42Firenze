@@ -1907,3 +1907,31 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Pubblicare la revisione, verificare tutti i sei job CI e registrare la chiusura. Poi fermarsi in attesa di indicazioni per M14.
+
+
+## 2026-10-22 — Revisione M11–M13 — chiusura
+
+**Fatto**
+- Completati e pubblicati Ponytail 27–29: formatter riutilizzato nella pagina partecipanti, differenza di arrotondamento del profilo documentata in §8.11, ramo/classe/token setting rimossi.
+- Nessun punto saltato; comportamento applicativo, calcolo delle ore e test esistenti invariati. Nota nel piano aggiunta con l'autorizzazione specifica di P28; stati dei moduli invariati.
+- M14 non iniziato: attesa di indicazioni di Ismail, come richiesto.
+
+**Commit**
+- d79a555: pulizie di formatter e categorie.
+- 71644aa: differenza di arrotondamento accettata nel piano.
+- 12e54b1: controlli locali e diario.
+
+**Controlli**
+- pnpm ci:local exit code 0: 172 unit, 276 integration, 97 e2e, totale 545. Lint/check/build verdi, zero errori e warning svelte-check; test delle categorie invariato e verde.
+- CI [run 39781899564](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39781899564) su 12e54b1: tutti i sei job lint, unit, integration, e2e, legacy-import e docker verdi; gh run watch --exit-status exit code 0.
+- Immagine ricostruita, stack completo lasciato attivo su 8080/8443 con app/Postgres healthy e nginx running. Controlli HTTPS e redirect HTTP verdi, senza scritture applicative o eliminazione di volumi.
+- git diff --check verde; nessuna modifica a test, reports.ts, schema, dipendenze o legacy. Note originali preservate integralmente.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Restano le verifiche manuali OAuth 42 reale e Safari fisico già previste.
+
+**Prossimo passo**
+- Attendere Ismail per M14; nessun lavoro sul modulo avviato.
