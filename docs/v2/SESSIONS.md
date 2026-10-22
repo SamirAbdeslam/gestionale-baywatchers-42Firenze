@@ -1846,3 +1846,32 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Push M13 e verifica di tutti i sei job CI, poi aggiornamento Stato e chiusura. Non iniziare M14 senza richiesta e senza i materiali design previsti dal piano.
+
+
+## 2026-10-22 — M13 — chiusura
+
+**Fatto**
+- Completato e pubblicato M13: consultazione admin dei log, filtri per giorno Europe/Rome/utente/azione, paginazione da 50 righe, dettagli completi in dialog e CSV filtrato con tutte le righe e colonne.
+- Prima pagina senza filtri aggiornata via SSE con evidenziazione degli ID ricevuti; nelle viste filtrate o paginate banner di aggiornamento manuale. Valori resi sempre come testo, inclusi user agent e JSON; filtri, dettagli, paginazione e download funzionano anche senza JavaScript.
+- Aggiornata soltanto la colonna Stato di M13 al commit 5b835d1. Tutte le note originali e le voci precedenti conservate; M14 non iniziato.
+
+**Commit**
+- c400314: dominio di lettura, CSV, unit/integration e matrice permessi.
+- 398ab5b: pagina, filtri, dialog, live, token e test browser.
+- 5b835d1: fixture bigserial e verifica degli ID indipendente dai separatori Intl dei motori browser.
+- 12b5b15: controlli locali e diario.
+
+**Controlli**
+- pnpm ci:local exit code 0: 172 unit, 276 integration, 97 e2e, totale 545; lint/check/build verdi, zero errori e warning svelte-check. Nuovi test: 15 unit, 17 integration e 9 e2e, inclusi Chromium desktop/mobile e WebKit, JavaScript acceso/spento, cambio ora Europe/Rome, export completo e XSS statico/live.
+- CI [run 39760214986](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39760214986) su 12b5b15: tutti i sei job lint, unit, integration, e2e, legacy-import e docker verdi; gh run watch --exit-status exit code 0.
+- Immagine ricostruita e stack completo attivo su 8080/8443: app/Postgres healthy, nginx running. HTTPS con CA locale verificato: health 200, log anonimi 303, CSV anonimo 401 e risposta dati senza informazioni personali; redirect HTTP 308 alla stessa pagina HTTPS. Nessuna scrittura applicativa dai controlli HTTP e nessun volume eliminato.
+- git diff --check verde. SESSIONS conserva integralmente il contenuto precedente a M13; nessuna modifica legacy/schema/dipendenze o al writer transazionale audit.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione rispetto alla voce precedente. Graphify, Ponytail e Caveman applicati.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. OAuth 42 reale e Safari su dispositivi fisici restano verifiche manuali; WebKit automatizzato verificato.
+
+**Prossimo passo**
+- M14, integrazione del design, soltanto dopo richiesta di Ismail e disponibilità dei materiali previsti in docs/v2/design/. Non iniziato in questa sessione.
