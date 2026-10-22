@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { db } from '../db/index.ts';
 import type { User } from '../auth/session.ts';
-import { assertAdmin, loginPattern } from '../auth/guards.ts';
+import { assertAdmin, assertUser, loginPattern } from '../auth/guards.ts';
 import { events, registrations, settings } from '../db/schema.ts';
 import { concreteDate } from './dates.ts';
 import { writeCsv } from './csv.ts';
@@ -23,7 +23,7 @@ export function eventHours(start: string, end: string) {
 	return Number((durationMinutes(start, end) / 60).toFixed(2));
 }
 
-export function participantTotals(rows: AttendanceRow[]) {
+export function participantTotals(rows: AttendanceRow[], decimals: 1 | 2 = 2) {
 	const totals = new Map<
 		string,
 		{ login: string; events: number; minutes: number; altarian: number }
@@ -44,7 +44,10 @@ export function participantTotals(rows: AttendanceRow[]) {
 	}
 	return [...totals.values()]
 		.sort((a, b) => a.login.localeCompare(b.login))
-		.map(({ minutes, ...total }) => ({ ...total, hours: Number((minutes / 60).toFixed(2)) }));
+		.map(({ minutes, ...total }) => ({
+			...total,
+			hours: Number((minutes / 60).toFixed(decimals))
+		}));
 }
 
 export type ReportEvent = {
@@ -70,6 +73,32 @@ export async function getParticipants(
 ): Promise<ParticipantReport[]> {
 	assertAdmin(actor);
 	const login = z.string().regex(loginPattern).optional().parse(input);
+	return readParticipantReports(database, login);
+}
+
+export async function getProfile(database: typeof db, actor: User | null) {
+	assertUser(actor);
+	const [report] = await readParticipantReports(database, actor.login, 1);
+	const weeks = report?.weeks ?? [];
+	return {
+		user: {
+			login: actor.login,
+			displayName: actor.displayName,
+			imageUrl: actor.imageUrl,
+			wallet: actor.wallet
+		},
+		totalEvents: weeks.reduce((count, week) => count + week.events.length, 0),
+		hours: report?.hours ?? 0,
+		altarian: report?.altarian ?? 0,
+		weeks
+	};
+}
+
+async function readParticipantReports(
+	database: typeof db,
+	login?: string,
+	decimals: 1 | 2 = 2
+): Promise<ParticipantReport[]> {
 	const [config] = await database
 		.select({ poolStart: settings.poolStart })
 		.from(settings)
@@ -117,7 +146,7 @@ export async function getParticipants(
 		weeks.set(row.week, entries);
 		grouped.set(row.participantLogin, weeks);
 	}
-	return participantTotals(rows).map((total) => ({
+	return participantTotals(rows, decimals).map((total) => ({
 		...total,
 		weeks: [...grouped.get(total.login)!].map(([week, events]) => ({ week, events }))
 	}));

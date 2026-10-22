@@ -33,3 +33,8 @@
 :root {
 	--font-display: 1.25rem;
 }
+
+:root {
+	--profile-image-size: 6rem;
+	--opacity-muted: 0.7;
+}

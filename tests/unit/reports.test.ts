@@ -97,3 +97,21 @@ it('writes header-only exports when there are no participants', () => {
 		'Titolo Evento,Giorno,Orario Inizio,Orario Fine,Durata (ore),Altarian,Stato,Data Iscrizione\r\n'
 	);
 });
+
+it('rounds profile hours directly to one decimal while preserving the report default', () => {
+	const rows = [
+		{
+			participantLogin: 'self',
+			attended: true,
+			startTime: '09:00',
+			endTime: '09:20',
+			compensation: 25
+		}
+	];
+	expect(participantTotals(rows, 1)).toEqual([
+		{ login: 'self', events: 1, hours: 0.3, altarian: 25 }
+	]);
+	expect(participantTotals(rows)).toEqual([
+		{ login: 'self', events: 1, hours: 0.33, altarian: 25 }
+	]);
+});

@@ -216,5 +216,20 @@
 	"reports_registered_at": "Iscritto il",
 	"reports_attended": "PARTECIPATO",
 	"reports_absent": "NON PARTECIPATO",
-	"reports_no_date": "Data non impostata"
+	"reports_no_date": "Data non impostata",
+	"profile_image": "Immagine di {name}",
+	"profile_wallet": "Wallet 42",
+	"profile_total_events": "Eventi totali",
+	"profile_hours": "Ore effettuate",
+	"profile_earned": "Altarian guadagnati",
+	"profile_empty": "Non sei iscritto a nessun evento",
+	"profile_event": "Evento",
+	"profile_day": "Giorno",
+	"profile_date": "Data",
+	"profile_time": "Orario",
+	"profile_compensation": "Compenso",
+	"profile_status": "Stato",
+	"profile_attended": "Partecipato",
+	"profile_absent": "Non partecipato",
+	"profile_week_events": "Eventi della settimana {week}"
 }
