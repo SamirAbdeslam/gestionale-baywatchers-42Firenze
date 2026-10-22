@@ -1748,3 +1748,36 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M12: profilo utente, da avviare alla prossima richiesta.
+
+
+## 2026-10-22 — M12 — implementazione e controlli locali completati
+
+**Fatto**
+- Implementato il profilo personale di §8.11: immagine, nome con fallback al login, login e wallet 42 salvato; conteggio di tutte le iscrizioni, ore delle sole presenze arrotondate a un decimale e somma dei compensi guadagnati.
+- Tabelle per le sole settimane con iscrizioni, ordinate per settimana/giorno/inizio, con giorno, data specifica o derivata dal pool, orario, compenso e stato; righe assenti attenuate. Nessuna sezione notifiche. Testi i18n, token e formatter esistenti, tabelle scorrevoli accessibili da tastiera.
+- Riutilizzato il caricamento dei report in reports.ts con filtro imposto dal login autenticato; getParticipants conserva la guard admin e la precisione di due decimali. Il profilo non accetta un utente bersaglio, non scrive dati e non produce audit.
+- Correzione del menu mobile autorizzata esplicitamente da Ismail: adottato popover/popovertarget nativo al posto della proposta jsReady. Rimossi menuOpen, onclick dei link e attributi ARIA manuali; onNavigate chiude il popover insieme alla pulizia dei messaggi. Navigazione desktop sempre visibile, menu mobile sovrapposto senza spostare l'header; funziona anche senza JavaScript. Nessuna modifica CSP o dipendenza.
+
+**Commit**
+- 8a994c9: profilo, caricamento e unit/integration/e2e.
+- 77633f7: menu nativo e copertura Chromium/WebKit.
+- 2e6d514: verifica della visibilità del menu nel precedente test di autenticazione.
+
+**Controlli**
+- pnpm ci:local exit code 0: 157 unit, 259 integration, 88 e2e, totale 504. Lint/check/build verdi, zero errori e warning svelte-check.
+- Nuovi test del profilo: utenti normali e admin vedono solo i propri dati; tutti gli iscritti nel conteggio, assenti esclusi da ore/guadagni, somma dei minuti prima dell'arrotondamento, precisione admin conservata, settimane 1/2/4 e weekend, date specifiche/pool/null, sole assenze e profilo vuoto, campi opzionali null, parametri login/userId ignorati, protezione anonimi e assenza di audit.
+- Quattro e2e del profilo su desktop/mobile con JavaScript acceso/spento: identità e wallet, totali, ordinamento e date, XSS reso come testo, isolamento dei dati, nessuna modifica a iscrizioni/audit, stato vuoto e fallback, nessun overflow a 360 px. Accesso dal collegamento del menu anche senza JavaScript.
+- Sei nuovi e2e di navigazione su Chromium desktop/mobile e WebKit, con JavaScript acceso/spento: desktop sempre visibile, apertura mobile, header fermo, Esc e ritorno del focus, clic esterno, chiusura dopo navigazione in entrambe le direzioni e nessun errore JavaScript.
+- Corrette due aspettative dei test durante la verifica: classi Svelte aggiuntive alle righe assenti e snapshot ARIA Playwright, che legge aria-expanded esplicito e non quello implicito del browser. Il test esistente ora verifica la visibilità della navigazione identificata da main-navigation. Nessun attributo manuale reintrodotto. Dopo le correzioni rieseguito l'intero controllo locale, verde.
+- Immagine ricostruita con docker compose build app; stack dev arrestato e stack completo avviato con docker compose up -d --wait. App/Postgres healthy e nginx running su 8080/8443. HTTPS con CA locale: health 200, profilo anonimo 303; __data.json anonimo restituisce soltanto l'involucro redirect SvelteKit (HTTP 200, status interno 303, destinazione /), senza dati personali. HTTP 8080 reindirizza alla stessa pagina HTTPS 8443 con 308. Nessuna scrittura applicativa dai controlli HTTP e nessun volume eliminato.
+- git diff --check verde. Nessuna modifica a legacy, schema o dipendenze. CI non ancora eseguita: nessun push M12 al momento di questa voce.
+
+**Decisioni prese dentro il perimetro del piano**
+- Riutilizzati caricamento, totali, guard, formatter e traduzioni condivise. Graphify consultato e riferimenti legacy verificati nei sorgenti; Ponytail e Caveman applicati. Grafo non ricostruito.
+- Eccezione di perimetro approvata da Ismail: correzione del menu tramite popover nativo, con i test richiesti e inclusione della navigazione nel progetto WebKit esistente.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. OAuth 42 reale resta la verifica manuale prevista; WebKit automatizzato non sostituisce una prova su dispositivi Safari fisici.
+
+**Prossimo passo**
+- Push M12, verifica di tutti i sei job CI, aggiornamento dello Stato e chiusura nel diario. Non iniziare M13 senza richiesta.
