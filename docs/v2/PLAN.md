@@ -999,7 +999,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M10 Template e import CSV | completato (f2d0e78) |
 | M11 Riepilogo ed export | completato (6258899) |
 | M12 Profilo | completato (2e6d514) |
-| M13 Log di audit | da fare |
+| M13 Log di audit | in corso |
 | M14 Integrazione design | da fare |
 | M15 Stack finale e consegna | da fare |
 | M16 Inglese e francese | da fare |

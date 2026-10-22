@@ -1810,3 +1810,39 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M13: pagina dei log di audit, da avviare alla prossima richiesta. Non iniziato in questa sessione.
+
+
+## 2026-10-22 — M13 — implementazione e controlli locali completati
+
+**Fatto**
+- Implementato §8.10 per la consultazione dei log. Il nuovo dominio di lettura logs.ts riutilizza schema, guard e writer CSV esistenti; audit.ts e le scritture transazionali già implementate restano invariati. Nessuna nuova dipendenza o migrazione.
+- Filtri GET per data ISO nel giorno Europe/Rome, actor_login esatto e tipo azione esatto. Select con valori distinti globali, inclusi attori storici senza account. Validazione Zod, 50 righe per pagina, ordinamento created_at/id decrescente e indicazione pagina corrente/totale. Le pagine positive oltre l'ultima sono ricondotte all'ultima disponibile; input malformati danno 400.
+- Pagina con data/ora localizzate in Europe/Rome, utente, azione con colore per categoria, descrizione, IP e dialog nativo per ogni riga con tutti i campi, old_value/new_value formattati come JSON. Tutti i valori sono testo, senza markup HTML interpretato. I filtri, la paginazione, i dialog e il download funzionano senza JavaScript. Tabella scorrevole da tastiera, nessun overflow della pagina a 360 px, stringhe i18n e colori/spaziature da token.
+- /admin/logs.csv restituisce action_logs.csv UTF-8 con intestazioni italiane, tutte le colonne e tutte le righe degli stessi filtri, anche quando la pagina visualizzata contiene soltanto 50 righe. Timestamp CSV in Europe/Rome, JSON serializzato, CRLF, quoting e protezione formule del writer condiviso. Pagina e CSV non scrivono dati o audit; accesso riservato agli admin anche nelle funzioni del dominio.
+- Su log_created, la prima pagina senza filtri ricarica i dati ed evidenzia soltanto gli ID ricevuti via SSE. Le viste filtrate o paginate mostrano il banner Nuovi log disponibili e ricaricano soltanto al clic. Riconnessione gestita con la stessa politica tramite listenRealtime; stato pulito alla navigazione e stream chiuso nel cleanup esistente. Nessun nuovo endpoint di lettura per singolo log, né dati personali aggiunti al payload SSE.
+- Matrice dei permessi aggiornata per il CSV implementato; aggiunti i log al progetto WebKit già esistente.
+
+**Commit**
+- c400314: caricamento, filtri, paginazione, CSV, unit/integration e matrice permessi.
+- 398ab5b: pagina, dettagli, colori, aggiornamenti live e flussi browser.
+- 5b835d1: fixture bigserial e aspettative degli ID localizzati tra motori browser.
+
+**Controlli**
+- pnpm ci:local exit code 0: 172 unit, 276 integration, 97 e2e, totale 545. Lint/check/build verdi e svelte-check con zero errori e warning.
+- Quindici nuovi unit sulle categorie e sulla precedenza legacy, inclusi unregister rispetto a register e update/set rispetto a setting. Diciassette nuovi integration: 50 righe, ordinamento stabile, pagine successive/fuori intervallo, select globali, filtri esatti e combinati, SQL injection neutralizzata, confini inclusivi/esclusivi dei giorni di 23/25 ore al cambio ora, insieme vuoto, nove input malformati, guard 401/403, CSV oltre pagina 1 con tutti i campi/JSON/quoting/formule/CRLF, loader e header del download.
+- Nove nuovi e2e su Chromium desktop/mobile e WebKit: filtri, paginazione con conservazione dei parametri e reset alla prima pagina, insieme vuoto, dialog con tutti i campi e JSON, download reale e filename, export filtrato completo e formula neutralizzata, XSS statico e live in descrizione/user agent/JSON senza elementi img né alert, nessuna scrittura audit da consultazione e nessun overflow a 360 px. I flussi di consultazione sono provati con JavaScript acceso/spento.
+- Live: nuova riga in cima evidenziata senza ricaricare il documento; nessuna evidenziazione falsa per un ID maggiore con data precedente; pagina 2 e filtro attivo conservano la vista fino al clic sul banner, poi effettuano una sola invalidazione mantenendo l'URL.
+- Durante la verifica sono state corrette le label delle select, che comprendevano le opzioni, e l'evidenziazione basata sul primo ID visibile, sostituita con gli ID SSE effettivi. Il primo avvio mirato di due progetti condivisi senza dipendenze è stato interrotto e rieseguito in sequenza; la suite completa conserva le dipendenze già previste. Corretti anche i fixture bigserial e il test che imponeva la formattazione numerica di Node a WebKit: prova isolata conferma 1294 in Node e 1.294 in WebKit per locale it. Il test verifica ora riga, nome accessibile e valore dell'ID. La suite completa finale è stata rieseguita dopo queste correzioni ed è verde.
+- Immagine M13 ricostruita con docker compose build app, stack dev arrestato e stack completo avviato con docker compose up -d --wait: app/Postgres healthy, nginx running su 8080/8443. HTTPS con CA locale: health 200, log anonimi 303, CSV anonimo 401; risposta dati anonima contiene soltanto il redirect SvelteKit a /. HTTP 8080 → stessa pagina HTTPS 8443 con 308. Nessuna scrittura applicativa dai controlli HTTP, nessun volume eliminato.
+- git diff --check verde. Note precedenti conservate; nessuna modifica legacy/schema/dipendenze. CI non ancora eseguita: nessun push M13 al momento di questa voce.
+
+**Decisioni prese dentro il perimetro del piano**
+- Lettura separata dal writer audit per riutilizzare il writer CSV senza introdurre un ciclo fra audit, CSV ed eventi. Filtri parametrizzati con intervallo fra due mezzanotti locali, conservando l'indice created_at e rispettando il cambio ora.
+- Categorie con la stessa precedenza del template legacy: anche UPDATE_SETTING ricade in update, dato che set precede setting. Palette provvisoria tramite token con contrasto leggibile; nessuna modifica al design di M14.
+- Graphify consultato per view_logs/download_logs_csv e admin_logs.html, con verifica nei sorgenti legacy. Ponytail e Caveman applicati; grafo non ricostruito.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. OAuth 42 reale e Safari su dispositivi fisici restano verifiche manuali; WebKit automatizzato verificato.
+
+**Prossimo passo**
+- Push M13 e verifica di tutti i sei job CI, poi aggiornamento Stato e chiusura. Non iniziare M14 senza richiesta e senza i materiali design previsti dal piano.
