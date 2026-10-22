@@ -1879,3 +1879,31 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M14, integrazione del design, soltanto dopo richiesta di Ismail e disponibilità dei materiali previsti in docs/v2/design/. Non iniziato in questa sessione.
+
+
+## 2026-10-22 — Revisione M11–M13 — controlli locali completati
+
+**Fatto**
+- Risolti tutti i punti Ponytail 27–29 delle note di Ismail; nessuno era già risolto. M14 non iniziato, come richiesto.
+- P27: formatter Intl.DateTimeFormat creato una sola volta per istanza della pagina partecipanti e riutilizzato direttamente con formatter.format. Stessi locale, formato e fuso Europe/Rome; eliminata la funzione che ricreava il formatter per ogni iscrizione.
+- P28: aggiunta in PLAN.md §8.11 la differenza di arrotondamento accettata, come autorizzato espressamente dalla nota: 1 h 15 min diventa 1,3 in v2 e 1,2 nel legacy. Calcolo del profilo e CSV invariati; nessun'altra modifica al piano, inclusi gli stati dei moduli.
+- P29: eliminati il ramo irraggiungibile setting di logCategory, la classe CSS e il token corrispondenti. UPDATE_SETTING e SETTING continuano a essere update; tutti i test esistenti, compreso il test unit delle categorie, lasciati invariati.
+
+**Commit**
+- d79a555: formatter riutilizzato e categoria inutilizzata rimossa.
+- 71644aa: documentazione della differenza di arrotondamento accettata.
+
+**Controlli**
+- pnpm ci:local exit code 0: 172 unit, 276 integration, 97 e2e, totale 545; lint/check/build verdi e svelte-check con zero errori e warning. Nessun test aggiunto o modificato.
+- git diff --check verde; verificata l'assenza del ramo/classe/token setting. Il diff dei test e di reports.ts rispetto a 3127d82 è vuoto.
+- Immagine ricostruita con docker compose build app; stack dev arrestato e stack completo avviato con docker compose up -d --wait. App/Postgres healthy, nginx running su 8080/8443. Con CA locale: health 200, pagine partecipanti/log/profilo anonime 303, CSV log anonimo 401; HTTP 8080 → HTTPS 8443 con 308. Nessuna scrittura applicativa dai controlli HTTP e nessun volume eliminato.
+- Nessuna modifica a schema, dipendenze o legacy. Note precedenti conservate; CI non ancora eseguita, nessun push della revisione al momento di questa voce.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione. Applicate esclusivamente le tre pulizie richieste. Ponytail, Caveman e riferimenti Graphify già consultati per i moduli coinvolti.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. OAuth 42 reale e Safari fisico restano verifiche manuali già previste.
+
+**Prossimo passo**
+- Pubblicare la revisione, verificare tutti i sei job CI e registrare la chiusura. Poi fermarsi in attesa di indicazioni per M14.
