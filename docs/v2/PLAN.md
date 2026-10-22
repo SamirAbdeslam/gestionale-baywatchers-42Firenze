@@ -997,7 +997,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M8 Display pubblico | completato (28ea717) |
 | M9 Real-time | completato (1fe2bc9) |
 | M10 Template e import CSV | completato (f2d0e78) |
-| M11 Riepilogo ed export | da fare |
+| M11 Riepilogo ed export | in corso |
 | M12 Profilo | da fare |
 | M13 Log di audit | da fare |
 | M14 Integrazione design | da fare |

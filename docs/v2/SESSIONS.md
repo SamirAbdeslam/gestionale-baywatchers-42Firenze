@@ -1659,3 +1659,27 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Pubblicare revisione e verificare tutti i sei job CI, registrare la chiusura; poi avviare M11 come autorizzato. Non avviare M12.
+
+
+## 2026-10-22 — Revisione M10 — chiusura
+
+**Fatto**
+- Completati e pubblicati R13/R14 e Ponytail 24–26, nessun punto saltato. Dettagli nella voce precedente. Blocchi Docker risolti e ricostruzione senza cache richiesta da Ismail completata.
+
+**Commit**
+- 76f74b4: serializzazione applicazioni, limiti/migrazione e test.
+- 5a48909: validazioni/adattatore condivisi.
+- eb4295f: controlli locali, avvio a freddo e diario.
+
+**Controlli**
+- pnpm ci:local verde: 146 unit, 242 integration, 74 e2e. Migrazione applicata, build Docker senza cache e avvio a freddo verdi; HTTPS e heartbeat SSE reale verificati. Nessun volume eliminato.
+- CI [run 39742741469](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39742741469) su eb4295f: tutti i sei job verdi; gh run watch --exit-status exit code 0.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. OAuth 42 reale resta la verifica manuale prevista.
+
+**Prossimo passo**
+- Avvio M11 già autorizzato: riepilogo partecipanti ed export CSV, inclusa protezione formule. Non avviare M12.
