@@ -81,5 +81,11 @@ export const adminRoutes = [
 		endpoint: true,
 		actions: []
 	},
-	{ id: '/admin/logs.csv', url: '/admin/logs.csv', endpoint: true, actions: [] }
+	{
+		id: '/admin/logs.csv',
+		url: '/admin/logs.csv',
+		endpoint: true,
+		implementedEndpoint: true,
+		actions: []
+	}
 ];
