@@ -1683,3 +1683,39 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Avvio M11 già autorizzato: riepilogo partecipanti ed export CSV, inclusa protezione formule. Non avviare M12.
+
+
+## 2026-10-22 — M11 — implementazione e controlli locali completati
+
+**Fatto**
+- Avviato M11 soltanto dopo chiusura della revisione M10 e sei job CI verdi. Implementato §8.13; M12 non iniziato.
+- Riepilogo amministrativo dei login distinti nelle iscrizioni, inclusi quelli senza account e con sole assenze. Totali di eventi, ore e Altarian solo per le presenze. Dettagli di tutti gli eventi per settimana/giorno/inizio, con date specifiche o derivate dal pool, durata, compenso, iscrizione e stato.
+- Riutilizzato participantTotals anche per il nuovo caricamento, conservando il contratto usato da verify-legacy-import e i totali calcolati da minuti interi prima dell'arrotondamento. Caricamento con due query, senza query per ciascun partecipante.
+- Pagina admin con tabella, ricerca login lato client, details nativi per settimana e tre download. Dettagli e download funzionano anche senza JavaScript. Tabella in regione scorrevole con focus per tastiera; ignorata soltanto la segnalazione Svelte sul tabindex non interattivo, con motivazione accessibile puntuale nel markup.
+- Implementati summary.csv, detailed.csv e [login].csv con intestazioni/nomi file italiani richiesti, testi amministrativi indipendenti dalla locale UI, numeri senza zeri superflui, ordine settimana/giorno/inizio, quoting RFC 4180 e CRLF. Dettagli includono gli assenti; nel CSV individuale compenso zero per assenze. Giorni amministrativi in italiano, date evento DD/MM/YYYY e data iscrizione YYYY-MM-DD HH:mm:ss in Europe/Rome.
+- Login del CSV individuale validato con loginPattern prima di comporre il nome file; 400 per input non valido. Per un login valido senza iscrizioni viene restituita la sola intestazione, coerentemente con il legacy. Nessun report scrive dati o audit.
+- Applicata la nota CSV injection: writeCsv prefissa apostrofo alle celle che iniziano con =, +, - o @ prima del quoting. Il parametro di fine riga serve ai due consumatori effettivi: esempio M10 con LF conservato, export M11 con CRLF. Nessuna dipendenza aggiunta.
+
+**Commit**
+- 54f3571: chiusura revisione M10 e avvio M11.
+- 840cd9a: protezione formule e fine riga CSV.
+- a225022: dominio, endpoint e unit/integration dei report.
+- 6258899: pagina, traduzioni e flussi browser.
+
+**Controlli**
+- pnpm ci:local exit code 0: 156 unit, 252 integration, 78 e2e. Lint/check/build verdi, zero errori e warning svelte-check. Quattro nuovi e2e su desktop/mobile con JavaScript acceso/spento.
+- Dieci nuovi unit: quattro prefissi formula e quoting con CRLF, durate e somma di tre eventi da venti minuti senza arrotondamento intermedio, assenze, stringhe CSV esatte per i tre formati, virgole/virgolette, data null, stato/compenso assenza, timezone iscrizione e intestazioni per insiemi vuoti.
+- Dieci nuovi integration: raggruppamento e ordine, sole assenze e login senza account, date specifiche e pool, pool assente, filtro login, login valido sconosciuto, protezione ruolo, cinque login non validi, tre endpoint e nomi file, CRLF e nessun audit.
+- E2e: totali corretti, dettagli per settimane 1/2/4 con domenica e assenze, ricerca case-insensitive e nessun risultato, tre download tramite browser con nome/contenuto/fine riga verificati, formula neutralizzata e titolo XSS reso come testo senza esecuzione, login non valido 400, iscrizioni e audit invariati, nessun overflow della pagina a 360 px. Dati dei fixture rimossi nel finally.
+- Prima validazione fermata da due cast dei fixture RequestEvent (aggiunto unknown esplicito) e dalla segnalazione sul focus della regione scorrevole. Corretti prima della suite finale; nessun errore funzionale nei nuovi test browser.
+- Stack dev arrestato e stack completo M11 ricostruito con docker compose up -d --build --wait, exit code 0; app/Postgres healthy e nginx running su 8080/8443. Con CA locale: health 200, pagina report anonima 303, tre CSV anonimi 401, redirect HTTP 308. Nessuna scrittura applicativa dal controllo HTTPS e nessun volume eliminato. La ricostruzione senza cache e l'avvio a freddo richiesti da Ismail sono già documentati nella revisione precedente; immagine aggiornata nuovamente con M11.
+- git diff --check verde. Nessuna modifica legacy o nuova migrazione M11. Matrice dei permessi aggiornata per i tre endpoint implementati; import legacy verificato dalla CI nella revisione, sarà rieseguito dalla CI M11.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nuovi file limitati al caricamento della pagina e ai tre gruppi di test richiesti. Riutilizzati writer, totali, formatter, weekdays e guard esistenti. Graphify consultato per i quattro handler legacy, verificati in app.py e nel template; Ponytail e Caveman applicati, grafo non ricostruito.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Login OAuth 42 reale resta la verifica manuale prevista; nessuna prova di apertura in Excel fisico, verificati i byte dei CSV e la neutralizzazione richiesta.
+
+**Prossimo passo**
+- Push M11, tutti i sei job CI verdi, aggiornamento dello Stato e chiusura nel diario. Non iniziare M12 senza richiesta.
