@@ -1,3 +1,4 @@
+import { parseTheme } from '#lib/theme.ts';
 import { randomUUID } from 'node:crypto';
 import { posix } from 'node:path';
 import { assets, routes } from '$app/manifest';
@@ -24,6 +25,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const env = readEnv();
 	return paraglideMiddleware(event.request, async ({ request, locale }) => {
 		const token = event.cookies.get('session');
+		const theme = parseTheme(event.cookies.get('theme'));
 		event.locals.user = null;
 		if (token) {
 			const { db } = await import('#lib/server/db/index.ts');
@@ -61,6 +63,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					html
 						.replace('%paraglide.lang%', locale)
 						.replace('%paraglide.dir%', getTextDirection(locale))
+						.replace('%theme.attribute%', theme ? `data-theme="${theme}"` : '')
 			}
 		);
 		if (!response.headers.get('Content-Type')?.startsWith('text/event-stream'))
