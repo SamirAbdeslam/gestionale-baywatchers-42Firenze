@@ -34,6 +34,7 @@ export default defineConfig({
 			name: 'webkit-shared',
 			testMatch: [
 				'events.test.ts',
+				'profile.test.ts',
 				'calendar.test.ts',
 				'navigation.test.ts',
 				'logs.test.ts',

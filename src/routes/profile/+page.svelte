@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Avatar from '#lib/components/Avatar.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatNumber } from '#lib/format.ts';
 	import { weekdays } from '#lib/weekdays.ts';
@@ -11,21 +12,11 @@
 <div class="profile-layout">
 	<section class="profile" aria-label={m.nav_profile()}>
 		<div class="identity">
-			{#if data.profile.user.imageUrl}
-				<img
-					src={data.profile.user.imageUrl}
-					alt={m.profile_image({ name: data.profile.user.displayName || data.profile.user.login })}
-				/>
-			{:else}
-				<span class="initials" aria-hidden="true"
-					>{(data.profile.user.displayName || data.profile.user.login)
-						.split(/\s+/)
-						.slice(0, 2)
-						.map((part) => part[0])
-						.join('')
-						.toUpperCase()}</span
-				>
-			{/if}
+			<Avatar
+				login={data.profile.user.login}
+				name={data.profile.user.displayName || data.profile.user.login}
+				hasImage={data.profile.user.hasImage}
+			/>
 			<div>
 				<h2>{data.profile.user.displayName || data.profile.user.login}</h2>
 				<p>@{data.profile.user.login}</p>
@@ -122,23 +113,6 @@
 		margin: 0;
 		color: var(--color-signal-text);
 		font: var(--font-small) var(--font-mono);
-	}
-	.initials,
-	img {
-		flex: none;
-		width: var(--profile-image-size);
-		height: var(--profile-image-size);
-		border: var(--border-strong) solid var(--color-signal);
-		border-radius: var(--radius-pill);
-	}
-	.initials {
-		display: grid;
-		place-items: center;
-		background: var(--color-raised);
-		font: 600 var(--font-mono-lg) var(--font-mono);
-	}
-	img {
-		object-fit: cover;
 	}
 	dl {
 		display: grid;

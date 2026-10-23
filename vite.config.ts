@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
 						'script-src': ['self'],
 						'style-src': ['self'],
 						'style-src-attr': ['unsafe-inline'],
-						'img-src': ['self', 'https://cdn.intra.42.fr', 'data:'],
+						'img-src': ['self', 'data:'],
 						'connect-src': ['self'],
 						'frame-ancestors': ['none'],
 						'base-uri': ['self'],

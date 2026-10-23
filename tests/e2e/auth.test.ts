@@ -142,6 +142,9 @@ test('default-deny covers protected pages, endpoints and lookalike public paths'
 	])
 		expect((await request.get(path, { maxRedirects: 0 })).status(), path).toBe(303);
 	expect((await request.get('/events/1/calendar.ics', { maxRedirects: 0 })).status()).toBe(401);
+	const avatar = await request.get('/avatar/dev_user', { maxRedirects: 0 });
+	expect(avatar.status()).toBe(401);
+	expect(avatar.headers()['cache-control']).toBe('private, no-store');
 	expect(
 		(
 			await request.post('/calendar?/register', {

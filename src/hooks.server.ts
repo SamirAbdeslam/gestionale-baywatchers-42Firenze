@@ -50,6 +50,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 			if (!event.locals.user) {
 				const route = routes.find((route) => route.id === routeId);
 				if (event.request.method === 'GET' && !route?.endpoint) redirect(303, '/');
+				if (routeId === '/avatar/[login]')
+					return new Response(null, {
+						status: 401,
+						headers: { 'Cache-Control': 'private, no-store' }
+					});
 				error(401, m.error_unauthorized());
 			}
 			if (accessPath.startsWith('/admin') && event.locals.user.role !== 'admin')
@@ -66,7 +71,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 						.replace('%theme.attribute%', theme ? `data-theme="${theme}"` : '')
 			}
 		);
-		if (!response.headers.get('Content-Type')?.startsWith('text/event-stream'))
+		if (
+			!response.headers.get('Content-Type')?.startsWith('text/event-stream') &&
+			!(event.route.id === '/avatar/[login]' && response.status === 200)
+		)
 			response.headers.set('Cache-Control', 'private, no-store');
 		return response;
 	});

@@ -134,6 +134,12 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
   - **M14-9 (Zod senza JIT nel browser, consentito)** Zod 4 prova `new Function('')` per il JIT; la CSP lo blocca e il browser registra una violazione, anche se Zod ripiega già sull'interprete. Crea `src/hooks.client.ts` con solo `import { z } from 'zod'; z.config({ jitless: true });` e un commento di una riga sul perché. Non metterlo in `src/lib/realtime.ts`: quel modulo è importato anche dal server e `z.config` è globale, spegnerebbe il JIT anche lato server. Nessuna modifica a schemi, validazioni, CSP o dipendenze. Test e2e: su `/calendar` e `/admin` nessuna violazione CSP in console.
   - **M14-10 (presentazione consentita)** Display: in `getDisplay` (`src/lib/server/domain/display.ts`) aggiungi al risultato di ogni evento solo `maxSlots` (già letto, nessuna query nuova). Posti presi nella vista = `maxSlots - freeSlots`; non aggiungere `registeredCount`, sarebbe un doppione. Login degli assenti sempre nascosti. Quadrati fino a 10 posti, oltre solo numero (design README §4.2). Test: unit su `getDisplay` con un assente (quadrati presi contano anche l'assente, il suo login non compare).
 
+- 2026-10-23: **Avatar 42 tramite server, senza salvataggio**, nuova rotta autorizzata (variante avatar sostitutiva del punto 10 indicato in chat). Usare image.versions.medium con fallback image.link, nella colonna esistente users.image_url; token client_credentials solo in memoria, scadenza meno 60 s e una promise condivisa. GET /avatar/[login] autenticato, login validato e URL esclusivamente dal DB, solo HTTPS su cdn.intra.42.fr senza redirect, immagine 200 image/* fino a 2 MB letti con limite. Nessuna immagine su file/DB/volume/cache server; sola cache browser private, max-age=86400. Avatar condiviso in header/profilo con iniziali su errore, nessun URL CDN nei dati client; img-src self/data. Nessuna modifica a schema, migrazioni o dipendenze.
+  - Eccezione hooks approvata: conservare Cache-Control soltanto per route.id /avatar/[login] con status 200; per tutti gli altri casi, inclusi avatar 401/404, resta private, no-store. Nginx: location /avatar/ con proxy_pass http://app, proxy_buffering off e proxy_cache off, senza add_header locali.
+  - CSP della risposta avatar: default-src 'none'; frame-ancestors 'none'; sandbox. **HSTS non era presente ed era stato indicato per errore nello smoke: non aggiungerlo né richiederlo allo smoke locale.** Annotare in CUTOVER.md la decisione per il dominio di produzione. Lo smoke verifica CSP avatar/nosniff e CSP HTML invariata.
+  - Correzione Avatar approvata: nessun onerror nel markup Svelte. Il replay degli eventi di Svelte genera un attributo inline incompatibile con la CSP. Collegare error con addEventListener in onMount, rimuoverlo allo smontaggio e controllare complete/naturalWidth al mount. Test prima/dopo idratazione senza violazioni CSP; senza JS resta alt.
+  - Test senza chiamate reali a 42; verifica separata su credenziali/foto reali, con esito riportato nel diario. M15 non iniziato.
+
 ---
 
 ## Voci
@@ -2041,3 +2047,26 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Verificare tutti i sei job CI dopo il push e fermarsi; stato M14 invariato, M15 in attesa di Ismail.
+
+
+## 2026-10-23 — M14 — avatar 42 tramite il server, senza salvataggio
+
+**Fatto**
+- Implementata la nuova rotta autenticata GET /avatar/[login], autorizzata nelle Note di Ismail. Login validato, URL letto soltanto da users.image_url, HTTPS e host esatto cdn.intra.42.fr senza redirect; inoltro soltanto di risposte 200 image/* entro 2 MB, con limite sia sul Content-Length sia sui byte letti. Errori 404 con log generici senza segreti.
+- Token client_credentials esclusivamente in memoria di processo, scadenza anticipata di 60 secondi, richiesta concorrente condivisa e un solo rinnovo dopo 401 del CDN. Senza credenziali nessuna chiamata esterna. Immagini soltanto in memoria durante la risposta, mai salvate su file, DB, volumi o cache server; nel DB resta soltanto il link esistente. Al prossimo login OAuth si preferisce image.versions.medium con fallback a image.link.
+- Avatar condiviso tra header e profilo, iniziali su errore, URL interno e solo hasImage nei dati client. Il replay degli eventi di Svelte genera un attributo onerror inline incompatibile con la CSP: su autorizzazione esplicita, listener error tramite addEventListener in onMount, rimosso allo smontaggio, e controllo complete/naturalWidth al mount. Nessun onerror nel markup; senza JavaScript rimane l'alt.
+- CSP HTML: img-src ristretto a self/data, altre direttive invariate. La risposta avatar 200 imposta default-src 'none'; frame-ancestors 'none'; sandbox, nosniff e Cache-Control private, max-age=86400. Hooks conserva questa cache soltanto per /avatar/[login] con status 200; 401/404 restano private, no-store, con 401 esplicito prima del resolve per gli anonimi.
+- Nginx: location /avatar/ senza buffering né cache e senza add_header locali, preservando gli header di sicurezza ereditati. Correzione della precedente indicazione: HSTS non era presente ed era stato citato per errore; non aggiunto né richiesto allo smoke. La sola decisione futura sul dominio di produzione è annotata in docs/v2/CUTOVER.md. M15 non iniziato.
+- Nessuna modifica a schema, migrazioni, dipendenze, action o legacy. Note e diario precedenti preservati.
+
+**Controlli**
+- corepack pnpm ci:local exit 0: 223 unit, 277 integration, 135 e2e, totale 635. Lint/check/build verdi, svelte-check zero errori e warning. Chromium desktop/mobile e WebKit verificano immagini interne, assenza di URL CDN nei dati, fallback prima/dopo idratazione senza violazioni CSP e alt senza JavaScript.
+- Fetch finto per i casi SSRF, HTML, limite di 2 MB, rinnovo dopo 401, token concorrenti/scadenza e credenziali assenti. Verificati CSP e header della risposta 200, eccezione cache hooks 200/404, anonimo 401 e assenza di import filesystem nei moduli del proxy. Nessun test automatico chiama il CDN reale.
+- Immagine Docker ricostruita e stack completo attivo su 8080/8443, app/Postgres healthy. nginx -t e git diff --check verdi; nessun node build rimasto sull'host, nessun volume eliminato. Smoke HTTPS con CA locale: landing/health 200 e avatar anonimo 401/no-store, nosniff e altri header ereditati presenti; CSP HTML verificata, senza controllo HSTS.
+- CI GitHub da verificare dopo il push tramite gh run watch --exit-status: devono risultare verdi tutti i sei job; esito nel rapporto finale e nella run associata al commit.
+
+**Domande / blocchi**
+- Verifica manuale con login OAuth 42 reale richiesta a Ismail dopo il riavvio: foto in header/profilo, /avatar/igilani 200 image/jpeg con CSP propria e nosniff, nessun ERR_BLOCKED_BY_ORB, secondo caricamento dalla cache del browser. In attesa di riscontro; i test simulati e lo smoke anonimo non sostituiscono questa verifica.
+
+**Prossimo passo**
+- Verificare i sei job dopo il push e registrare il riscontro manuale quando disponibile. Non iniziare M15.

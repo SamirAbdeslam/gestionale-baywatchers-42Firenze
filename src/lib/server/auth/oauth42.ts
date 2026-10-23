@@ -60,7 +60,15 @@ export const profileSchema = z
 			.regex(/^[a-z0-9_-]{1,32}$/),
 		email: z.string().catch(''),
 		displayname: z.string().optional().catch(undefined),
-		image: z.object({ link: z.string().catch('') }).catch({ link: '' }),
+		image: z
+			.object({
+				link: z.string().catch(''),
+				versions: z
+					.object({ medium: z.string().optional().catch(undefined) })
+					.optional()
+					.catch(undefined)
+			})
+			.catch({ link: '' }),
 		wallet: z.number().int().min(-2147483648).max(2147483647).catch(0),
 		'staff?': z.boolean().catch(false)
 	})
@@ -69,7 +77,7 @@ export const profileSchema = z
 		login: profile.login,
 		email: profile.email,
 		displayName: profile.displayname ?? profile.login,
-		imageUrl: profile.image.link,
+		imageUrl: profile.image.versions?.medium ?? profile.image.link,
 		wallet: profile.wallet,
 		role:
 			profile['staff?'] || ADMIN_LOGINS.some((login) => login.toLowerCase() === profile.login)

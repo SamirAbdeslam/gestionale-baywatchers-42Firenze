@@ -11,7 +11,8 @@ vi.mock('$app/manifest', () => ({
 	assets: [{ path: '/badge.png' }],
 	routes: [
 		{ id: '/admin', page: true, endpoint: false },
-		{ id: '/admin/logs.csv', page: false, endpoint: true }
+		{ id: '/admin/logs.csv', page: false, endpoint: true },
+		{ id: '/avatar/[login]', page: false, endpoint: true }
 	]
 }));
 vi.mock('#lib/server/env.ts', () => ({
@@ -76,4 +77,30 @@ it('resolves public pages with private caching and exposes only generic unexpect
 	expect(result).toMatchObject({ message: 'Errore interno', id: expect.any(String) });
 	expect(JSON.stringify(result)).not.toContain('private database details');
 	expect(log).toHaveBeenCalledTimes(1);
+});
+
+it.each([200, 404])(
+	'limits the avatar browser cache exception to successful responses (%s)',
+	async (status) => {
+		state.user = { role: 'user' };
+		const request = event('/avatar/student', 'GET', 'valid-token');
+		request.route.id = '/avatar/[login]';
+		const response = await handle({
+			event: request,
+			resolve: async () =>
+				new Response(null, { status, headers: { 'Cache-Control': 'private, max-age=86400' } })
+		});
+		expect(response.headers.get('Cache-Control')).toBe(
+			status === 200 ? 'private, max-age=86400' : 'private, no-store'
+		);
+	}
+);
+it('protects avatar endpoints with 401 rather than a page redirect', async () => {
+	const request = event('/avatar/student');
+	request.route.id = '/avatar/[login]';
+	const resolve = vi.fn();
+	const response = await handle({ event: request, resolve });
+	expect(response.status).toBe(401);
+	expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+	expect(resolve).not.toHaveBeenCalled();
 });

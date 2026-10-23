@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import postgres from 'postgres';
 import { expect, test } from '@playwright/test';
 const databaseUrl =
@@ -42,6 +43,14 @@ for (const javaScriptEnabled of [true, false]) {
 				await client`UPDATE settings SET pool_start='2026-10-26',pool_end='2026-11-22',active_week=1 WHERE id=1`;
 				const before =
 					await client`SELECT * FROM registrations WHERE event_id=ANY(${ids}::int[]) ORDER BY id`;
+				const errors: string[] = [];
+				page.on('pageerror', (error) => errors.push(error.message));
+				page.on('console', (message) => {
+					if (message.type() !== 'error') return;
+					const expected404 =
+						message.location().url.includes('/avatar/') && /404/.test(message.text());
+					if (!expected404) errors.push(message.text());
+				});
 				let alerts = 0;
 				page.on('dialog', async (dialog) => {
 					alerts++;
@@ -56,7 +65,25 @@ for (const javaScriptEnabled of [true, false]) {
 						identity.getByRole('heading', { name: displayName, exact: true })
 					).toBeVisible();
 					await expect(identity.getByText('@' + base, { exact: true })).toBeVisible();
-					await expect(identity.getByRole('img')).toHaveAttribute('src', '/badge.png');
+					const missingAvatar = await page.request.get('/avatar/' + base);
+					expect(missingAvatar.status()).toBe(404);
+					expect(missingAvatar.headers()['cache-control']).toBe('private, no-store');
+					if (javaScriptEnabled) {
+						await expect(identity.getByRole('img')).toHaveCount(0);
+						await expect(identity.locator('.avatar')).not.toBeEmpty();
+					} else {
+						await expect(identity.getByRole('img')).toHaveJSProperty(
+							'src',
+							'http://localhost:4173/avatar/' + base
+						);
+						await expect(identity.getByRole('img')).toHaveAttribute(
+							'alt',
+							'Immagine di ' + displayName
+						);
+					}
+					const pageData = await page.request.get('/profile/__data.json');
+					expect(await pageData.text()).not.toContain('imageUrl');
+					expect(await pageData.text()).not.toContain('/badge.png');
 					const stats = identity.locator('dd');
 					await expect(stats.nth(0)).toHaveText('842₳');
 					await expect(stats.nth(1)).toHaveText('4');
@@ -85,6 +112,7 @@ for (const javaScriptEnabled of [true, false]) {
 					await expect(page.getByText(secret, { exact: true })).toHaveCount(0);
 					await expect(page.getByRole('heading', { name: /notific/i })).toHaveCount(0);
 					expect(alerts).toBe(0);
+					expect(errors).toEqual([]);
 					const injected = await page.request.get(
 						'/profile/__data.json?login=' + other + '&userId=1'
 					);
@@ -132,4 +160,109 @@ for (const javaScriptEnabled of [true, false]) {
 			}
 		);
 	});
+}
+
+test(
+	'uses same-origin avatars in header and profile without sending CDN URLs to the client',
+	{ tag: '@shared-db' },
+	async ({ page }) => {
+		const login = `avatar_${randomUUID().slice(0, 8)}`;
+		const cdnUrl = 'https://cdn.intra.42.fr/users/private-test-photo.jpg';
+		await page.request.post('/auth/dev', {
+			form: { mode: 'create', login },
+			headers: { origin: 'http://localhost:4173', accept: 'text/html' },
+			maxRedirects: 0
+		});
+		try {
+			await client`UPDATE users SET image_url=${cdnUrl}, display_name='Avatar Student' WHERE login=${login}`;
+			const bytes = await readFile('static/badge.png');
+			await page.route('**/avatar/' + login, (route) =>
+				route.fulfill({ status: 200, contentType: 'image/png', body: bytes })
+			);
+			const external: string[] = [];
+			page.on('request', (request) => {
+				if (new URL(request.url()).hostname === 'cdn.intra.42.fr') external.push(request.url());
+			});
+			await page.goto('/profile');
+			const profile = page.getByRole('region', { name: 'Profilo', exact: true });
+			const header = page.locator('.site-header');
+			for (const area of [profile, header]) {
+				await expect(area.locator('.avatar img')).toHaveJSProperty(
+					'src',
+					'http://localhost:4173/avatar/' + login
+				);
+				await expect
+					.poll(() =>
+						area.locator('.avatar img').evaluate((img) => (img as HTMLImageElement).naturalWidth)
+					)
+					.toBeGreaterThan(0);
+			}
+			const data = await page.request.get('/profile/__data.json');
+			expect(await data.text()).not.toContain(cdnUrl);
+			expect(await data.text()).not.toContain('imageUrl');
+			expect(await page.content()).not.toContain(cdnUrl);
+			expect(external).toEqual([]);
+		} finally {
+			await page.goto('/');
+			await client`DELETE FROM action_logs WHERE actor_login=${login}`;
+			await client`DELETE FROM users WHERE login=${login}`;
+		}
+	}
+);
+
+for (const beforeHydration of [true, false]) {
+	test(
+		`falls back to initials without CSP violations when the image fails ${beforeHydration ? 'before' : 'after'} hydration`,
+		{ tag: '@shared-db' },
+		async ({ page }) => {
+			const login = `missing_${randomUUID().slice(0, 8)}`;
+			await page.request.post('/auth/dev', {
+				form: { mode: 'create', login },
+				headers: { origin: 'http://localhost:4173', accept: 'text/html' },
+				maxRedirects: 0
+			});
+			const errors: string[] = [];
+			page.on('pageerror', (error) => errors.push(error.message));
+			page.on('console', (message) => {
+				if (/Content Security Policy|securitypolicyviolation/i.test(message.text()))
+					errors.push(message.text());
+			});
+			let release!: () => void;
+			const gate = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			await page.route(
+				beforeHydration ? '**/_app/**/*.js' : '**/avatar/' + login,
+				async (route) => {
+					await gate;
+					await route.continue();
+				}
+			);
+			try {
+				await client`UPDATE users SET image_url='https://example.test/missing.jpg', display_name='Missing Student' WHERE login=${login}`;
+				await page.goto('/profile', { waitUntil: 'commit' });
+				if (beforeHydration) {
+					await page.waitForFunction(() => {
+						const image = document.querySelector('.profile .avatar img') as HTMLImageElement | null;
+						return image?.complete && image.naturalWidth === 0;
+					});
+				} else {
+					await expect(page.locator('.theme-switch')).toBeVisible();
+					await expect(page.locator('.profile .avatar img')).toHaveJSProperty('complete', false);
+				}
+				await expect(page.locator('.profile .avatar img')).toHaveCount(1);
+				await expect(page.locator('.profile .avatar img')).not.toHaveAttribute('onerror');
+				release();
+				await expect(page.locator('.profile .avatar img')).toHaveCount(0);
+				await expect(page.locator('.profile .avatar')).toHaveText('MS');
+				await expect(page.locator('.site-header .avatar')).toHaveText('MS');
+				expect(errors).toEqual([]);
+			} finally {
+				release();
+				await page.goto('/');
+				await client`DELETE FROM action_logs WHERE actor_login=${login}`;
+				await client`DELETE FROM users WHERE login=${login}`;
+			}
+		}
+	);
 }

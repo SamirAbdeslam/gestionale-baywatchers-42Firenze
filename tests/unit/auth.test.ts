@@ -198,3 +198,21 @@ it('isolates a failing listener without throwing, leaking details or skipping ot
 		log.mockRestore();
 	}
 });
+
+it.each([
+	[
+		{
+			link: 'https://cdn.intra.42.fr/full.jpg',
+			versions: { medium: 'https://cdn.intra.42.fr/medium.jpg' }
+		},
+		'https://cdn.intra.42.fr/medium.jpg'
+	],
+	[{ link: 'https://cdn.intra.42.fr/full.jpg' }, 'https://cdn.intra.42.fr/full.jpg'],
+	[
+		{ link: 'https://cdn.intra.42.fr/full.jpg', versions: { medium: null } },
+		'https://cdn.intra.42.fr/full.jpg'
+	],
+	[undefined, '']
+])('prefers the medium avatar and safely handles optional image data %j', (image, expected) => {
+	expect(profileSchema.parse({ id: 123, login: 'student', image }).imageUrl).toBe(expected);
+});

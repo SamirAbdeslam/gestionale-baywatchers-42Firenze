@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { onNavigate } from '$app/navigation';
 	import Logo from '#lib/components/Logo.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
 	import ThemeSwitch from '#lib/components/ThemeSwitch.svelte';
 	import Toast from '#lib/components/Toast.svelte';
 	import { asset, resolve } from '$app/paths';
@@ -67,8 +68,13 @@
 		<ThemeSwitch />
 		{#if data.user}
 			<div class="identity">
-				<span class="avatar" aria-hidden="true">{data.user.login.slice(0, 2).toUpperCase()}</span
-				><span>@{data.user.login}</span>
+				<Avatar
+					login={data.user.login}
+					name={data.user.displayName || data.user.login}
+					hasImage={data.user.hasImage}
+					size="header"
+				/>
+				<span>@{data.user.login}</span>
 			</div>
 			<form class="logout" method="POST" action={resolve('/auth/logout')}>
 				<button class="secondary" type="submit">{m.nav_logout()}</button>
@@ -151,15 +157,6 @@
 		font: 600 var(--font-label) var(--font-mono);
 		border-inline-start: var(--border-width) solid var(--color-border);
 		padding-inline-start: var(--space-md);
-	}
-	.avatar {
-		display: grid;
-		place-items: center;
-		flex-shrink: 0;
-		width: var(--avatar-size);
-		height: var(--avatar-size);
-		border: var(--border-strong) solid var(--color-signal);
-		border-radius: var(--radius-pill);
 	}
 	.logout {
 		margin: 0;
