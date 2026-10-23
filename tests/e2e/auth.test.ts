@@ -182,7 +182,8 @@ test('dev login has accessible forms, responsive navigation and POST logout', as
 	expect(cookie?.value).toMatch(/^[a-z2-7]{32}$/);
 	expect((await page.request.get('/auth/logout', { maxRedirects: 0 })).status()).toBe(405);
 	expect((await page.request.get('/calendar', { maxRedirects: 0 })).status()).toBe(200);
-	await page.getByRole('button', { name: 'Logout', exact: true }).click();
+	await page.getByRole('button', { name: /^Menu utente di / }).click();
+	await page.getByRole('button', { name: 'Esci', exact: true }).click();
 	await expect(page).toHaveURL('/');
 	expect((await page.context().cookies()).some((c) => c.name === 'session')).toBe(false);
 	expect((await request.get('/profile', { maxRedirects: 0 })).status()).toBe(303);

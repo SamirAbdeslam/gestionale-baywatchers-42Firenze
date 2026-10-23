@@ -1,3 +1,24 @@
+# 42 Baywatchers — Design v2
+
+Specifica corrente: [DESIGN-V2.md](DESIGN-V2.md), approvata da Ismail il 23 ottobre 2026.
+È la fonte delle correzioni di presentazione dopo M14; M15 non è iniziato.
+La v2 prevale sui paragrafi v1 riportati sotto per biglietti compatti, pillole, calendario
+mobile, messaggi, menu utente e toolbar admin. Query, regole applicative e form action restano invariate.
+
+- Orari dei biglietti: `--font-ticket-time: 18px`; titolo nello stub, nessuna data ripetuta nel corpo.
+- Giorni utenti/admin: minimo 240 px; sul calendario utenti il distacco visivo è ricavato nel padding delle colonne,
+  così cinque colonne entrano nei 1200 px utili a una finestra di 1280 px con margini da 40 px.
+- Mobile utenti: giorni all'88% con scroll snap, scorciatoie ai giorni, selezione sincronizzata e apertura su oggi (Europe/Rome).
+- Messaggi: massimo 320 px, in alto a destra, chiusura × da 32 px; solo i successi scadono dopo 4 secondi.
+- Menu utente: popover nativo da 200 px sull'avatar, Profilo/Esci; funziona anche senza JavaScript.
+- Impostazioni admin: fascia compatta su desktop; details nativo chiuso inizialmente su mobile. Le chip sostituiscono la select della settimana visualizzata.
+
+I PNG in `screens/` e i sorgenti in `reference/` sono ancora le esportazioni **v1**: i nuovi artboard
+non sono stati forniti. Non sono stati sovrascritti o presentati come v2.
+La galleria `implemented/` contiene gli screenshot dell'app ed è distinta dal canvas di riferimento.
+
+---
+
 # 42 Baywatchers v2 — Design v1
 
 Design approvato da Ismail il 2026-10-22. È la fonte per il modulo **M14** (PLAN §12): cambia solo `tokens.css`, CSS dei componenti e markup, mai la logica.

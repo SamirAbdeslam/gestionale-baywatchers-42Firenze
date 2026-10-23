@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, tick } from 'svelte';
 	import { captureTicket, animateTicket } from '#lib/ticket-animation.ts';
 	import type { SubmitFunction } from '$app/forms';
 	import { invalidate } from '$app/navigation';
@@ -20,10 +20,41 @@
 	const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Rome' }).format(new Date());
 	let ready = $state(false);
 	let selectedDay = $state(1);
+	let displayedWeek = $state<number>();
+	let calendar = $state<HTMLDivElement>();
+	function showDay(weekday: number, behavior: ScrollBehavior = 'smooth') {
+		selectedDay = weekday;
+		if (!calendar || !matchMedia('(max-width: 767px)').matches) return;
+		const panels = [...calendar.querySelectorAll<HTMLElement>(':scope > section')];
+		const panel = panels.find((panel) => panel.id === `panel-${weekday}`);
+		if (panel)
+			calendar.scrollTo({
+				left: panel.offsetLeft - panels[0].offsetLeft,
+				behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : behavior
+			});
+	}
 	$effect(() => {
-		if (!data.days.some((day) => day.weekday === selectedDay))
-			selectedDay = data.days[0]?.weekday ?? 1;
+		if (displayedWeek === data.week && data.days.some((day) => day.weekday === selectedDay)) return;
+		displayedWeek = data.week;
+		const initial = data.days.find((day) => day.isoDate === today) ?? data.days[0];
+		selectedDay = initial?.weekday ?? 1;
+		void tick().then(() => showDay(initial?.weekday ?? 1, 'instant'));
 	});
+	function followDay() {
+		if (!calendar || !matchMedia('(max-width: 767px)').matches) return;
+		const panels = [...calendar.querySelectorAll<HTMLElement>(':scope > section')];
+		const left = calendar.getBoundingClientRect().left;
+		const closest = panels.reduce<HTMLElement | undefined>(
+			(best, panel) =>
+				!best ||
+				Math.abs(panel.getBoundingClientRect().left - left) <
+					Math.abs(best.getBoundingClientRect().left - left)
+					? panel
+					: best,
+			undefined
+		);
+		if (closest) selectedDay = Number(closest.dataset.weekday);
+	}
 	const totals = $derived(calendarTotals(data.events, data.user?.login ?? ''));
 	const registered = $derived(data.events.find((event) => event.id === form?.registeredEventId));
 	let activated = $state<{ week: number } | null>(null);
@@ -63,11 +94,18 @@
 	};
 	onMount(() => {
 		ready = true;
-		return listenRealtime((event) => {
+		const mobile = matchMedia('(max-width: 767px)');
+		const resize = () => showDay(selectedDay, 'instant');
+		mobile.addEventListener('change', resize);
+		const close = listenRealtime((event) => {
 			if (event.type === 'log_created') return;
 			if (event.type === 'week_activated') activated = { week: event.week };
 			void reload();
 		}, reload);
+		return () => {
+			mobile.removeEventListener('change', resize);
+			close();
+		};
 	});
 </script>
 
@@ -140,48 +178,56 @@
 			</Dialog>
 		{/key}
 	{/if}
-	{#if ready}
-		<div class="day-tabs" role="tablist" aria-label={m.calendar_days()}>
-			{#each data.days as day, index (day.weekday)}
-				<button
-					type="button"
-					role="tab"
-					class:today={day.isoDate !== null && day.isoDate === today}
-					id={`tab-${day.weekday}`}
-					aria-controls={`panel-${day.weekday}`}
-					aria-selected={selectedDay === day.weekday}
-					tabindex={selectedDay === day.weekday ? 0 : -1}
-					onclick={() => (selectedDay = day.weekday)}
-					onkeydown={(event) => {
-						let next: number;
-						if (event.key === 'ArrowRight') next = (index + 1) % data.days.length;
-						else if (event.key === 'ArrowLeft')
-							next = (index - 1 + data.days.length) % data.days.length;
-						else if (event.key === 'Home') next = 0;
-						else if (event.key === 'End') next = data.days.length - 1;
-						else return;
-						event.preventDefault();
-						selectedDay = data.days[next].weekday;
-						document.getElementById(`tab-${selectedDay}`)?.focus();
-					}}
+	<div class="day-tabs" role={ready ? 'tablist' : 'navigation'} aria-label={m.calendar_days()}>
+		{#each data.days as day, index (day.weekday)}
+			<a
+				href={`#panel-${day.weekday}`}
+				role={ready ? 'tab' : undefined}
+				class:today={day.isoDate !== null && day.isoDate === today}
+				id={`tab-${day.weekday}`}
+				aria-controls={`panel-${day.weekday}`}
+				aria-selected={ready ? selectedDay === day.weekday : undefined}
+				tabindex={ready ? (selectedDay === day.weekday ? 0 : -1) : undefined}
+				onclick={(event) => {
+					event.preventDefault();
+					showDay(day.weekday);
+				}}
+				onkeydown={(event) => {
+					let next: number;
+					if (event.key === 'ArrowRight') next = (index + 1) % data.days.length;
+					else if (event.key === 'ArrowLeft')
+						next = (index - 1 + data.days.length) % data.days.length;
+					else if (event.key === 'Home') next = 0;
+					else if (event.key === 'End') next = data.days.length - 1;
+					else return;
+					event.preventDefault();
+					showDay(data.days[next].weekday);
+					document.getElementById(`tab-${selectedDay}`)?.focus();
+				}}
+			>
+				<span>{weekdays[day.weekday - 1]().slice(0, 3)}</span><span class="day-number"
+					>{day.date.split(' ')[0]}</span
 				>
-					<span>{weekdays[day.weekday - 1]().slice(0, 3)}</span><span class="day-number"
-						>{day.date.split(' ')[0]}</span
-					>
-					{#if data.events.some((event) => event.weekday === day.weekday && event.isRegistered)}<span
-							class="own-day"
-							aria-hidden="true"
-						></span>{/if}
-				</button>
-			{/each}
-		</div>
-	{/if}
+				{#if data.events.some((event) => event.weekday === day.weekday && event.isRegistered)}<span
+						class="own-day"
+						aria-hidden="true"
+					></span>{/if}
+			</a>
+		{/each}
+	</div>
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex (The scrollable calendar needs keyboard focus.) -->
-	<div class="calendar" role="region" aria-label={m.calendar_events()} tabindex="0">
+	<div
+		class="calendar"
+		bind:this={calendar}
+		onscroll={followDay}
+		role="region"
+		aria-label={m.calendar_events()}
+		tabindex="0"
+	>
 		{#each data.days as day (day.weekday)}
 			<section
 				id={`panel-${day.weekday}`}
-				class:inactive={ready && selectedDay !== day.weekday}
+				data-weekday={day.weekday}
 				aria-labelledby={`day-${day.weekday}`}
 			>
 				<h3 class:today={day.isoDate !== null && day.isoDate === today} id={`day-${day.weekday}`}>
@@ -191,19 +237,15 @@
 						>{/if}
 				</h3>
 				{#each data.events.filter((event) => event.weekday === day.weekday) as event (event.id)}
-					<EventCard event={{ ...event, date: '' }} mine={event.isRegistered}>
+					<EventCard {event} mine={event.isRegistered}>
 						<p
 							class:own={event.isRegistered}
 							class:full={event.registeredCount >= event.maxSlots}
 							class="capacity"
 						>
-							{m.calendar_registered_count({
-								count: formatNumber(event.registeredCount),
-								slots: formatNumber(event.maxSlots)
-							})}
 							{#if event.isRegistered}
-								· {m.calendar_inside()}{:else if event.state === 'available'}
-								· {m.display_free_slots({
+								{m.calendar_inside()}{:else if event.state === 'available'}
+								{m.display_free_slots({
 									count: formatNumber(event.maxSlots - event.registeredCount)
 								})}{/if}
 						</p>
@@ -331,11 +373,12 @@
 	}
 	.calendar {
 		display: flex;
-		gap: var(--space-md);
+		gap: 0;
 		overflow-x: auto;
 	}
 	.calendar > section {
 		flex: 1 0 var(--calendar-day-width);
+		padding-inline: var(--space-sm);
 		min-width: 0;
 	}
 	h3 {
@@ -412,14 +455,19 @@
 			align-items: center;
 		}
 		.calendar {
-			flex-direction: column;
-			overflow: visible;
+			position: relative;
+			overflow-x: auto;
+			scroll-snap-type: x mandatory;
+			overscroll-behavior-x: contain;
+			scrollbar-width: thin;
+			padding-bottom: var(--space-sm);
 		}
 		.calendar > section {
-			flex: auto;
+			flex: 0 0 var(--calendar-mobile-day);
+			scroll-snap-align: start;
 		}
-		.calendar > section.inactive {
-			display: none;
+		.calendar > section:last-child {
+			margin-inline-end: calc(100% - var(--calendar-mobile-day));
 		}
 		.day-tabs {
 			display: flex;
@@ -427,7 +475,7 @@
 			overflow-x: auto;
 			margin-block: var(--space-md);
 		}
-		.day-tabs button {
+		.day-tabs a {
 			position: relative;
 			flex: 1 0 var(--day-tab-width);
 			min-height: var(--day-tab-height);
@@ -436,14 +484,19 @@
 			color: var(--color-muted);
 			padding: var(--space-xs);
 			font-size: var(--font-small);
+			display: flex;
+			align-items: center;
+			justify-content: center;
 			flex-direction: column;
+			text-decoration: none;
+			border: var(--border-strong) solid transparent;
 		}
 		.day-tabs [aria-selected='true'] {
 			background: var(--color-text);
 			color: var(--color-background);
 			border-color: var(--color-text);
 		}
-		.day-tabs button.today {
+		.day-tabs a.today {
 			border-color: var(--color-signal);
 		}
 		.own-day {

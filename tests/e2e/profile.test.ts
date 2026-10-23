@@ -58,7 +58,11 @@ for (const javaScriptEnabled of [true, false]) {
 				});
 				try {
 					await page.goto('/calendar');
-					await page.getByRole('link', { name: 'Profilo', exact: true }).click();
+					await page.getByRole('button', { name: /^Menu utente di / }).click();
+					await page
+						.getByRole('navigation', { name: 'Menu utente', exact: true })
+						.getByRole('link', { name: 'Profilo', exact: true })
+						.click();
 					await expect(page).toHaveURL('/profile');
 					const identity = page.getByRole('region', { name: 'Profilo', exact: true });
 					await expect(

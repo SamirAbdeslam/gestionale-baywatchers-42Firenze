@@ -134,8 +134,8 @@ for (const { javaScriptEnabled, reducedMotion } of [
 					const article = page
 						.locator('.calendar')
 						.getByRole('article', { name: fixture.title, exact: true });
-					await expect(article).toContainText('2/3 iscritti');
-					await expect(article).toContainText('200 ₳');
+					await expect(article).toContainText('2/3');
+					await expect(article).toContainText('₳ 200');
 					await expect(article).toContainText('09:00–11:00');
 					await expect(article).toContainText(fixture.name + '_visible');
 					expect(await page.content()).not.toContain(fixture.name + '_hidden');
@@ -179,7 +179,7 @@ for (const { javaScriptEnabled, reducedMotion } of [
 					await expect(page.locator('[data-counter-value]')).toHaveText(
 						`1${limit ? '/3' : ''} · 200 ₳`
 					);
-					await expect(article).toContainText('3/3 iscritti');
+					await expect(article).toContainText('3/3');
 					await expect(article).toHaveClass(/\bmine\b/);
 					await expect(page.locator('.ticket-flyer,.ticket-restore,.paper-fiber')).toHaveCount(0);
 					await article.getByRole('button', { name: 'Lascio', exact: true }).first().click();
@@ -252,7 +252,7 @@ test(
 				.getByRole('article', { name: fixture.title, exact: true });
 			await expect(article).toContainText(fixture.name + '_hidden');
 			await expect(article).toContainText('Non partecipato');
-			await expect(article).toContainText('2/3 iscritti');
+			await expect(article).toContainText('2/3');
 		} finally {
 			await fixture.cleanup();
 		}

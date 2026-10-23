@@ -1,5 +1,5 @@
 /*
- * 42 Baywatchers v2 — design tokens (design v1, 2026-10-22).
+ * 42 Baywatchers v2 — design tokens (design v2, 2026-10-23).
  * M14 replaces src/lib/styles/tokens.css with this file.
  * Existing variable names are kept (same meaning, new values); new names are added below them.
  * Source of every value: reference/Alt.dc.html ("fondamenta") and the screen sources in reference/.
@@ -74,14 +74,14 @@
 	--header-height: 72px; /* desktop; mobile 60px */
 	--brand-bar: 4px; /* orange line at the top of every page */
 	--content-width: 85rem; /* 1360px */
-	--calendar-day-width: 16rem;
+	--calendar-day-width: 15rem;
 	--admin-day-width: 15rem; /* 240px: seven admin columns fit at 1920 */
 	--logo-size: 20px; /* horizontal logo height in the header */
 	--profile-image-size: 3.5rem; /* 56px avatar in the profile aside */
 	--profile-aside-width: 17rem;
 	--whitelist-aside-width: 18rem;
 	--search-width: 18rem;
-	--toast-width: 24rem;
+	--toast-width: 20rem;
 	--squares-min-width: 10rem;
 	--kind-bar-height: 22px;
 	--opacity-muted: 0.5; /* past events */
@@ -153,7 +153,7 @@
 	--radius-field: 0.75rem;
 	--field-height: 44px;
 	--nav-underline: 3px;
-	--ticket-padding: 14px;
+	--ticket-padding: 12px;
 	--ticket-gap: 9px;
 	--ticket-hole-soft: 3.6px;
 	--ticket-stub-admin: 96px;
@@ -249,4 +249,15 @@
 :root {
 	--font-admin-title: 44px;
 	--font-profile-title: 32px;
+}
+
+/* Design v2: compact tickets, messages and account menu. */
+:root {
+	--font-ticket-time: 18px;
+	--message-close-size: 32px;
+	--user-menu-width: 200px;
+	--menu-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
+	--calendar-mobile-day: 88%;
+	--settings-input-width: 5rem;
+	--settings-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
 }

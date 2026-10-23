@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import postgres from 'postgres';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const databaseUrl =
 	process.env.DATABASE_URL ?? 'postgres://bay:bay@localhost:5432/baywatchers_test';
@@ -11,6 +11,14 @@ test.beforeAll(() => {
 });
 test.afterAll(() => client.end());
 
+async function showSettings(page: Page) {
+	const panel = page.locator('.settings-panel');
+	if (
+		(await panel.locator(':scope > summary').isVisible()) &&
+		(await panel.getAttribute('open')) === null
+	)
+		await panel.locator(':scope > summary').click();
+}
 test(
 	'admin edits pool dates, active week, event limit and resets the display week',
 	{ tag: '@shared-db' },
@@ -22,7 +30,9 @@ test(
 			await page.getByLabel('Utente esistente').selectOption({ label: 'dev_admin (admin)' });
 			await page.getByRole('button', { name: 'Entra', exact: true }).click();
 			await page.goto('/admin');
+			await showSettings(page);
 			await page.getByLabel('Inizio pool', { exact: true }).fill('2026-12-30');
+			await showSettings(page);
 			await page.getByLabel('Fine pool', { exact: true }).fill('2026-12-29');
 			await page.getByRole('button', { name: 'Salva date pool', exact: true }).click();
 			await expect(page.getByRole('alert')).toHaveText(
@@ -31,13 +41,16 @@ test(
 			expect((await client`SELECT pool_start FROM settings WHERE id=1`)[0].pool_start).toEqual(
 				before.pool_start
 			);
+			await showSettings(page);
 			await page.getByLabel('Inizio pool', { exact: true }).fill('2026-12-30');
+			await showSettings(page);
 			await page.getByLabel('Fine pool', { exact: true }).fill('');
 			await page.getByRole('button', { name: 'Salva date pool', exact: true }).click();
 			await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
 			expect((await client`SELECT pool_end::text FROM settings WHERE id=1`)[0].pool_end).toBe(
 				'2027-01-26'
 			);
+			await showSettings(page);
 			await page.getByLabel('Settimana da attivare').selectOption('4');
 			const activated = page.waitForResponse(
 				(response) =>
@@ -46,17 +59,26 @@ test(
 			await page.getByRole('button', { name: 'Attiva settimana', exact: true }).click();
 			expect((await activated).status()).toBe(200);
 			await page.goto('/admin');
-			await expect(page.getByLabel('Settimana visualizzata')).toHaveValue('4');
+			await showSettings(page);
+			await expect(
+				page
+					.getByRole('navigation', { name: 'Settimana visualizzata' })
+					.getByRole('link', { name: 'W04', exact: true })
+			).toHaveAttribute('aria-current', 'page');
 			const dates = page.locator('.day-heading');
 			await expect(dates).toHaveCount(7);
 			await expect(dates.first()).toContainText('20 Gen');
 			await expect(dates.last()).toContainText('26 Gen');
-			await page.getByLabel('Settimana visualizzata').selectOption('2');
-			await page.getByRole('button', { name: 'Mostra settimana', exact: true }).click();
+			await page
+				.getByRole('navigation', { name: 'Settimana visualizzata' })
+				.getByRole('link', { name: 'W02', exact: true })
+				.click();
+			await showSettings(page);
 			await expect(page).toHaveURL('/admin?week=2');
 			await expect(dates.first()).toContainText('6 Gen');
 			await expect(dates.last()).toContainText('12 Gen');
 			for (const limit of [2, 0]) {
+				await showSettings(page);
 				await page
 					.getByRole('spinbutton', { name: 'Limite eventi per utente e settimana' })
 					.fill(String(limit));
@@ -139,25 +161,32 @@ test(
 				).status()
 			).toBe(303);
 			await page.goto('/admin');
+			await showSettings(page);
 			await page.getByLabel('Inizio pool', { exact: true }).fill('2026-10-20');
+			await showSettings(page);
 			await page.getByLabel('Fine pool', { exact: true }).fill('2026-10-19');
 			await page.getByRole('button', { name: 'Salva date pool', exact: true }).click();
 			await expect(page.getByRole('alert')).toContainText(
 				'La fine del pool non può precedere la data di inizio'
 			);
+			await showSettings(page);
 			await page.getByLabel('Inizio pool', { exact: true }).fill('2026-10-20');
+			await showSettings(page);
 			await page.getByLabel('Fine pool', { exact: true }).fill('');
 			await page.getByRole('button', { name: 'Salva date pool', exact: true }).click();
 			await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
+			await showSettings(page);
 			await page.getByLabel('Settimana da attivare').selectOption('3');
 			await page.getByRole('button', { name: 'Attiva settimana', exact: true }).click();
 			await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
+			await showSettings(page);
 			await page
 				.getByRole('spinbutton', { name: 'Limite eventi per utente e settimana' })
 				.fill('2');
 			await page.getByRole('button', { name: 'Salva limite', exact: true }).click();
 			await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
 			await client`UPDATE settings SET display_week=3 WHERE id=1`;
+			await showSettings(page);
 			const reset = page.waitForResponse(
 				(response) =>
 					response.request().method() === 'POST' && response.url().includes('resetDisplayWeek')

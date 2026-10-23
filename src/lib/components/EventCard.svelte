@@ -7,6 +7,7 @@
 		event,
 		children,
 		actions,
+		meta,
 		orientation = 'auto',
 		mine = event.state === 'registered'
 	}: {
@@ -15,7 +16,6 @@
 			kind: EventKind;
 			startTime: string;
 			endTime: string;
-			date?: string;
 			compensation: number;
 			state?: string;
 			registeredCount?: number;
@@ -23,6 +23,7 @@
 		};
 		children?: Snippet;
 		actions?: Snippet;
+		meta?: Snippet;
 		orientation?: 'auto' | 'horizontal' | 'vertical';
 		mine?: boolean;
 	} = $props();
@@ -46,33 +47,37 @@
 >
 	<div class="ticket-stub">
 		<div class="ghost" aria-hidden="true"></div>
-		<div class="stub-label">
-			<span>{labels[event.kind]()}</span>{#if mine}<span class="owned" aria-hidden="true"
-					>{m.ticket_owned()}</span
-				><span class="owned-short" aria-hidden="true">{m.ticket_owned_short()}</span>{/if}
+		<span class="sr-only">{labels[event.kind]()}</span>
+		<div class="stub-heading">
+			<h4>{event.title}</h4>
 			{#if actions}{@render actions()}{/if}
 		</div>
+		{#if mine}<span class="owned" aria-hidden="true">{m.ticket_owned()}</span>{/if}
 		<div class="stub-time" aria-hidden="true">
 			{event.startTime}<small> → {event.endTime}</small>
 		</div>
 		<span class="sr-only">{event.startTime}–{event.endTime}</span>
 	</div>
 	<div class="ticket-body">
-		<h4>{event.title}</h4>
-		<p class="compensation">{formatNumber(event.compensation)} ₳</p>
-		{#if event.date}<p class="compensation">{event.date}</p>{/if}
-		{#if event.maxSlots !== undefined && event.registeredCount !== undefined}
-			<div class="seats" aria-hidden={event.maxSlots <= 10}>
-				{#if event.maxSlots <= 10}{#each Array.from({ length: event.maxSlots }, (_, i) => i) as i (i)}<span
-							class="seat"
-							class:taken={i < event.registeredCount}
-							class:own={mine && i === 0}
-						></span>{/each}{:else}<span class="seat-number"
-						>{m.calendar_registered_count({
-							count: formatNumber(event.registeredCount),
-							slots: formatNumber(event.maxSlots)
-						})}</span
-					>{/if}
+		<p class="compensation">
+			₳ {formatNumber(event.compensation)}
+			{#if event.maxSlots !== undefined && event.registeredCount !== undefined}
+				· <span
+					aria-label={m.calendar_registered_count({
+						count: formatNumber(event.registeredCount),
+						slots: formatNumber(event.maxSlots)
+					})}>{formatNumber(event.registeredCount)}/{formatNumber(event.maxSlots)}</span
+				>
+			{/if}
+			{#if meta}
+				· {@render meta()}{/if}
+		</p>
+		{#if event.maxSlots !== undefined && event.registeredCount !== undefined && event.maxSlots <= 10}
+			<div class="seats" aria-hidden="true">
+				{#each Array.from({ length: event.maxSlots }, (_, i) => i) as i (i)}
+					<span class="seat" class:taken={i < event.registeredCount} class:own={mine && i === 0}
+					></span>
+				{/each}
 			</div>
 		{/if}
 		{#if children}{@render children()}{/if}
@@ -80,18 +85,6 @@
 </article>
 
 <style>
-	.owned-short {
-		display: none;
-	}
-	.ticket[data-orientation='horizontal'] .stub-time {
-		font-size: var(--font-stub-horizontal);
-	}
-	.ticket[data-orientation='horizontal'] .owned-short {
-		display: block;
-	}
-	.ticket[data-orientation='horizontal'] .stub-label {
-		flex-direction: column;
-	}
 	.ticket {
 		display: flex;
 		flex-direction: column;
@@ -105,9 +98,8 @@
 		position: relative;
 		display: flex;
 		flex-direction: column;
-		justify-content: space-between;
-		min-height: var(--ticket-stub-height);
-		padding: var(--font-small) var(--ticket-padding) var(--space-md);
+		gap: var(--space-xs);
+		padding: var(--ticket-padding);
 		border-radius: var(--radius) var(--radius) 0 0;
 		color: var(--kind-ink);
 		background-color: var(--kind-fill);
@@ -118,20 +110,34 @@
 			)
 			0 0 / var(--ticket-hole-step) 100% repeat-x;
 	}
-	.stub-label {
+	.stub-heading {
 		display: flex;
-		justify-content: space-between;
+		align-items: start;
+		flex-wrap: wrap;
 		gap: var(--space-xs);
-		font-size: var(--font-ticket-label);
+		min-width: 0;
+	}
+	.stub-heading h4 {
+		flex: 1 1 var(--ticket-stub-width);
+		min-width: 0;
+		margin: 0;
+		font: 700 var(--font-size-body)/1.2 var(--font-heading);
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		overflow: hidden;
+	}
+	.owned {
+		font: 700 var(--font-ticket-label) var(--font-body);
 		text-transform: uppercase;
-		font-weight: 700;
 	}
 	.stub-time {
-		font: 600 var(--font-mono-lg) var(--font-mono);
+		font: 600 var(--font-ticket-time) var(--font-mono);
 		white-space: nowrap;
 	}
 	.stub-time small {
-		font-size: var(--font-small);
+		font-size: var(--font-label);
 		font-weight: 400;
 	}
 	.ticket-body {
@@ -149,17 +155,10 @@
 			0 0 / var(--ticket-hole-step) 100% repeat-x;
 		min-width: 0;
 	}
-	.ticket-body h4 {
-		font-size: var(--font-size-body);
-		margin: 0;
-	}
 	.compensation {
 		color: var(--color-muted);
-		font: var(--font-small) var(--font-mono);
+		font: var(--font-label) var(--font-mono);
 		margin: 0;
-	}
-	.seat-number {
-		font: var(--font-tiny) var(--font-mono);
 	}
 	.seats {
 		display: flex;
@@ -266,19 +265,7 @@
 	.ticket[data-orientation='horizontal'] .stub-time small {
 		display: block;
 	}
-	.ticket[data-orientation='horizontal'] .owned {
-		display: none;
-	}
 	@media (max-width: 767px) {
-		.ticket[data-orientation='auto'] .stub-time {
-			font-size: var(--font-stub-horizontal);
-		}
-		.ticket[data-orientation='auto'] .owned-short {
-			display: block;
-		}
-		.ticket[data-orientation='auto'] .stub-label {
-			flex-direction: column;
-		}
 		.ticket[data-orientation='auto'] {
 			flex-direction: row;
 		}
@@ -318,9 +305,6 @@
 		}
 		.ticket[data-orientation='auto'] .stub-time small {
 			display: block;
-		}
-		.ticket[data-orientation='auto'] .owned {
-			display: none;
 		}
 	}
 </style>

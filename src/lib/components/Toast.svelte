@@ -32,36 +32,36 @@
 	$effect(() => {
 		closed = [];
 		expired = messages.length === 0;
-		if (messages.every((message) => message.type === 'success')) {
-			const timer = setTimeout(() => (expired = true), 6000);
+		if (messages.some((message) => message.type === 'success')) {
+			const timer = setTimeout(() => (expired = true), 4000);
 			return () => clearTimeout(timer);
 		}
 	});
 </script>
 
-{#if !expired && messages.length}
+{#if messages.length}
 	<div class="notices">
 		{#each messages as message, index (index)}
-			{#if !closed.includes(index)}
-				<p
-					class="notice"
-					data-type={message.type}
-					role={message.type === 'error' ? 'alert' : 'status'}
-				>
-					{#if message.key === 'error_weekly_limit'}
-						{translations.error_weekly_limit({
-							count: formatNumber(message.params.count!)
-						})}
-					{:else}
-						{m[message.key](message.params)}
-					{/if}
-					<button
-						type="button"
-						aria-label={translations.app_dismiss_message()}
-						onclick={() => (closed = [...closed, index])}
-						>{translations.app_dismiss_message()}</button
-					>
-				</p>
+			{#if !closed.includes(index) && !(expired && message.type === 'success')}
+				<div class="notice-wrapper" role={message.type === 'error' ? 'alert' : 'status'}>
+					<details class="notice" data-type={message.type} open>
+						<!-- svelte-ignore a11y_no_redundant_roles (Expose the native disclosure consistently as a dismiss button.) -->
+						<summary
+							role="button"
+							aria-label={translations.app_dismiss_message()}
+							onclick={() => (closed = [...closed, index])}>×</summary
+						>
+						<p>
+							{#if message.key === 'error_weekly_limit'}
+								{translations.error_weekly_limit({
+									count: formatNumber(message.params.count!)
+								})}
+							{:else}
+								{m[message.key](message.params)}
+							{/if}
+						</p>
+					</details>
+				</div>
 			{/if}
 		{/each}
 	</div>
@@ -70,25 +70,16 @@
 <style>
 	.notices {
 		position: fixed;
-		right: var(--space-lg);
-		bottom: var(--space-lg);
+		right: var(--space-md);
+		top: calc(var(--brand-bar) + var(--header-height) + var(--space-sm));
 		z-index: var(--layer-overlay);
 		display: grid;
 		gap: var(--space-sm);
 		width: min(var(--toast-width), calc(100% - 2 * var(--space-md)));
 	}
-	:global(body:has(.template-footer)) .notices {
-		bottom: calc(var(--control-height) * 3 + var(--space-lg));
-	}
 	@media (max-width: 767px) {
 		.notices {
-			right: var(--space-md);
-			bottom: calc(var(--bottom-nav-height) + var(--space-sm));
-		}
-	}
-	@media (max-width: 767px) {
-		:global(body:has(.template-footer)) .notices {
-			bottom: calc(var(--bottom-nav-height) + var(--control-height) * 3 + var(--space-sm));
+			top: calc(var(--brand-bar) + var(--header-mobile-height) + var(--space-sm));
 		}
 	}
 	@media (prefers-reduced-motion: no-preference) {
@@ -99,7 +90,7 @@
 	@keyframes notice-in {
 		from {
 			opacity: 0;
-			transform: translateY(var(--space-sm));
+			transform: translateY(calc(-1 * var(--space-sm)));
 		}
 	}
 	.notice {
@@ -107,9 +98,10 @@
 		border: var(--border-width) solid currentColor;
 		display: flex;
 		align-items: center;
-		gap: var(--space-md);
-		padding: var(--space-md);
-		border-radius: var(--radius);
+		gap: var(--space-sm);
+		padding: var(--space-sm) var(--space-md);
+		border-radius: var(--radius-field);
+		font-size: var(--font-label);
 		background: var(--color-ok-bg);
 		color: var(--color-ok);
 	}
@@ -131,9 +123,31 @@
 	.notice[data-type='error']::before {
 		content: '×';
 	}
-	.notice button {
+	.notice-wrapper:not(:has([open])) {
+		display: none;
+	}
+	.notice::details-content {
+		display: contents;
+	}
+	.notice p {
+		margin: 0;
+		min-width: 0;
+		flex: 1;
+	}
+	.notice summary::-webkit-details-marker {
+		display: none;
+	}
+	.notice summary {
+		order: 1;
+		list-style: none;
+		display: grid;
+		place-items: center;
+		cursor: pointer;
 		margin-inline-start: auto;
-		min-height: var(--control-height-sm);
+		min-height: var(--message-close-size);
+		width: var(--message-close-size);
+		flex: none;
+		padding: 0;
 		background: transparent;
 		color: inherit;
 		border: var(--border-width) solid currentColor;

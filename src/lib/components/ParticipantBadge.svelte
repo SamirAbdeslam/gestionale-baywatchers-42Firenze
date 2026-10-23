@@ -15,19 +15,22 @@
 		display: inline-flex;
 		align-items: center;
 		min-height: var(--badge-height);
-		padding: var(--space-xs) var(--space-sm);
-		border: var(--border-width) solid var(--color-border);
+		padding: 0 var(--space-sm);
+		max-width: 100%;
+		min-width: 0;
+		background: var(--color-raised);
+		color: var(--color-text);
 		border-radius: var(--radius-pill);
-		font: var(--font-tiny) var(--font-mono);
+		font: 500 var(--font-small) var(--font-mono);
 	}
 	.mine {
-		border-color: var(--color-signal);
 		background: var(--color-signal);
 		color: var(--color-on-signal);
 		font-weight: 600;
 	}
 	.absent {
-		border-style: dashed;
+		color: var(--color-danger);
+		background: var(--color-danger-bg);
 		text-decoration: line-through;
 	}
 </style>

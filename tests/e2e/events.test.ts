@@ -88,7 +88,11 @@ test(
 			await create(page, title);
 			let article = page.getByRole('article', { name: title, exact: true });
 			await expect(article).toBeVisible();
-			await expect(page.getByLabel('Settimana visualizzata')).toHaveValue('4');
+			await expect(
+				page
+					.getByRole('navigation', { name: 'Settimana visualizzata' })
+					.getByRole('link', { name: 'W04', exact: true })
+			).toHaveAttribute('aria-current', 'page');
 			await expect(page.locator('html')).toHaveAttribute('data-enhanced', 'yes');
 			await expect(article.locator('img')).toHaveCount(0);
 			await page.getByRole('button', { name: 'Chiudi messaggio' }).click();
@@ -111,9 +115,9 @@ test(
 			await editor.getByRole('button', { name: 'Salva evento', exact: true }).click();
 			article = page.getByRole('article', { name: 'M4 modificato', exact: true });
 			await expect(article).toBeVisible();
-			await expect(article).toContainText('Iscritti: 2 / 1');
+			await expect(article).toContainText('2/1');
 			await expect(article).toContainText('Presenti: 1');
-			await expect(article).toContainText('NON PARTECIPATO');
+			await expect(article.locator('.participant.absent')).toHaveCount(1);
 			await expect(article).toContainText('La capienza è inferiore');
 			const viewport = page.viewportSize();
 			await page.setViewportSize({ width: 360, height: 800 });
@@ -208,10 +212,19 @@ test(
 			await page.goto('/admin?week=2');
 			await create(page, '');
 			await expect(page.getByRole('alert')).toContainText('Dati non validi');
+			await page
+				.getByRole('alert')
+				.getByRole('button', { name: 'Chiudi messaggio', exact: true })
+				.click();
+			await expect(page.getByRole('alert')).toHaveCount(0);
 			await create(page, title);
 			const article = page.getByRole('article', { name: title, exact: true });
 			await expect(article).toBeVisible();
-			await expect(page.getByLabel('Settimana visualizzata')).toHaveValue('2');
+			await expect(
+				page
+					.getByRole('navigation', { name: 'Settimana visualizzata' })
+					.getByRole('link', { name: 'W02', exact: true })
+			).toHaveAttribute('aria-current', 'page');
 			await page
 				.getByRole('button', { name: 'Elimina eventi della settimana', exact: true })
 				.click();
@@ -260,15 +273,28 @@ test(
 			await page.clock.fastForward(7000);
 			await expect(warning).toBeVisible();
 
+			await page.getByLabel('Login da aggiungere').fill(`dev_admin ${title}`);
+			await page.getByRole('button', { name: 'Aggiungi alla whitelist', exact: true }).click();
+			const success = page.getByRole('status').filter({ hasText: 'Aggiunti alla whitelist:' });
+			await expect(success).toBeVisible();
+			await expect(warning).toBeVisible();
+			await page.clock.fastForward(4000);
+			await expect(success).toHaveCount(0);
+			await expect(warning).toBeVisible();
+
 			await page.goto('/admin?week=4');
 			await expect(page.getByRole('status')).toHaveCount(0);
 			await create(page, title);
 			await expect(page.getByRole('status')).toContainText('Evento creato');
-			await page.clock.fastForward(7000);
+			await page.clock.fastForward(3000);
+			await expect(page.getByRole('status')).toContainText('Evento creato');
+			await page.clock.fastForward(1000);
 			await expect(page.getByRole('status')).toHaveCount(0);
 		} finally {
 			await client`DELETE FROM action_logs WHERE resource_type='event' AND resource_id IN (SELECT id::text FROM events WHERE title=${title})`;
 			await client`DELETE FROM events WHERE title=${title}`;
+			await client`DELETE FROM action_logs WHERE resource_type='whitelist' AND resource_id IN (SELECT id::text FROM whitelist WHERE login=${title})`;
+			await client`DELETE FROM whitelist WHERE login=${title}`;
 		}
 	}
 );

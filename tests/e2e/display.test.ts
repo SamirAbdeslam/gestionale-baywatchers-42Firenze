@@ -67,9 +67,10 @@ for (const javaScriptEnabled of [true, false])
 					await expect(article).toContainText('1 posti liberi');
 					await expect(article.locator('.seat.taken')).toHaveCount(2);
 					await expect(article.locator('.seat')).toHaveCount(3);
-					await expect(article).toContainText('200 ₳');
+					await expect(article).toContainText('₳ 200');
 					await expect(article).toContainText('09:00–11:00');
-					await expect(article).toContainText('5 Gen');
+					await expect(article).not.toContainText('5 Gen');
+					await expect(page.getByRole('heading', { name: /Lunedì/ })).toContainText('5 Gen');
 					await expect(article).toContainText(fixture.name + '_present');
 					expect(await page.content()).not.toContain(fixture.name + '_absent');
 					expect(await page.content()).not.toContain(fixture.name + '_full_absent');

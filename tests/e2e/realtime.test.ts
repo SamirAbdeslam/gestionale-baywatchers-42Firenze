@@ -82,6 +82,9 @@ test(
 				logs = await context.newPage();
 			await live(page, '/calendar');
 			await live(admin, '/admin');
+			const panel = admin.locator('.settings-panel');
+			if (await panel.locator(':scope > summary').isVisible())
+				await panel.locator(':scope > summary').click();
 			await live(logs, '/admin/logs');
 			const logsRefresh = logs.waitForResponse(
 				(response) => new URL(response.url()).pathname === '/admin/logs/__data.json'
@@ -148,7 +151,7 @@ test(
 				id: String(fixture.id),
 				login: fixture.name
 			});
-			await expect(card).toContainText('1/2 iscritti');
+			await expect(card).toContainText('1/2');
 			await expect(screen).toContainText('1 posti liberi');
 			await expect(screen.getByRole('listitem')).toHaveText('@' + fixture.name);
 			await post(admin.request, '/admin?/setAttendance', {
@@ -158,7 +161,7 @@ test(
 			});
 			await expect(screen.getByRole('listitem')).toHaveCount(0);
 			await expect(screen).toContainText('1 posti liberi');
-			await expect(card).toContainText('1/2 iscritti');
+			await expect(card).toContainText('1/2');
 			for (const view of [page, display])
 				await expect(view.locator('html')).toHaveAttribute('data-m9-document', 'unchanged');
 			await expect(display.locator('header,nav,form,button,a')).toHaveCount(0);
@@ -204,7 +207,7 @@ test(
 			await connected;
 			expect(attempts).toBeGreaterThanOrEqual(2);
 			await expect(page.getByRole('article', { name: fixture.name, exact: true })).toContainText(
-				'1/2 iscritti'
+				'1/2'
 			);
 		} finally {
 			await page.unrouteAll({ behavior: 'wait' });

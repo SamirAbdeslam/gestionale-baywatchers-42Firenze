@@ -110,6 +110,9 @@
 		padding-top: var(--space-md);
 	}
 
+	.screen :global(.participant) {
+		font-size: var(--font-size-body);
+	}
 	.screen {
 		font-size: var(--font-size-body);
 	}

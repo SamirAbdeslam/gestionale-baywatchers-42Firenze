@@ -10,6 +10,7 @@
 	import '#lib/styles/base.css';
 	import type { LayoutProps } from './$types';
 	let { children, data }: LayoutProps = $props();
+	let userMenu = $state<HTMLElement>();
 	// Invalidation clears page.form; keep action feedback until the next navigation.
 	let messages = $state(page.form?.messages ?? []);
 	$effect(() => {
@@ -17,6 +18,7 @@
 	});
 	onNavigate(() => {
 		messages = [];
+		userMenu?.hidePopover();
 	});
 </script>
 
@@ -41,6 +43,7 @@
 				</a>
 				<a
 					href={resolve('/profile')}
+					class="mobile-profile"
 					aria-current={page.route.id === '/profile' ? 'page' : undefined}
 				>
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"
@@ -67,18 +70,29 @@
 		{/if}
 		<ThemeSwitch />
 		{#if data.user}
-			<div class="identity">
+			<button
+				class="identity"
+				type="button"
+				popovertarget="user-menu"
+				aria-label={m.nav_user_menu({ login: data.user.login })}
+			>
 				<Avatar
 					login={data.user.login}
 					name={data.user.displayName || data.user.login}
 					hasImage={data.user.hasImage}
 					size="header"
 				/>
-				<span>@{data.user.login}</span>
-			</div>
-			<form class="logout" method="POST" action={resolve('/auth/logout')}>
-				<button class="secondary" type="submit">{m.nav_logout()}</button>
-			</form>
+				<span class="user-login">@{data.user.login}</span>
+			</button>
+			<nav id="user-menu" class="user-menu" popover bind:this={userMenu} aria-label={m.nav_user()}>
+				<a
+					href={resolve('/profile')}
+					aria-current={page.route.id === '/profile' ? 'page' : undefined}>{m.nav_profile()}</a
+				>
+				<form class="logout" method="POST" action={resolve('/auth/logout')}>
+					<button type="submit">{m.nav_logout()}</button>
+				</form>
+			</nav>
 		{/if}
 	</header>
 {/if}
@@ -155,15 +169,48 @@
 		align-items: center;
 		gap: var(--space-sm);
 		font: 600 var(--font-label) var(--font-mono);
-		border-inline-start: var(--border-width) solid var(--color-border);
-		padding-inline-start: var(--space-md);
+		background: transparent;
+		color: var(--color-text);
+		border: 0;
+		padding: 0;
+		min-height: var(--control-height-sm);
 	}
-	.logout {
+	.user-menu {
+		position: fixed;
+		inset: calc(var(--brand-bar) + var(--header-height) + var(--space-sm)) var(--space-xl) auto auto;
 		margin: 0;
+		width: var(--user-menu-width);
+		padding: var(--space-sm);
+		color: var(--color-text);
+		background: var(--color-surface);
+		border: var(--border-width) solid var(--color-border);
+		border-radius: var(--radius-field);
+		box-shadow: var(--menu-shadow);
 	}
+	.user-menu a,
 	.logout button {
 		min-height: var(--control-height-sm);
-		font-size: var(--font-small);
+		width: 100%;
+		padding: var(--space-sm);
+		border: 0;
+		border-radius: var(--radius-sm);
+		color: var(--color-text);
+		font: 600 var(--font-nav) var(--font-body);
+		justify-content: start;
+	}
+	.logout {
+		margin: var(--space-xs) 0 0;
+		padding-top: var(--space-xs);
+		border-top: var(--border-width) solid var(--color-border);
+	}
+	.logout button {
+		background: transparent;
+		color: var(--color-danger);
+	}
+	@media (min-width: 768px) {
+		.main-navigation .mobile-profile {
+			display: none;
+		}
 	}
 	.admin-navigation {
 		min-height: var(--header-mobile-height);
@@ -178,7 +225,7 @@
 		flex-shrink: 0;
 	}
 	@media (max-width: 1199px) {
-		.identity > span:last-child {
+		.identity .user-login {
 			display: none;
 		}
 		.site-header {
@@ -187,8 +234,9 @@
 		}
 	}
 	@media (max-width: 767px) {
-		.identity {
-			display: none;
+		.user-menu {
+			top: calc(var(--brand-bar) + var(--header-mobile-height) + var(--space-sm));
+			right: var(--space-md);
 		}
 		.main-navigation {
 			position: fixed;

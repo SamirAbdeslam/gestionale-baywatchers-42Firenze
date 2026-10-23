@@ -28,7 +28,18 @@ for (const javaScriptEnabled of [true, false]) {
 					'aria-current',
 					'page'
 				);
-				await nav.getByRole('link', { name: 'Profilo', exact: true }).click();
+				const menu = page.getByRole('navigation', { name: 'Menu utente', exact: true });
+				const trigger = page.getByRole('button', { name: /^Menu utente di / });
+				await trigger.click();
+				await expect(menu).toBeVisible();
+				await page.keyboard.press('Escape');
+				await expect(menu).not.toBeVisible();
+				await trigger.click();
+				await page.locator('main h1').click();
+				await expect(menu).not.toBeVisible();
+				await trigger.click();
+				await menu.getByRole('link', { name: 'Profilo', exact: true }).click();
+				await expect(menu).not.toBeVisible();
 				await expect(page).toHaveURL('/profile');
 				if (javaScriptEnabled) {
 					await expect(page.locator('#svelte-announcer')).toContainText('Profilo');
@@ -38,10 +49,15 @@ for (const javaScriptEnabled of [true, false]) {
 							.evaluate((element) => element.getBoundingClientRect().width)
 					).toBe(1);
 				}
-				await expect(nav.getByRole('link', { name: 'Profilo', exact: true })).toHaveAttribute(
-					'aria-current',
-					'page'
-				);
+				if (width < 768) {
+					await expect(nav.getByRole('link', { name: 'Profilo', exact: true })).toHaveAttribute(
+						'aria-current',
+						'page'
+					);
+				} else {
+					await expect(nav.getByRole('link', { name: 'Profilo', exact: true })).toHaveCount(0);
+				}
+				await expect(page.locator('#user-menu a')).toHaveAttribute('aria-current', 'page');
 				await nav.getByRole('link', { name: 'Admin', exact: true }).click();
 				await expect(page).toHaveURL('/admin');
 				await page.getByRole('link', { name: 'Whitelist', exact: true }).click();

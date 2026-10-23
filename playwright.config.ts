@@ -39,7 +39,8 @@ export default defineConfig({
 				'navigation.test.ts',
 				'logs.test.ts',
 				'theme.test.ts',
-				'design.test.ts'
+				'design.test.ts',
+				'design-v2.test.ts'
 			],
 			fullyParallel: false,
 			workers: 1,

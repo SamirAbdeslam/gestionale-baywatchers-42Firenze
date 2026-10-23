@@ -140,6 +140,8 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
   - Correzione Avatar approvata: nessun onerror nel markup Svelte. Il replay degli eventi di Svelte genera un attributo inline incompatibile con la CSP. Collegare error con addEventListener in onMount, rimuoverlo allo smontaggio e controllare complete/naturalWidth al mount. Test prima/dopo idratazione senza violazioni CSP; senza JS resta alt.
   - Test senza chiamate reali a 42; verifica separata su credenziali/foto reali, con esito riportato nel diario. M15 non iniziato.
 
+- 2026-10-23: **Design v2 autorizzato per l’implementazione** dalla specifica baywatchers-design/DESIGN-V2.md (copia nel repository: docs/v2/design/DESIGN-V2.md). Biglietti compatti, pillole piene, calendario mobile ibrido con scroll snap, messaggi in alto a destra con successi a 4 s, menu sull’avatar e toolbar admin compatta. Conservare regole applicative, query e action, CSP e dipendenze. Le esportazioni PNG e gli artboard disponibili sono ancora v1; la galleria dell’app resta distinta dal canvas. M15 non iniziato.
+
 ---
 
 ## Voci
@@ -2070,3 +2072,28 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Verificare i sei job dopo il push e registrare il riscontro manuale quando disponibile. Non iniziare M15.
+
+
+## 2026-10-23 — M14 post-review — design v2 implementato e verificato localmente
+
+**Fatto**
+- Implementata la specifica approvata DESIGN-V2.md: titolo nello stub (due righe con ellissi), orari a 18 px, meta compatta senza data duplicata, posti fino a 10 e pillole piene. Animazione B e regole applicative preservate.
+- Calendario utenti a tutta larghezza, colonne minime da 240 px con distacco nel padding: cinque giorni a 1280 px e sette a 1920 px. Mobile: colonne all'88%, scroll snap nativo, link ai giorni senza JS, selezione sincronizzata con lo scorrimento e con JS apertura su oggi in Europe/Rome, altrimenti sul primo giorno disponibile.
+- Menu utente nativo sull'avatar con Profilo/Esci; niente Profilo o Logout nella barra desktop. Popover funzionante con/senza JS, chiuso con Esc, clic esterno e navigazione. Barra mobile inferiore preservata; foto e fallback del proxy avatar invariati.
+- Messaggi compatti in alto a destra, × da 32 px e chiusura nativa con details anche senza JS. Con JS solo i successi scadono dopo 4 s, anche nelle liste miste; errori/avvisi restano fino a chiusura o navigazione. Nessun handler inline o modifica CSP.
+- Toolbar admin compatta con valori e controlli affiancati, impostazioni richiudibili e inizialmente chiuse su mobile, chip delle settimane e azioni distruttive nella barra della settimana. Presente/Assente segmentati conservano i campi e le action esistenti. Biglietti orizzontali su mobile; sette giorni sempre disponibili. Display TV con biglietti compatti e pillole a 16 px.
+- Copiata la specifica v2 nel repository e aggiornati README/token. Reference e PNG del canvas restano v1, non sono nuove esportazioni; galleria dell'app rigenerata separatamente con stati mobile/menu/admin aggiuntivi.
+- Nessuna modifica a query, logica server, action, schema, migrazioni, dipendenze, CSP, legacy o stato dei moduli. M15 non iniziato.
+
+**Controlli**
+- corepack pnpm ci:local exit 0 sul codice finale: 223 unit, 277 integration e 141 e2e, totale 641. Lint/check/build verdi; controllo finale ripetuto sui test aggiornati, zero errori e warning di svelte-check. Messaggi verificati anche in liste miste, chiusura nativa senza JS e successi presenti dopo 3 s e assenti dopo 4 s.
+- Prove di densità, scroll, date Europe/Rome, contrasto e impostazioni/menu con e senza JS passate in Chromium desktop/mobile e WebKit. Messaggi: contrasto minimo 5,43:1, superiore ad AA in entrambi i temi.
+- Galleria finale 3/3 verde: 82 screenshot nei due temi, inclusi calendario compatto, sette giorni desktop, inizio/metà scorrimento/turno mio mobile, menu aperto e impostazioni admin chiuse/aperte. Gesto touch nativo Chromium riuscito; screenshot riletti, controlli della toolbar contenuti nelle rispettive sezioni e nessun overflow della pagina. Le fixture v2 usano login univoci e date fisse del 2099; la galleria generale usa il seed con date relative.
+- Docker ricostruito e stack completo su 8080/8443 con app/Postgres healthy, nginx running. Smoke HTTPS con CA locale: landing/health 200, avatar anonimo 401/no-store, CSP HTML e header ereditati presenti; nginx -t e git diff --check verdi. Nessun controllo o aggiunta HSTS, volume eliminato o server node build lasciato sull’host.
+- CI remota da verificare dopo il push tramite gh run watch --exit-status: tutti i sei job devono risultare verdi; esito nella run associata al commit e nel rapporto finale.
+
+**Domande / blocchi**
+- Nessun blocco di implementazione. Restano manuali OAuth/foto 42 reali, Safari fisico e TV reale, come nelle voci precedenti; non sono sostituiti dai test automatizzati.
+
+**Prossimo passo**
+- Commit/push e verifica dei sei job CI. Poi attendere indicazioni di Ismail, senza iniziare M15.

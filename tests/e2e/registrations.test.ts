@@ -115,7 +115,7 @@ for (const javaScriptEnabled of [true, false]) {
 					await article.getByRole('button', { name: 'Aggiungi partecipante', exact: true }).click();
 					const participant = article.getByRole('listitem').filter({ hasText: external });
 					await expect(participant).toBeVisible();
-					await expect(article).toContainText('Iscritti: 2 / 1');
+					await expect(article).toContainText('2/1');
 					expect(await client`SELECT id FROM users WHERE login=${external}`).toHaveLength(0);
 					await article.getByLabel('Login del partecipante').fill(external.toUpperCase());
 					await article.getByRole('button', { name: 'Aggiungi partecipante', exact: true }).click();
@@ -125,7 +125,9 @@ for (const javaScriptEnabled of [true, false]) {
 							.filter({ hasText: `${external} è già iscritto a questo evento` })
 					).toBeVisible();
 					await participant.getByRole('button', { name: 'Segna assente', exact: true }).click();
-					await expect(participant).toContainText('NON PARTECIPATO');
+					await expect(
+						participant.getByRole('button', { name: 'Segna assente', exact: true })
+					).toHaveAttribute('aria-pressed', 'true');
 					await expect(article).toContainText('Presenti: 1');
 					await expect(
 						page.getByRole('status').filter({ hasText: `${external} segnato come NON PARTECIPATO` })
