@@ -1992,3 +1992,30 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Pubblicare M14, attendere tutti i sei job CI verdi e registrare la chiusura. Non iniziare M15.
+
+
+## 2026-10-23 — M14 — completato
+
+**Fatto**
+- Completata e pubblicata l'integrazione del design con tutte le eccezioni e varianti autorizzate registrate nella voce precedente. Nessun punto del promemoria di implementazione lasciato aperto; M15 non iniziato.
+- Aggiornata esclusivamente la colonna Stato di M14 al commit d671485. Note di Ismail e voci precedenti preservate. Screenshot finali nei due temi e README riproducibile disponibili in docs/v2/design/implemented/.
+
+**Commit**
+- ab55ed5: dati di presentazione autorizzati e relativi test.
+- bf31b06: tema, tipografia, componenti e navigazione.
+- d671485: pagine, calendario admin, animazione e test browser.
+- afbada1: galleria, controlli locali e diario.
+
+**Controlli**
+- corepack pnpm ci:local exit 0: 186 unit, 277 integration, 121 e2e, totale 584; lint/check/build verdi, svelte-check zero errori e warning. Tutti i progetti browser verdi, inclusi i casi senza JavaScript e WebKit. Galleria aggiuntiva 1/1 verde, 60 screenshot aggiornati.
+- CI [run 39915699285](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/39915699285) su afbada1: tutti i sei job lint, unit, integration, e2e, legacy-import e docker conclusi success; gh run watch --exit-status exit 0. GitHub ha aggiornato lo stato finale alcuni minuti dopo la conclusione degli step: atteso l'esito effettivo prima di segnare il modulo completato.
+- Stack completo ricostruito e attivo su 8080/8443, app/Postgres healthy e nginx running. Smoke HTTPS con CA locale verde, redirect e permessi anonimi verificati senza scritture applicative né eliminazione di volumi. git diff --check verde; legacy, dipendenze e migrazioni invariati.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna ulteriore decisione rispetto alla voce precedente. Promemoria temporaneo locale da segnare FATTO al termine del controllo CI del push di questa chiusura.
+
+**Domande / blocchi**
+- Nessun blocco tecnico. Restano manuali OAuth 42 reale, Safari fisico e browser del TV reale, come già indicato; nessuna verifica su tali dispositivi dichiarata effettuata.
+
+**Prossimo passo**
+- Attendere indicazioni di Ismail per M15. Nessuna eliminazione della cartella legacy senza conferma scritta.
