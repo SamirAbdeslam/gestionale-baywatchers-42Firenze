@@ -2019,3 +2019,25 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Attendere indicazioni di Ismail per M15. Nessuna eliminazione della cartella legacy senza conferma scritta.
+
+
+## 2026-10-23 — M14 post-review — correzioni completate, verifica CI dopo il push
+
+**Fatto**
+- Calendario a tutta larghezza anche per la sola pagina /admin. Variante autorizzata: nuovo token --admin-day-width: 15rem (240 px) per le sette colonne admin; --calendar-day-width e calendario utenti invariati. Sette giorni senza scorrimento a 1920 px; a 1280 scorrimento soltanto dentro days-grid, righe dei partecipanti contenute nelle card.
+- Header globale circoscritto a site-header, incluse regole responsive/accesso; rimosso il reset superfluo dalle card template. Intestazioni dei giorni allineate alle colonne.
+- Toast: timer di 6 secondi soltanto se tutti i messaggi sono successi; errori e avvisi persistono fino alla chiusura o navigazione. Nuovo e2e con page.clock verifica permanenza dopo 7 secondi, chiusura, navigazione e scadenza dei successi.
+- Nomi accessibili distinti per giorno tramite admin_create_event_day e admin_delete_day_named; pulsante principale e titoli dei dialog invariati, selettori e2e aggiornati per Martedì.
+- Eliminati i file locali non tracciati M14-RIPRESA-TEMP.md e w.png. Nessuna modifica a query, action, dipendenze, migrazioni, legacy o Stato dei moduli; M15 non iniziato.
+
+**Controlli**
+- corepack pnpm ci:local exit 0: 186 unit, 277 integration e 124 e2e (587 totali); lint/check/build verdi, check zero errori e warning. Chromium desktop/mobile e WebKit verdi, inclusi layout, dialog con/senza JS e nuovi controlli sui messaggi.
+- Galleria rigenerata, test 1/1 verde: 62 immagini nei due temi, comprese admin a 1920 px. Header del sito pixel-identico a 360/768/1280 nei due temi; sei immagini template byte-identiche a e64f3fd. Verificati assenza di overflow della pagina, intestazioni allineate e contenimento dei partecipanti nelle colonne da 240 px.
+- git diff --check verde; immagine Docker ricostruita, stack completo su 8080/8443 con app/Postgres healthy. Smoke con CA locale: landing/health 200, admin anonimo 303, redirect HTTP 308 con percorso/query preservati; nessun volume eliminato.
+- CI GitHub: da verificare dopo il push dell'unico commit richiesto, tramite gh run watch --exit-status; esito nel rapporto finale e nella run associata al commit.
+
+**Domande / blocchi**
+- Nessuno. L'unica variante rispetto alle istruzioni iniziali, colonne admin da 240 px, è stata autorizzata esplicitamente prima di applicarla.
+
+**Prossimo passo**
+- Verificare tutti i sei job CI dopo il push e fermarsi; stato M14 invariato, M15 in attesa di Ismail.

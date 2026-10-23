@@ -282,10 +282,18 @@
 						<span class="day-date">{data.dayDates[index] ?? m.admin_dates_unset()}</span>
 					</header>
 					<div class="day-actions">
-						<Dialog label={m.admin_create_event()} title={m.admin_create_event()} icon="add">
+						<Dialog
+							label={m.admin_create_event_day({ day: day() })}
+							title={m.admin_create_event()}
+							icon="add"
+						>
 							{@render createEventForm(`create-day-${index + 1}`, index + 1)}
 						</Dialog>
-						<Dialog label={m.admin_delete_day()} title={m.admin_confirm_delete_day()} icon="delete">
+						<Dialog
+							label={m.admin_delete_day_named({ day: day() })}
+							title={m.admin_confirm_delete_day()}
+							icon="delete"
+						>
 							{@render confirmDelete('deleteDayEvents', { week: data.week, weekday: index + 1 })}
 						</Dialog>
 					</div>
@@ -542,7 +550,7 @@
 	}
 	.days-grid {
 		display: grid;
-		grid-template-columns: repeat(7, minmax(var(--calendar-day-width), 1fr));
+		grid-template-columns: repeat(7, minmax(var(--admin-day-width), 1fr));
 		gap: var(--space-md);
 		overflow-x: auto;
 	}

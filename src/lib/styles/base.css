@@ -59,7 +59,7 @@ a {
 .skip-link:focus {
 	transform: translateY(0);
 }
-header {
+.site-header {
 	display: flex;
 	align-items: center;
 	gap: var(--space-md);
@@ -199,7 +199,7 @@ pre {
 	main {
 		padding: var(--space-lg) var(--space-md);
 	}
-	header {
+	.site-header {
 		min-height: var(--header-mobile-height);
 		padding-inline: var(--space-md);
 		flex-wrap: nowrap;

@@ -153,11 +153,6 @@
 		justify-content: space-between;
 		align-items: start;
 		gap: var(--space-sm);
-		/* reset the global page header bar */
-		padding: 0;
-		min-height: 0;
-		background: none;
-		border: 0;
 	}
 	article h2 {
 		margin: 0;

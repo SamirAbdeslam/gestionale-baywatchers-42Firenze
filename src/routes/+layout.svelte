@@ -22,7 +22,7 @@
 <svelte:head><link rel="icon" href={asset('badge.png')} /></svelte:head>
 {#if page.route.id !== '/display'}
 	<a class="skip-link" href="#main">{m.app_skip_to_content()}</a>
-	<header class:access={page.route.id === '/'}>
+	<header class="site-header" class:access={page.route.id === '/'}>
 		<a class="brand" href={resolve('/')}><Logo /></a>
 
 		{#if data.user}
@@ -102,16 +102,16 @@
 	id="main"
 	class:authenticated={!!data.user}
 	class:display={page.route.id === '/display'}
-	class:calendar={page.route.id === '/calendar'}
+	class:calendar={page.route.id === '/calendar' || page.route.id === '/admin'}
 >
 	{#if page.route.id !== '/display'}<Toast {messages} />{/if}{@render children()}
 </main>
 
 <style>
-	header.access {
+	.site-header.access {
 		border-bottom: 0;
 	}
-	header.access .brand {
+	.site-header.access .brand {
 		visibility: hidden;
 	}
 	main.display,
@@ -184,7 +184,7 @@
 		.identity > span:last-child {
 			display: none;
 		}
-		header {
+		.site-header {
 			padding-inline: var(--space-md);
 			gap: var(--space-sm);
 		}

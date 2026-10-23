@@ -74,6 +74,8 @@
 	"error_event_not_found": "Evento non trovato",
 	"admin_events": "Eventi della settimana",
 	"admin_no_events": "Nessun evento",
+	"admin_create_event_day": "Crea evento per {day}",
+	"admin_delete_day_named": "Elimina eventi di {day}",
 	"admin_create_event": "Crea evento",
 	"admin_edit_event": "Modifica evento",
 	"admin_save_event": "Salva evento",

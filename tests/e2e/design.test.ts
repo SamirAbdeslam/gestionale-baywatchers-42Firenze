@@ -37,7 +37,7 @@ test(
 				await page.setViewportSize({ width, height: 900 });
 				await page.goto('/');
 				// The landing is captured before authentication; later iterations use a fresh logged-out session.
-				const capture = async (name: string) => {
+				const capture = async (name: string, captureWidth = width) => {
 					await page.evaluate(() => {
 						window.scrollTo(0, 0);
 						return document.fonts.ready;
@@ -49,7 +49,7 @@ test(
 					).toBe(true);
 					// Playwright screenshots inject a style element that WebKit reports as a CSP violation.
 					if (browserName === 'webkit') return;
-					const filename = `${width}-${name}.png`;
+					const filename = `${captureWidth}-${name}.png`;
 					const location =
 						process.env.UPDATE_DESIGN_SCREENSHOTS === '1'
 							? path.join('docs/v2/design/implemented', theme, filename)
@@ -88,6 +88,44 @@ test(
 						}
 					}
 					await capture(name);
+					if (route === '/admin' && width === 1280) {
+						const grid = page.locator('.days-grid');
+						expect(
+							await grid.evaluate((element) => element.scrollWidth > element.clientWidth)
+						).toBe(true);
+						const rowsFit = await page.locator('.days-grid .ticket-body li').evaluateAll((rows) =>
+							rows.every((row) => {
+								const bounds = row.getBoundingClientRect();
+								return [...row.children].every((child) => {
+									const box = child.getBoundingClientRect();
+									return box.left >= bounds.left - 1 && box.right <= bounds.right + 1;
+								});
+							})
+						);
+						expect(rowsFit).toBe(true);
+						expect(
+							await page
+								.locator('.day-heading')
+								.evaluateAll((headers) =>
+									headers.every(
+										(header) =>
+											Math.abs(
+												header.getBoundingClientRect().left -
+													header.querySelector('h3')!.getBoundingClientRect().left
+											) < 1
+									)
+								)
+						).toBe(true);
+						await page.setViewportSize({ width: 1920, height: 900 });
+						// Screenshot animation cleanup can leave empty style attributes; capture a fresh document.
+						await page.reload();
+						expect(
+							await grid.evaluate((element) => element.scrollWidth === element.clientWidth)
+						).toBe(true);
+						await expect(page.locator('.day-group')).toHaveCount(7);
+						await capture(name, 1920);
+						await page.setViewportSize({ width, height: 900 });
+					}
 				}
 				await page.request.post('/auth/logout', {
 					headers: { origin: 'http://localhost:4173' },

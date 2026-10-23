@@ -32,8 +32,10 @@
 	$effect(() => {
 		closed = [];
 		expired = messages.length === 0;
-		const timer = setTimeout(() => (expired = true), 6000);
-		return () => clearTimeout(timer);
+		if (messages.every((message) => message.type === 'success')) {
+			const timer = setTimeout(() => (expired = true), 6000);
+			return () => clearTimeout(timer);
+		}
 	});
 </script>
 

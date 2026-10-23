@@ -75,6 +75,7 @@
 	--brand-bar: 4px; /* orange line at the top of every page */
 	--content-width: 85rem; /* 1360px */
 	--calendar-day-width: 16rem;
+	--admin-day-width: 15rem; /* 240px: seven admin columns fit at 1920 */
 	--logo-size: 20px; /* horizontal logo height in the header */
 	--profile-image-size: 3.5rem; /* 56px avatar in the profile aside */
 	--profile-aside-width: 17rem;

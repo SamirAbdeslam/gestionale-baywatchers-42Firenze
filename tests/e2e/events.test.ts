@@ -144,14 +144,14 @@ test(
 			});
 			const otherWeeks = await client`SELECT id FROM events WHERE week<>4 ORDER BY id`;
 			const tuesday = page.getByRole('group', { name: 'Martedì', exact: true });
-			await tuesday.getByRole('button', { name: 'Crea evento', exact: true }).click();
+			await tuesday.getByRole('button', { name: 'Crea evento per Martedì', exact: true }).click();
 			await expect(
 				page
 					.getByRole('dialog', { name: 'Crea evento', exact: true })
 					.getByLabel('Giorno', { exact: true })
 			).toHaveValue('2');
 			await page.getByRole('dialog').getByRole('button', { name: 'Annulla', exact: true }).click();
-			await tuesday.getByRole('button', { name: 'Elimina eventi del giorno', exact: true }).click();
+			await tuesday.getByRole('button', { name: 'Elimina eventi di Martedì', exact: true }).click();
 			await page.getByRole('dialog').getByRole('button', { name: 'Conferma eliminazione' }).click();
 			expect(
 				(await client`SELECT count(*)::int AS n FROM events WHERE week=4 AND weekday=2`)[0].n
@@ -231,6 +231,44 @@ test(
 		} finally {
 			await client`DELETE FROM events WHERE title=${title}`;
 			await context.close();
+		}
+	}
+);
+
+test(
+	'keeps errors and warnings after seven seconds while successes expire',
+	{ tag: '@shared-db' },
+	async ({ page }) => {
+		const title = `toast_${randomUUID().slice(0, 8)}`;
+		try {
+			await login(page.request);
+			await page.clock.install();
+			await page.goto('/admin?week=4');
+			await create(page, '');
+			const alert = page.getByRole('alert');
+			await expect(alert).toContainText('Dati non validi');
+			await page.clock.fastForward(7000);
+			await expect(alert).toBeVisible();
+			await alert.getByRole('button', { name: 'Chiudi messaggio', exact: true }).click();
+			await expect(alert).toHaveCount(0);
+
+			await page.goto('/admin/whitelist');
+			await page.getByLabel('Login da aggiungere').fill('dev_admin');
+			await page.getByRole('button', { name: 'Aggiungi alla whitelist', exact: true }).click();
+			const warning = page.getByRole('status').filter({ hasText: 'Già presenti:' });
+			await expect(warning).toBeVisible();
+			await page.clock.fastForward(7000);
+			await expect(warning).toBeVisible();
+
+			await page.goto('/admin?week=4');
+			await expect(page.getByRole('status')).toHaveCount(0);
+			await create(page, title);
+			await expect(page.getByRole('status')).toContainText('Evento creato');
+			await page.clock.fastForward(7000);
+			await expect(page.getByRole('status')).toHaveCount(0);
+		} finally {
+			await client`DELETE FROM action_logs WHERE resource_type='event' AND resource_id IN (SELECT id::text FROM events WHERE title=${title})`;
+			await client`DELETE FROM events WHERE title=${title}`;
 		}
 	}
 );

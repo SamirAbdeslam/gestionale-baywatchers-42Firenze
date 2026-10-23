@@ -4,6 +4,7 @@ Galleria dell'app SvelteKit da confrontare con le schermate approvate in `../scr
 
 - `dark/` e `light/`: una cartella per tema.
 - Nome: `<larghezza>-<pagina>.png`, a 360, 768 e 1280 px; viewport alta 900 px.
+- Admin Settimane include anche lo screenshot a 1920 px con sette colonne senza scorrimento.
 - Pagine: `accesso`, `calendario`, `profilo`, `display`, `admin-settimana`, `admin-template`,
   `admin-nuovo-template`, `admin-partecipanti`, `admin-whitelist`, `admin-log`.
 
@@ -24,7 +25,7 @@ relative al giorno di esecuzione: contenuti, eventi conclusi e indicazione di og
 
 - Il calendario utenti usa tutta la larghezza disponibile, con il padding laterale del layout.
 - Admin Settimane conserva in alto i quattro riquadri impostazioni e mostra sotto sette colonne
-  di biglietti verticali, con scorrimento orizzontale confinato alla griglia. Su mobile i giorni
+  di biglietti verticali (minimo 240 px ciascuna), con scorrimento orizzontale confinato alla griglia. Su mobile i giorni
   sono impilati. Creazione e modifica avvengono nei dialog; il pulsante di ogni giorno preimposta
   il giorno anche senza JavaScript. Gli iscritti restano visibili nei biglietti.
 - I messaggi compaiono in basso a destra, sopra la navigazione mobile e il footer del builder.
