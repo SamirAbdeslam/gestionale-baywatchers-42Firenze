@@ -73,7 +73,10 @@ for (const javaScriptEnabled of [true, false]) {
 					}
 					const list = page.getByRole('list', { name: 'Whitelist', exact: true });
 					const ownRows = list.getByRole('listitem').filter({ hasText: name });
-					expect(await ownRows.locator('strong').allTextContents()).toEqual([first, third, second]);
+					expect(await ownRows.locator('strong').allTextContents()).toEqual(
+						[first, third, second].map((login) => '@' + login)
+					);
+					await expect(ownRows.filter({ hasText: 'Aggiunto adesso' })).toHaveCount(3);
 					await expect(ownRows.first().locator('time')).toHaveAttribute('datetime', /T/);
 					expect(alerts).toBe(0);
 					await page.getByLabel('Login da aggiungere').fill(first.toUpperCase());

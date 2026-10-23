@@ -23,9 +23,16 @@ async function login(request: APIRequestContext) {
 		).status()
 	).toBe(303);
 }
+async function openCreate(page: Page) {
+	const dialog = page.getByRole('dialog', { name: 'Crea evento', exact: true });
+	if (!(await dialog.isVisible()))
+		await page.getByRole('button', { name: 'Crea evento', exact: true }).first().click();
+	await expect(dialog).toBeVisible();
+	return dialog;
+}
 async function create(page: Page, title: string, kind = 'custom', weekday = '7') {
-	const form = page.getByRole('region', { name: 'Crea evento', exact: true });
-	await form.getByLabel('Tipo evento', { exact: true }).selectOption(kind);
+	const form = await openCreate(page);
+	await form.locator(`input[type=radio][name=kind][value=${kind}]`).check();
 	await form.getByLabel('Titolo', { exact: true }).fill(title);
 	await form.getByLabel('Descrizione', { exact: true }).fill('descrizione custom');
 	await form.getByLabel('Giorno', { exact: true }).selectOption(weekday);
@@ -73,7 +80,11 @@ test(
 				document.documentElement.dataset.enhanced = 'yes';
 			});
 			const title = '<img src=x onerror=alert(1)> M4 custom';
-			await page.getByLabel('Data specifica', { exact: true }).fill('2027-01-31');
+			await (
+				await openCreate(page)
+			)
+				.getByLabel('Data specifica', { exact: true })
+				.fill('2027-01-31');
 			await create(page, title);
 			let article = page.getByRole('article', { name: title, exact: true });
 			await expect(article).toBeVisible();
@@ -85,16 +96,19 @@ test(
 			const [event] = await client`SELECT * FROM events WHERE title=${title}`;
 			await client`INSERT INTO registrations (event_id,participant_login,attended) VALUES (${event.id},'m4_present',true),(${event.id},'m4_absent',false)`;
 			await page.reload();
-			await article.getByText('Modifica evento', { exact: true }).click();
-			await article.getByLabel('Titolo', { exact: true }).fill('m4 modificato');
-			await article.getByLabel('Giorno', { exact: true }).selectOption('1');
-			await article.getByLabel('Posti', { exact: true }).fill('1');
-			await article.getByRole('button', { name: 'Salva evento', exact: true }).click();
+			await article.getByRole('button', { name: 'Modifica evento', exact: true }).click();
+			const editor = page.getByRole('dialog', { name: 'Modifica evento', exact: true });
+			await editor.getByLabel('Titolo', { exact: true }).fill('m4 modificato');
+			await editor.getByLabel('Giorno', { exact: true }).selectOption('1');
+			await editor.getByLabel('Posti', { exact: true }).fill('1');
+			await editor.getByRole('button', { name: 'Salva evento', exact: true }).click();
 			await expect(page.getByRole('alert')).toContainText(
 				'La data specifica non corrisponde al giorno della settimana'
 			);
-			await article.getByLabel('Giorno', { exact: true }).selectOption('7');
-			await article.getByRole('button', { name: 'Salva evento', exact: true }).click();
+			await article.getByRole('button', { name: 'Modifica evento', exact: true }).click();
+			await expect(editor.getByLabel('Titolo', { exact: true })).toHaveValue('m4 modificato');
+			await editor.getByLabel('Giorno', { exact: true }).selectOption('7');
+			await editor.getByRole('button', { name: 'Salva evento', exact: true }).click();
 			article = page.getByRole('article', { name: 'M4 modificato', exact: true });
 			await expect(article).toBeVisible();
 			await expect(article).toContainText('Iscritti: 2 / 1');
@@ -129,7 +143,14 @@ test(
 				timeout: 8000
 			});
 			const otherWeeks = await client`SELECT id FROM events WHERE week<>4 ORDER BY id`;
-			const tuesday = page.getByRole('region', { name: 'Martedì', exact: true });
+			const tuesday = page.getByRole('group', { name: 'Martedì', exact: true });
+			await tuesday.getByRole('button', { name: 'Crea evento', exact: true }).click();
+			await expect(
+				page
+					.getByRole('dialog', { name: 'Crea evento', exact: true })
+					.getByLabel('Giorno', { exact: true })
+			).toHaveValue('2');
+			await page.getByRole('dialog').getByRole('button', { name: 'Annulla', exact: true }).click();
 			await tuesday.getByRole('button', { name: 'Elimina eventi del giorno', exact: true }).click();
 			await page.getByRole('dialog').getByRole('button', { name: 'Conferma eliminazione' }).click();
 			expect(
@@ -198,11 +219,14 @@ test(
 			await page.getByRole('dialog').getByRole('checkbox').check();
 			await page.getByRole('dialog').getByRole('button', { name: 'Annulla', exact: true }).click();
 			await expect(page.getByRole('dialog')).not.toBeVisible();
-			await article.getByText('Elimina evento', { exact: true }).click();
+			await article.getByRole('button', { name: 'Elimina evento', exact: true }).click();
 			await page.getByRole('dialog').getByRole('button', { name: 'Annulla', exact: true }).click();
 			await expect(page.getByRole('dialog')).not.toBeVisible();
-			await article.getByText('Elimina evento', { exact: true }).click();
-			await article.getByRole('button', { name: 'Conferma eliminazione', exact: true }).click();
+			await article.getByRole('button', { name: 'Elimina evento', exact: true }).click();
+			await page
+				.getByRole('dialog')
+				.getByRole('button', { name: 'Conferma eliminazione', exact: true })
+				.click();
 			await expect(article).toHaveCount(0);
 		} finally {
 			await client`DELETE FROM events WHERE title=${title}`;

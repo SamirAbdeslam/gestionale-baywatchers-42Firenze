@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import postgres from 'postgres';
-import { expect, test, type APIRequestContext } from '@playwright/test';
+import {
+	expect,
+	test,
+	request as playwrightRequest,
+	type APIRequestContext
+} from '@playwright/test';
 const databaseUrl =
 	process.env.DATABASE_URL ?? 'postgres://bay:bay@localhost:5432/baywatchers_test';
 assert.equal(new URL(databaseUrl).pathname, '/baywatchers_test');
@@ -48,14 +53,20 @@ async function setup(request: APIRequestContext, admin = false, dates = true) {
 		}
 	};
 }
-for (const javaScriptEnabled of [true, false])
-	test.describe(`calendar JavaScript ${javaScriptEnabled}`, () => {
-		test.use({ javaScriptEnabled });
+for (const { javaScriptEnabled, reducedMotion } of [
+	{ javaScriptEnabled: true, reducedMotion: 'no-preference' },
+	{ javaScriptEnabled: false, reducedMotion: 'no-preference' },
+	{ javaScriptEnabled: true, reducedMotion: 'reduce' }
+] as const)
+	test.describe(`calendar JavaScript ${javaScriptEnabled}, motion ${reducedMotion}`, () => {
+		test.use({ javaScriptEnabled, reducedMotion });
 		test(
 			'navigates available weeks, redacts absences, registers, opens calendar links, downloads ICS and unregisters',
 			{ tag: '@shared-db' },
 			async ({ page }) => {
 				const fixture = await setup(page.request);
+				const limit = javaScriptEnabled && reducedMotion === 'no-preference' ? 3 : 0;
+				if (limit) await client`UPDATE settings SET max_events_per_user=${limit} WHERE id=1`;
 				try {
 					let alerts = 0;
 					page.on('dialog', async (dialog) => {
@@ -73,15 +84,56 @@ for (const javaScriptEnabled of [true, false])
 					await expect(
 						page.getByRole('link', { name: 'Settimana successiva', exact: true })
 					).toHaveCount(0);
-					await expect(page.getByRole('heading', { name: /Domenica/ })).toHaveCount(1);
-					await expect(page.getByRole('heading', { name: /Sabato/ })).toHaveCount(0);
+					// On mobile with JavaScript only the selected day panel is shown; the day still exists.
+					await expect(
+						page.getByRole('heading', { name: /Domenica/, includeHidden: true })
+					).toHaveCount(1);
+					await expect(
+						page.getByRole('heading', { name: /Sabato/, includeHidden: true })
+					).toHaveCount(0);
+					if (javaScriptEnabled) {
+						await page.setViewportSize({ width: 360, height: 800 });
+						await page.getByRole('tab', { name: /^Dom/ }).click();
+						await expect(page.locator('#panel-7')).toBeVisible();
+						const staff = await playwrightRequest.newContext({ baseURL: origin });
+						try {
+							const [admin] = await client`SELECT id FROM users WHERE login='dev_admin'`;
+							expect(
+								(
+									await staff.post('/auth/dev', {
+										form: { mode: 'existing', userId: String(admin.id) },
+										headers: { origin, accept: 'text/html' },
+										maxRedirects: 0
+									})
+								).status()
+							).toBe(303);
+							const [sunday] =
+								await client`SELECT id FROM events WHERE title=${'Sunday ' + fixture.name}`;
+							expect(
+								(
+									await staff.post('/admin?/deleteEvent&week=2', {
+										form: { id: String(sunday.id) },
+										headers: { origin },
+										maxRedirects: 0
+									})
+								).status()
+							).toBe(200);
+							await expect(page.getByRole('tab', { name: /^Dom/ })).toHaveCount(0);
+							await expect(page.locator('#panel-1')).toBeVisible();
+						} finally {
+							await staff.dispose();
+						}
+					}
 					await page.getByRole('link', { name: 'Settimana precedente', exact: true }).click();
 					await expect(page).toHaveURL('/calendar?week=1');
+					if (javaScriptEnabled) await expect(page.locator('#panel-1')).toBeVisible();
 					await expect(
 						page.getByRole('link', { name: 'Settimana precedente', exact: true })
 					).toHaveCount(0);
 					await page.getByRole('link', { name: 'Settimana successiva', exact: true }).click();
-					const article = page.getByRole('article', { name: fixture.title, exact: true });
+					const article = page
+						.locator('.calendar')
+						.getByRole('article', { name: fixture.title, exact: true });
 					await expect(article).toContainText('2/3 iscritti');
 					await expect(article).toContainText('200 ₳');
 					await expect(article).toContainText('09:00–11:00');
@@ -89,16 +141,22 @@ for (const javaScriptEnabled of [true, false])
 					expect(await page.content()).not.toContain(fixture.name + '_hidden');
 					expect(await page.content()).not.toContain(fixture.name + '_full_hidden');
 					await expect(article.locator('img')).toHaveCount(0);
+					if (javaScriptEnabled) await page.getByRole('tab', { name: /^Mar/ }).click();
 					await expect(
 						page.getByRole('article', { name: 'Full ' + fixture.name, exact: true })
-					).toContainText('Completo');
+					).toContainText('Turno pieno');
+					if (javaScriptEnabled) await page.getByRole('tab', { name: /^Mer/ }).click();
 					await expect(
 						page
 							.getByRole('article', { name: 'Past ' + fixture.name, exact: true })
 							.getByRole('button')
 					).toHaveCount(0);
-					await article.getByRole('button', { name: 'Iscriviti', exact: true }).click();
-					const dialog = page.getByRole('dialog', { name: 'Aggiungi al calendario', exact: true });
+					if (javaScriptEnabled) await page.getByRole('tab', { name: /^Lun/ }).click();
+					await expect(page.locator('[data-counter-value]')).toHaveText(
+						`0${limit ? '/3' : ''} · 0 ₳`
+					);
+					await article.getByRole('button', { name: 'Prendo il turno', exact: true }).click();
+					const dialog = page.getByRole('dialog', { name: 'Il turno è tuo', exact: true });
 					await expect(dialog).toBeVisible();
 					const google = new URL(
 						(await dialog
@@ -115,15 +173,24 @@ for (const javaScriptEnabled of [true, false])
 					const ics = await readFile((await download.path())!, 'utf8');
 					expect(ics).toContain('DTSTART;TZID=Europe/Rome:20990105T090000');
 					expect(ics.match(/BEGIN:VALARM/g)).toHaveLength(3);
-					await dialog.getByRole('button', { name: 'Annulla', exact: true }).click();
+					await dialog.getByRole('button', { name: 'Chiudi', exact: true }).click();
 					await expect(dialog).not.toBeVisible();
 					await expect(article.locator('strong')).toHaveText(fixture.name);
+					await expect(page.locator('[data-counter-value]')).toHaveText(
+						`1${limit ? '/3' : ''} · 200 ₳`
+					);
 					await expect(article).toContainText('3/3 iscritti');
-					await article.getByRole('button', { name: 'Disiscriviti', exact: true }).first().click();
+					await expect(article).toHaveClass(/\bmine\b/);
+					await expect(page.locator('.ticket-flyer,.ticket-restore,.paper-fiber')).toHaveCount(0);
+					await article.getByRole('button', { name: 'Lascio', exact: true }).first().click();
 					await expect(
-						article.getByRole('button', { name: 'Iscriviti', exact: true })
+						article.getByRole('button', { name: 'Prendo il turno', exact: true })
 					).toBeVisible();
-					await expect(page.getByRole('dialog')).toHaveCount(0);
+					await expect(article).not.toHaveClass(/\bmine\b/);
+					await expect(page.locator('[data-counter-value]')).toHaveText(
+						`0${limit ? '/3' : ''} · 0 ₳`
+					);
+					await expect(page.locator('.ticket-flyer,.ticket-restore,.paper-fiber')).toHaveCount(0);
 					expect((await page.request.get('/participants/123')).status()).toBe(404);
 					expect((await page.request.get('/events/2147483647/calendar.ics')).status()).toBe(404);
 					expect((await page.request.get('/events/0x2/calendar.ics')).status()).toBe(400);
@@ -138,6 +205,10 @@ for (const javaScriptEnabled of [true, false])
 							await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
 						).toBe(true);
 					}
+					await client`UPDATE settings SET max_events_per_user=11 WHERE id=1`;
+					await page.reload();
+					await expect(page.locator('[data-counter-value]')).toHaveText('0/11 · 0 ₳');
+					await expect(page.locator('[data-counter-slot]')).toHaveCount(0);
 					expect(alerts).toBe(0);
 				} finally {
 					await fixture.cleanup();
@@ -154,7 +225,7 @@ test(
 			await page.goto('/calendar');
 			await page
 				.getByRole('article', { name: fixture.title, exact: true })
-				.getByRole('button', { name: 'Iscriviti', exact: true })
+				.getByRole('button', { name: 'Prendo il turno', exact: true })
 				.click();
 			const dialog = page.getByRole('dialog');
 			await expect(dialog).toBeVisible();
@@ -176,7 +247,9 @@ test(
 		const fixture = await setup(page.request, true);
 		try {
 			await page.goto('/calendar');
-			const article = page.getByRole('article', { name: fixture.title, exact: true });
+			const article = page
+				.locator('.calendar')
+				.getByRole('article', { name: fixture.title, exact: true });
 			await expect(article).toContainText(fixture.name + '_hidden');
 			await expect(article).toContainText('Non partecipato');
 			await expect(article).toContainText('2/3 iscritti');

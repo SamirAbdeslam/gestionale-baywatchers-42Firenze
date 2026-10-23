@@ -65,6 +65,8 @@ for (const javaScriptEnabled of [true, false])
 					).toBeVisible();
 					const article = page.getByRole('article', { name: fixture.title, exact: true });
 					await expect(article).toContainText('1 posti liberi');
+					await expect(article.locator('.seat.taken')).toHaveCount(2);
+					await expect(article.locator('.seat')).toHaveCount(3);
 					await expect(article).toContainText('200 ₳');
 					await expect(article).toContainText('09:00–11:00');
 					await expect(article).toContainText('5 Gen');
@@ -74,10 +76,10 @@ for (const javaScriptEnabled of [true, false])
 					await expect(article.locator('img')).toHaveCount(0);
 					await expect(
 						page.getByRole('article', { name: 'Full ' + fixture.name, exact: true })
-					).toContainText('Completo');
+					).toContainText('Turno pieno');
 					await expect(
 						page.getByRole('article', { name: 'Past ' + fixture.name, exact: true })
-					).toContainText('Passato');
+					).toContainText('Concluso');
 					await expect(page.getByRole('heading', { name: /Domenica/ })).toHaveCount(1);
 					await expect(page.getByRole('heading', { name: /Sabato/ })).toHaveCount(0);
 					await expect(page.locator('header, nav, form, button, a')).toHaveCount(0);

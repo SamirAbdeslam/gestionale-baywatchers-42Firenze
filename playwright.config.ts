@@ -12,7 +12,7 @@ export default defineConfig({
 	forbidOnly: Boolean(process.env.CI),
 	retries: process.env.CI ? 2 : 0,
 	reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
-	use: { baseURL: 'http://localhost:4173', trace: 'retain-on-failure' },
+	use: { baseURL: 'http://localhost:4173', locale: 'it-IT', trace: 'retain-on-failure' },
 	projects: [
 		// Shared-table mutations and snapshots finish before independent parallel tests.
 		{
@@ -32,7 +32,14 @@ export default defineConfig({
 		},
 		{
 			name: 'webkit-shared',
-			testMatch: ['events.test.ts', 'calendar.test.ts', 'navigation.test.ts', 'logs.test.ts'],
+			testMatch: [
+				'events.test.ts',
+				'calendar.test.ts',
+				'navigation.test.ts',
+				'logs.test.ts',
+				'theme.test.ts',
+				'design.test.ts'
+			],
 			fullyParallel: false,
 			workers: 1,
 			dependencies: ['mobile-shared'],

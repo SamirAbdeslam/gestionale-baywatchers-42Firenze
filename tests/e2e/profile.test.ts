@@ -33,7 +33,7 @@ for (const javaScriptEnabled of [true, false]) {
 					await client`INSERT INTO events(title,week,weekday,event_date,start_time,end_time,compensation) VALUES
  (${base + ' later'},1,1,null,'11:00','11:20',25),
  (${base + ' first'},1,1,'2027-01-04','09:00','09:20',25),
- (${base + ' absent'},2,6,null,'12:00','16:00',500),
+ (${base + ' absent'},2,6,'2020-01-04','12:00','16:00',500),
  (${base + ' sunday'},4,7,'2027-01-31','10:00','10:20',999),
  (${secret},1,1,null,'09:00','12:00',999) RETURNING id`;
 				const ids = events.map((event) => event.id as number);
@@ -49,8 +49,6 @@ for (const javaScriptEnabled of [true, false]) {
 				});
 				try {
 					await page.goto('/calendar');
-					if (page.viewportSize()!.width < 768)
-						await page.getByRole('button', { name: 'Menu', exact: true }).click();
 					await page.getByRole('link', { name: 'Profilo', exact: true }).click();
 					await expect(page).toHaveURL('/profile');
 					const identity = page.getByRole('region', { name: 'Profilo', exact: true });
@@ -71,6 +69,7 @@ for (const javaScriptEnabled of [true, false]) {
 					]);
 					await expect(first).toContainText('4 Gen');
 					await expect(first).toContainText('26 Ott');
+					await expect(first).toContainText('In programma');
 					const absent = page
 						.getByRole('row')
 						.filter({ has: page.getByRole('rowheader', { name: base + ' absent', exact: true }) });

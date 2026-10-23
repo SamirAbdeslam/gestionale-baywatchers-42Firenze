@@ -89,13 +89,15 @@ test(
 			await post(context.request, '/admin?/setActiveWeek', { week: '2' });
 			await logsRefresh;
 			await expect(
-				page.getByRole('dialog', { name: 'La settimana 2 è stata attivata!' })
+				page
+					.getByRole('dialog', { name: 'La settimana 2 è stata attivata!' })
+					.getByRole('button', { name: 'OK', exact: true })
 			).toBeVisible();
 			await expect(page.getByRole('heading', { name: 'Settimana 2', exact: true })).toBeVisible();
 			await expect(
 				page.getByRole('article', { name: fixture.name + '_next', exact: true })
 			).toBeVisible();
-			await expect(admin.locator('dl').first().locator('dd').first()).toHaveText('2');
+			await expect(admin.getByLabel('Settimana da attivare', { exact: true })).toHaveValue('2');
 			await admin
 				.getByRole('spinbutton', { name: 'Limite eventi per utente e settimana', exact: true })
 				.fill('3');
@@ -106,7 +108,9 @@ test(
 				id: String(fixture.id),
 				login: fixture.name
 			});
-			await expect(admin.locator('dl').first().locator('dd').nth(2)).toHaveText('4');
+			await expect(
+				admin.getByRole('spinbutton', { name: 'Limite eventi per utente e settimana', exact: true })
+			).toHaveValue('4');
 			await expect(admin.getByRole('status')).toContainText('Impostazioni salvate');
 			for (const view of [page, admin, logs])
 				await expect(view.locator('html')).toHaveAttribute('data-m9-document', 'unchanged');
@@ -146,7 +150,7 @@ test(
 			});
 			await expect(card).toContainText('1/2 iscritti');
 			await expect(screen).toContainText('1 posti liberi');
-			await expect(screen.getByRole('listitem')).toHaveText(fixture.name);
+			await expect(screen.getByRole('listitem')).toHaveText('@' + fixture.name);
 			await post(admin.request, '/admin?/setAttendance', {
 				id: String(fixture.id),
 				login: fixture.name,

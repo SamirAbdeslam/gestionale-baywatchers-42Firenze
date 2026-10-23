@@ -46,6 +46,8 @@ for (const javaScriptEnabled of [true, false]) {
 					await page.getByRole('button', { name: 'Aggiungi riga', exact: true }).click();
 					const first = page.getByRole('group', { name: 'Evento 1', exact: true });
 					await expect(first).toBeVisible();
+					if (javaScriptEnabled)
+						await first.getByText('Giorno, data e descrizione', { exact: true }).click();
 					await first.getByLabel('Titolo', { exact: true }).fill(name + ' evento');
 					await first
 						.getByLabel('Descrizione evento', { exact: true })
@@ -101,10 +103,10 @@ for (const javaScriptEnabled of [true, false]) {
 					await page.getByRole('link', { name: 'Elenco template', exact: true }).click();
 					const article = page.getByRole('article', { name, exact: true });
 					await expect(article).toContainText('1 eventi');
-					await article.getByRole('button', { name: 'Applica template', exact: true }).click();
+					await article.getByRole('button', { name: /^Applica template W/ }).click();
 					await expect(page.getByRole('status')).toContainText('Esistono già');
 					await article.getByRole('checkbox', { name: 'Sovrascrivi', exact: true }).check();
-					await article.getByRole('button', { name: 'Applica template', exact: true }).click();
+					await article.getByRole('button', { name: /^Applica template W/ }).click();
 					await expect(page.getByRole('status')).toContainText(`Template "${name}" applicato!`);
 					await page.getByRole('link', { name: 'Visualizza settimana 4', exact: true }).click();
 					await expect(page).toHaveURL('/admin?week=4');

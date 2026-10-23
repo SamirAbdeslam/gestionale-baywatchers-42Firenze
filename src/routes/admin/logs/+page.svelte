@@ -45,7 +45,17 @@
 </script>
 
 <svelte:head><title>{m.nav_logs()} — {m.app_name()}</title></svelte:head>
-<h1>{m.nav_logs()}</h1>
+<div class="page-head">
+	<div>
+		<h1>{m.nav_logs()}</h1>
+		<p class="count">
+			{m.logs_count({ shown: formatNumber(data.rows.length), total: formatNumber(data.total) })}
+		</p>
+	</div>
+	<a class="button secondary" href="{resolve('/admin/logs.csv')}{query()}" download
+		>{m.logs_export()}</a
+	>
+</div>
 <form method="GET" action={resolve('/admin/logs')}>
 	<label>{m.logs_date()}<input type="date" name="date" value={data.filters.date} /></label>
 	<label for="logs-user">{m.logs_user()}</label>
@@ -60,12 +70,10 @@
 	</select>
 	<button type="submit">{m.logs_filter()}</button>
 	<a href={resolve('/admin/logs')}>{m.logs_reset()}</a>
-	<a href="{resolve('/admin/logs.csv')}{query()}" download>{m.logs_export()}</a>
 </form>
 {#if pending}<div role="status">
 		<button type="button" onclick={refresh}>{m.logs_new_available()}</button>
 	</div>{/if}
-<p>{m.logs_count({ shown: formatNumber(data.rows.length), total: formatNumber(data.total) })}</p>
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard access to the horizontally scrollable table.) -->
 <div class="table-wrap" role="region" aria-label={m.nav_logs()} tabindex="0">
 	<table>
@@ -134,34 +142,93 @@
 </nav>
 
 <style>
-	.table-wrap {
-		max-width: 100%;
-		overflow-x: auto;
+	form {
+		display: flex;
+		flex-direction: row;
+		align-items: end;
+		flex-wrap: wrap;
+		gap: var(--space-md);
+		padding: var(--space-md);
+		border: var(--border-width) solid var(--color-border);
+		background: var(--color-surface);
+		border-radius: var(--radius-panel);
 	}
-	table {
+	.page-head {
+		display: flex;
+		align-items: end;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: var(--space-md);
+		margin-bottom: var(--space-md);
+	}
+	.page-head h1 {
+		margin: 0;
+	}
+	.count {
+		margin: 0;
+		color: var(--color-muted);
+		font: var(--font-mono-sm) var(--font-mono);
+	}
+	[role='status'] button {
 		width: 100%;
-		border-collapse: collapse;
+		background: transparent;
+		color: var(--color-signal-text);
+		border: var(--border-width) solid var(--color-signal);
+		border-radius: var(--radius-field);
+		margin-block: var(--space-md) 0;
 	}
-	th,
+	.table-wrap {
+		margin-top: var(--space-md);
+	}
 	td {
-		padding: var(--space-sm);
-		text-align: start;
-		vertical-align: top;
-		border-block-end: var(--border-width) solid var(--color-text);
+		font-size: var(--font-small);
 	}
+	td:first-child,
+	td:last-child {
+		white-space: nowrap;
+	}
+	td:last-child > :global(button) {
+		min-height: var(--control-height-sm);
+		padding-inline: var(--space-md);
+		background: transparent;
+		color: var(--color-text);
+		border: var(--border-width) solid var(--color-border);
+		white-space: nowrap;
+	}
+	td:first-child,
+	td:nth-child(2),
+	td:nth-child(5) {
+		font-family: var(--font-mono);
+	}
+	td > span {
+		display: inline-flex;
+		font: 600 var(--font-tiny) var(--font-mono);
+		padding: var(--space-xs) var(--space-sm);
+		border-radius: var(--radius-sm);
+	}
+	pre {
+		background: var(--color-background);
+		padding: var(--space-md);
+		border-radius: var(--radius-sm);
+	}
+
 	.new {
 		background: var(--color-log-new);
 	}
 	.create {
+		background: var(--color-log-create-bg);
 		color: var(--color-log-create);
 	}
 	.update {
+		background: var(--color-log-update-bg);
 		color: var(--color-log-update);
 	}
 	.delete {
+		background: var(--color-log-delete-bg);
 		color: var(--color-log-delete);
 	}
 	.register {
+		background: var(--color-log-register-bg);
 		color: var(--color-log-register);
 	}
 	.other {

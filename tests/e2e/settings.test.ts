@@ -47,15 +47,15 @@ test(
 			expect((await activated).status()).toBe(200);
 			await page.goto('/admin');
 			await expect(page.getByLabel('Settimana visualizzata')).toHaveValue('4');
-			const dates = page.getByRole('list', { name: 'Date della settimana' });
-			await expect(dates.getByRole('listitem')).toHaveCount(7);
-			await expect(dates).toContainText('20 Gen');
-			await expect(dates).toContainText('26 Gen');
+			const dates = page.locator('.day-heading');
+			await expect(dates).toHaveCount(7);
+			await expect(dates.first()).toContainText('20 Gen');
+			await expect(dates.last()).toContainText('26 Gen');
 			await page.getByLabel('Settimana visualizzata').selectOption('2');
 			await page.getByRole('button', { name: 'Mostra settimana', exact: true }).click();
 			await expect(page).toHaveURL('/admin?week=2');
-			await expect(dates).toContainText('6 Gen');
-			await expect(dates).toContainText('12 Gen');
+			await expect(dates.first()).toContainText('6 Gen');
+			await expect(dates.last()).toContainText('12 Gen');
 			for (const limit of [2, 0]) {
 				await page
 					.getByRole('spinbutton', { name: 'Limite eventi per utente e settimana' })
@@ -71,7 +71,7 @@ test(
 					(await client`SELECT max_events_per_user FROM settings WHERE id=1`)[0].max_events_per_user
 				).toBe(limit);
 			}
-			await expect(page.getByRole('definition').filter({ hasText: 'Illimitato' })).toBeVisible();
+			await expect(page.getByText('Illimitato', { exact: true })).toBeVisible();
 			const reset = page.waitForResponse(
 				(response) =>
 					response.request().method() === 'POST' && response.url().includes('resetDisplayWeek')

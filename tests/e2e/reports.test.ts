@@ -52,10 +52,11 @@ for (const javaScriptEnabled of [true, false]) {
 					const absent = page
 						.getByRole('row')
 						.filter({ has: page.getByRole('rowheader', { name: second, exact: true }) });
-					await expect(row.getByRole('cell').nth(0)).toHaveText('2');
-					await expect(row.getByRole('cell').nth(1)).toHaveText('1,83');
-					await expect(row.getByRole('cell').nth(2)).toHaveText('300');
-					for (let index = 0; index < 3; index++)
+					// Cell 0 is the decorative attendance column.
+					await expect(row.getByRole('cell').nth(1)).toHaveText('2');
+					await expect(row.getByRole('cell').nth(2)).toHaveText('1,83');
+					await expect(row.getByRole('cell').nth(3)).toHaveText('300');
+					for (let index = 1; index < 4; index++)
 						await expect(absent.getByRole('cell').nth(index)).toHaveText('0');
 					await row.locator('summary').click();
 					await expect(row.getByRole('region', { name: 'Settimana 1', exact: true })).toContainText(
