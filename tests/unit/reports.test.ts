@@ -28,6 +28,7 @@ const report: ParticipantReport[] = [
 						duration: 1.5,
 						compensation: 200,
 						attended: true,
+						passed: true,
 						registeredAt
 					},
 					{
@@ -40,6 +41,7 @@ const report: ParticipantReport[] = [
 						duration: 0.33,
 						compensation: 100,
 						attended: false,
+						passed: false,
 						registeredAt
 					}
 				]

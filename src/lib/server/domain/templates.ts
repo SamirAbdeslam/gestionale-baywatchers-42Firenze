@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { count, desc, eq, inArray } from 'drizzle-orm';
+import { count, desc, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { db } from '../db/index.ts';
 import type { User } from '../auth/session.ts';
@@ -8,7 +8,7 @@ import { events, settings, templateEvents, weekTemplates } from '../db/schema.ts
 import { audit, type RequestInfo } from './audit.ts';
 import { digits, weekNumber } from './dates.ts';
 import { parseTemplateCsv, templateEventSchema } from './csv.ts';
-import { inferKind } from './kinds.ts';
+import { inferKind, type EventKind } from '#lib/kinds.ts';
 import { deletionSnapshot } from './events.ts';
 import { publish } from '../realtime/bus.ts';
 import { m } from '#lib/paraglide/messages.js';
@@ -55,7 +55,10 @@ export async function listTemplates(database: typeof db, actor: User | null) {
 			description: weekTemplates.description,
 			targetWeek: weekTemplates.targetWeek,
 			createdAt: weekTemplates.createdAt,
-			eventCount: count(templateEvents.id)
+			eventCount: count(templateEvents.id),
+			kinds: sql<
+				EventKind[]
+			>`coalesce(array_agg(${templateEvents.kind} ORDER BY ${templateEvents.weekday}, ${templateEvents.startTime}, ${templateEvents.id}) FILTER (WHERE ${templateEvents.id} IS NOT NULL), '{}')`
 		})
 		.from(weekTemplates)
 		.leftJoin(templateEvents, eq(templateEvents.templateId, weekTemplates.id))

@@ -4,7 +4,7 @@ import type { db } from '../db/index.ts';
 import type { User } from '../auth/session.ts';
 import { assertAdmin, assertUser, loginPattern } from '../auth/guards.ts';
 import { events, registrations, settings } from '../db/schema.ts';
-import { concreteDate } from './dates.ts';
+import { concreteDate, isPassed } from './dates.ts';
 import { writeCsv } from './csv.ts';
 
 export type AttendanceRow = {
@@ -60,6 +60,7 @@ export type ReportEvent = {
 	duration: number;
 	compensation: number;
 	attended: boolean;
+	passed: boolean;
 	registeredAt: Date;
 };
 export type ParticipantReport = ReturnType<typeof participantTotals>[number] & {
@@ -69,16 +70,17 @@ export type ParticipantReport = ReturnType<typeof participantTotals>[number] & {
 export async function getParticipants(
 	database: typeof db,
 	actor: User | null,
-	input?: unknown
+	input?: unknown,
+	now = new Date()
 ): Promise<ParticipantReport[]> {
 	assertAdmin(actor);
 	const login = z.string().regex(loginPattern).optional().parse(input);
-	return readParticipantReports(database, login);
+	return readParticipantReports(database, login, 2, now);
 }
 
-export async function getProfile(database: typeof db, actor: User | null) {
+export async function getProfile(database: typeof db, actor: User | null, now = new Date()) {
 	assertUser(actor);
-	const [report] = await readParticipantReports(database, actor.login, 1);
+	const [report] = await readParticipantReports(database, actor.login, 1, now);
 	const weeks = report?.weeks ?? [];
 	return {
 		user: {
@@ -96,8 +98,9 @@ export async function getProfile(database: typeof db, actor: User | null) {
 
 async function readParticipantReports(
 	database: typeof db,
-	login?: string,
-	decimals: 1 | 2 = 2
+	login: string | undefined,
+	decimals: 1 | 2,
+	now: Date
 ): Promise<ParticipantReport[]> {
 	const [config] = await database
 		.select({ poolStart: settings.poolStart })
@@ -131,11 +134,13 @@ async function readParticipantReports(
 	for (const row of rows) {
 		const weeks = grouped.get(row.participantLogin) ?? new Map<number, ReportEvent[]>();
 		const entries = weeks.get(row.week) ?? [];
+		const date = concreteDate(row, config.poolStart);
 		entries.push({
 			title: row.title,
 			week: row.week,
 			weekday: row.weekday,
-			date: concreteDate(row, config.poolStart),
+			date,
+			passed: isPassed(date, row.endTime, now),
 			startTime: row.startTime.slice(0, 5),
 			endTime: row.endTime.slice(0, 5),
 			duration: eventHours(row.startTime, row.endTime),

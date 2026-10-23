@@ -8,7 +8,7 @@ import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { publish } from '../realtime/bus.ts';
 import { concreteDate, digits, isoDate, weekNumber, weekdayNumber } from './dates.ts';
-import { capitalizeFirst, EVENT_KINDS, PRESETS } from './kinds.ts';
+import { capitalizeFirst, EVENT_KINDS, PRESETS } from '#lib/kinds.ts';
 import { m } from '#lib/paraglide/messages.js';
 
 const integer = digits(10).pipe(z.number().int().max(2147483647));

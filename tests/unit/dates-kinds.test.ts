@@ -7,7 +7,7 @@ import {
 	isPassed,
 	setPoolDates
 } from '../../src/lib/server/domain/dates.ts';
-import { capitalizeFirst, inferKind, PRESETS } from '../../src/lib/server/domain/kinds.ts';
+import { capitalizeFirst, inferKind, PRESETS } from '../../src/lib/kinds.ts';
 import { participantTotals } from '../../src/lib/server/domain/reports.ts';
 
 describe('pool and concrete dates', () => {

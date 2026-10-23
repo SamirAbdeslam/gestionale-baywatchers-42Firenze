@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { digits, isoDate, weekNumber } from './dates.ts';
-import { inferKind } from './kinds.ts';
+import { inferKind } from '#lib/kinds.ts';
 
 import { editable, timeOrder } from './events.ts';
 

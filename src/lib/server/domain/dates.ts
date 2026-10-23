@@ -101,7 +101,11 @@ export function formatWeekDates<
 	E extends { date: string | null }
 >(data: { days: D[]; events: E[] }, locale: string) {
 	return {
-		days: data.days.map((day) => ({ ...day, date: formatEventDate(day.date, locale) })),
+		days: data.days.map((day) => ({
+			...day,
+			isoDate: day.date,
+			date: formatEventDate(day.date, locale)
+		})),
 		events: data.events.map((event) => ({ ...event, date: formatEventDate(event.date, locale) }))
 	};
 }

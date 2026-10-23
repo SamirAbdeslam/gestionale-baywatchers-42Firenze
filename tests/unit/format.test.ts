@@ -24,8 +24,8 @@ it('formats both date collections while retaining fields and preserving the inpu
 	};
 	expect(formatWeekDates(data, 'it')).toEqual({
 		days: [
-			{ weekday: 1, date: '4 Gen' },
-			{ weekday: 2, date: '' }
+			{ weekday: 1, date: '4 Gen', isoDate: '2027-01-04' },
+			{ weekday: 2, date: '', isoDate: null }
 		],
 		events: [{ id: 1, date: '5 Gen', title: 'Example' }]
 	});

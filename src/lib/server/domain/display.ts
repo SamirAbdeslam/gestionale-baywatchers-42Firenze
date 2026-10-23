@@ -73,6 +73,7 @@ export async function getDisplay(
 			endTime: event.endTime.slice(0, 5),
 			compensation: event.compensation,
 			freeSlots,
+			maxSlots: event.maxSlots,
 			state: isPassed(date, event.endTime, now) ? 'passed' : freeSlots > 0 ? 'available' : 'full',
 			participants: event.participants
 				.filter((participant) => participant.attended)

@@ -354,3 +354,46 @@ it('accepts exactly 200 rows and 500 description characters and enforces the dat
 	).rejects.toThrow();
 	expect(await client`SELECT * FROM week_templates`).toHaveLength(1);
 });
+
+it('returns an empty kind array and stable weekday/time/id order in the existing template list query', async () => {
+	const [empty, filled] = await database
+		.insert(schema.weekTemplates)
+		.values([
+			{ name: 'Empty', targetWeek: 1 },
+			{ name: 'Ordered', targetWeek: 2 }
+		])
+		.returning();
+	await database.insert(schema.templateEvents).values([
+		{
+			...entry,
+			templateId: filled.id,
+			weekday: 3,
+			startTime: '11:00',
+			endTime: '12:00',
+			kind: 'rush'
+		},
+		{
+			...entry,
+			templateId: filled.id,
+			weekday: 1,
+			startTime: '10:00',
+			endTime: '11:00',
+			kind: 'exam'
+		},
+		{ ...entry, templateId: filled.id, weekday: 1, startTime: '09:00', kind: 'welcome' },
+		{
+			...entry,
+			templateId: filled.id,
+			weekday: 1,
+			startTime: '10:00',
+			endTime: '11:00',
+			kind: 'cluster'
+		}
+	]);
+	const rows = await listTemplates(database, admin);
+	expect(rows.find((row) => row.id === empty.id)).toMatchObject({ eventCount: 0, kinds: [] });
+	expect(rows.find((row) => row.id === filled.id)).toMatchObject({
+		eventCount: 4,
+		kinds: ['welcome', 'exam', 'cluster', 'rush']
+	});
+});

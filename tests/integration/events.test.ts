@@ -13,7 +13,7 @@ import {
 	deleteAllEvents,
 	listWeekEvents
 } from '../../src/lib/server/domain/events.ts';
-import { PRESETS } from '../../src/lib/server/domain/kinds.ts';
+import { PRESETS } from '../../src/lib/kinds.ts';
 import { subscribe, type RealtimeEvent } from '../../src/lib/server/realtime/bus.ts';
 
 assert.equal(new URL(process.env.DATABASE_URL!).pathname, '/baywatchers_test');

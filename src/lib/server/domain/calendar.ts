@@ -46,6 +46,7 @@ export async function getCalendar(
 			maxSlots: event.maxSlots,
 			registeredCount: participants.length,
 			state,
+			isRegistered: registered,
 			date,
 			googleUrl: googleCalendarUrl(event, date),
 			participants: participants
@@ -56,6 +57,7 @@ export async function getCalendar(
 	return {
 		week,
 		activeWeek: config.activeWeek,
+		maxEventsPerUser: config.maxEventsPerUser,
 		days: visibleWeekDays(visibleEvents, config.poolStart, week),
 		events: visibleEvents
 	};

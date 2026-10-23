@@ -4,7 +4,7 @@ import { getLocale } from '#lib/paraglide/runtime.js';
 import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals }) => {
 	const { db } = await import('#lib/server/db/index.ts');
-	const profile = await getProfile(db, locals.user);
+	const profile = await getProfile(db, locals.user, new Date());
 	return {
 		profile: {
 			...profile,

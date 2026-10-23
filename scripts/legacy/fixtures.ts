@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { PRESETS } from '../../src/lib/server/domain/kinds.ts';
+import { PRESETS } from '../../src/lib/kinds.ts';
 import { addDays } from '../../src/lib/server/domain/dates.ts';
 import type { LegacyRows } from './normalize.ts';
 

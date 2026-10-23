@@ -16,7 +16,7 @@ import {
 	index,
 	unique
 } from 'drizzle-orm/pg-core';
-import { EVENT_KINDS } from '../domain/kinds.ts';
+import { EVENT_KINDS } from '#lib/kinds.ts';
 
 export const userRole = pgEnum('user_role', ['user', 'admin']);
 export const eventKind = pgEnum('event_kind', EVENT_KINDS);

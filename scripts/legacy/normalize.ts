@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { capitalizeFirst, inferKind } from '../../src/lib/server/domain/kinds.ts';
+import { capitalizeFirst, inferKind } from '../../src/lib/kinds.ts';
 import { isoDate, weekNumber } from '../../src/lib/server/domain/dates.ts';
 
 export const login = (value: string) => z.string().trim().min(1).parse(value).toLowerCase();

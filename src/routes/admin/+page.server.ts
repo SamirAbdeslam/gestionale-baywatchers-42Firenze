@@ -1,4 +1,3 @@
-import { readEnv } from '#lib/server/env.ts';
 import { error } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
@@ -23,7 +22,7 @@ import {
 	removeParticipant,
 	setAttendance
 } from '#lib/server/domain/registrations.ts';
-import { EVENT_KINDS } from '#lib/server/domain/kinds.ts';
+import { EVENT_KINDS } from '#lib/kinds.ts';
 import { m } from '#lib/paraglide/messages.js';
 import { getLocale } from '#lib/paraglide/runtime.js';
 import { formatEventDate } from '#lib/server/domain/dates.ts';
@@ -39,12 +38,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 			Object.fromEntries(url.searchParams)
 		);
 		const events = await listWeekEvents(db, locals.user, data.week, data.settings.poolStart);
-		const env = readEnv();
-		const displayUrl = new URL('/display', env.ORIGIN);
-		if (env.DISPLAY_TOKEN) displayUrl.searchParams.set('token', env.DISPLAY_TOKEN);
 		return {
 			...data,
-			displayUrl: displayUrl.toString(),
 			kinds: EVENT_KINDS,
 			events: events.map((event) => ({
 				...event,
