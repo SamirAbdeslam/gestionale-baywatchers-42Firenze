@@ -2,7 +2,7 @@
 
 > Documento di riferimento unico per chi esegue il refactor (agent esterno o persona).
 > Leggilo **tutto** a inizio di ogni sessione, poi leggi l'ultima voce di `docs/v2/SESSIONS.md`.
-> Branch di lavoro: `v2.0.0`. Ultima release Flask: tag `v1.5.24` su `main`.
+> Branch di lavoro: `v2.0.0`. Versione in sviluppo: `2.1.0` (SemVer, §20). Ultima release Flask: tag `v1.5.24` su `main`.
 
 ---
 
@@ -27,6 +27,7 @@
 17. Moduli (ordine di esecuzione)
 18. Bug legacy da NON riprodurre
 19. Stato dei moduli
+20. Versione 2.1.0: correzioni dell'audit e nuove funzioni
 
 ---
 
@@ -78,7 +79,8 @@ HTTPS locale su porta 8443 con certificato autofirmato e redirect HTTP da porta 
 - Webhook di deploy (`/webhook`, `deployer/`).
 - Cloudflare Tunnel (`cloudflared`).
 - `reset_display_week.py`: la logica vive nell'app (§8.6).
-- Feed `.ics` personale descritto in `legacy/CALENDAR_SETUP.md`: non è mai stato implementato e resta fuori.
+- Feed `.ics` personale descritto in `legacy/CALENDAR_SETUP.md`: non è mai stato implementato. Rientra in 2.1.0 come M22, solo dopo la messa in produzione (§20.6).
+- Lista d'attesa sugli eventi pieni: valutata e rimandata. Le sostituzioni restano fuori dal sito (Slack o a voce, D1).
 
 ---
 
@@ -93,6 +95,9 @@ Ismail deve confermare queste decisioni prima del modulo indicato. Finché lo st
 | D3 | La pagina `/participants/<id>` viene eliminata. | Era pubblica senza login, nessun link dell'app ci portava, e i dati sono già nel calendario. | M7 | CONFERMATA |
 | D4 | Il display `/display` resta in sola lettura e mostra i login dei presenti. Se la variabile `DISPLAY_TOKEN` è impostata, l'URL deve contenere `?token=<valore>` (così la TV funziona con un link unico e chi non ha il link non vede nulla); se è vuota, il display è pubblico. | Pensato per la TV della scuola con accesso via URL. | M8 | CONFERMATA |
 | D5 | Admin = utente con `staff? = true` nel profilo `/v2/me` dell'API 42 **oppure** login presente nell'array `ADMIN_LOGINS` del file `src/lib/server/admins.ts` (valore iniziale `['igilani']`). L'array è volutamente nel codice e non in una variabile d'ambiente o nella UI: solo chi modifica il codice può aggiungere admin. Il ruolo si ricalcola a ogni login e si legge dal DB a ogni richiesta. | Il legacy aveva la stessa lista (`ADMIN_WHITELIST`) dentro `app.py`; ora sta in un file dedicato, facile da trovare. | M2 | CONFERMATA |
+
+| D6 | Il login è consentito solo agli utenti 42 che hanno il campus **42 Firenze** tra i loro `campus_users` (profilo `/v2/me`). Vale anche per lo staff: `staff? = true` di un altro campus non entra e non diventa admin. I login in `ADMIN_LOGINS` entrano sempre. L'id del campus è la costante `FIRENZE_CAMPUS_ID = 52` in `src/lib/server/auth/oauth42.ts` (campus "Florence", verificato dall'API 42 sul profilo `igilani`). | Dall'audit di 2.0.0: `staff?` vale per tutti i campus del mondo, quindi lo staff di qualunque campus diventava admin di questo sito, e qualunque studente 42 poteva vedere il calendario con i login degli iscritti. | M17 | CONFERMATA |
+| D7 | Nei template **non** si salva più la data dell'evento: si toglie il campo dal builder, l'import CSV ignora la colonna `Data`/`Date` e la colonna `template_events.event_date` si elimina con una migrazione. Le date degli eventi creati da un template derivano dal pool, come oggi. | Oggi la data si chiede e poi non si usa (§8.9 punto 5). Copiarla invece è sbagliato: un template si riusa nei pool successivi, e una data assoluta di un pool vecchio creerebbe eventi già "Passati". | M17 | CONFERMATA |
 
 Le altre differenze rispetto al legacy sono correzioni di bug (§18) e non richiedono conferma.
 
@@ -953,6 +958,24 @@ Applica `docs/v2/design/` seguendo l'ordine di lavoro del suo `README.md` §7: f
 ### M16 — Inglese e francese (2 g)
 §11: `en.json`, `fr.json`, selettore di lingua, test sulle chiavi, e2e di un flusso in ciascuna lingua.
 
+### M17 — Correzioni dell'audit (1 g)
+§20.1: accesso limitato al campus Firenze (D6), data nei template (D7), pulizia delle sessioni scadute.
+
+### M18 — Prossimo turno e turni rimasti (1 g)
+§20.2: versione `2.1.0`, riquadro "Il tuo prossimo turno", contatore "N di M turni questa settimana".
+
+### M19 — Duplica evento e settimana come template (1 g)
+§20.3.
+
+### M20 — Chiusura della piscina (1.5 g)
+§20.4.
+
+### M21 — Display: evento in corso e prossimo (0.5 g)
+§20.5.
+
+### M22 — Feed calendario personale (1.5 g)
+§20.6. Si inizia solo dopo la messa in produzione con il dominio vero.
+
 Il lavoro di test (§13) è incluso nella stima di ogni modulo, non è una fase separata.
 
 ---
@@ -1004,3 +1027,98 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M14 Integrazione design | completato (d671485) |
 | M15 Stack finale e consegna | completato (21f093e) |
 | M16 Inglese e francese | completato (35b7201) |
+| M17 Correzioni dell'audit | da fare |
+| M18 Prossimo turno e turni rimasti | da fare |
+| M19 Duplica evento e settimana come template | da fare |
+| M20 Chiusura della piscina | da fare |
+| M21 Display: evento in corso e prossimo | da fare |
+| M22 Feed calendario personale | da fare (dopo la produzione) |
+
+---
+
+## 20. Versione 2.1.0: correzioni dell'audit e nuove funzioni
+
+Valgono tutte le regole di §1: stesso branch `v2.0.0`, un modulo alla volta in ordine (M17 → M22), `pnpm ci:local` verde, push, CI verde, voce in `SESSIONS.md`. Ogni testo nuovo per l'utente va in `messages/it.json`, `en.json` e `fr.json` (il test delle chiavi lo controlla). Ogni pagina o componente nuovo segue `docs/v2/design/` e funziona anche senza JavaScript dove già lo fanno le pagine vicine.
+
+Versione (SemVer): 2.1.0 aggiunge funzioni senza rompere quelle esistenti, quindi sale il numero di mezzo. `package.json` passa da `2.0.0` a `2.1.0` in M18, con un commit dedicato `chore: bump version to 2.1.0`. M17 sono correzioni della 2.0.0 non ancora rilasciata e non cambiano il numero.
+
+Fuori da 2.1.0: lista d'attesa, presenze in blocco, cancellazione dei log vecchi.
+
+### 20.1 M17 — Correzioni dell'audit
+
+**Accesso solo al campus Firenze (D6)**
+- In `src/lib/server/auth/oauth42.ts` aggiungi la costante `FIRENZE_CAMPUS_ID = 52` (D6) e leggi `campus_users: { campus_id: number }[]` dal profilo (`.catch([])`, come gli altri campi).
+- Il profilo è ammesso se un elemento di `campus_users` ha `campus_id === FIRENZE_CAMPUS_ID`, oppure se il login è in `ADMIN_LOGINS`. Il ruolo admin (D5) si calcola solo per i profili ammessi.
+- Profilo non ammesso: nessun utente creato o aggiornato, nessuna sessione, nessun log. Il callback reindirizza a `/?error=campus` e la landing mostra il messaggio nuovo `error_campus` ("L'accesso è riservato agli studenti e allo staff di 42 Firenze.").
+- Test: unit sul parse del profilo (Firenze, altro campus, altro campus con `staff? = true`, `campus_users` mancante, login in `ADMIN_LOGINS` di altro campus); e2e: `/?error=campus` mostra il messaggio.
+
+**Data nei template (D7)**
+- Togli il campo data dal builder (`/admin/templates/new`) e da `templateEventSchema` in `domain/csv.ts`; l'import CSV ignora le colonne `Data`/`Date`.
+- Migrazione Drizzle che elimina `template_events.event_date`. Aggiorna §7 e §8.9 di questo piano nello stesso commit (eccezione a §1.1 punto 4, autorizzata qui).
+- Test: i test dei template e del CSV non usano più `eventDate`; un CSV con la colonna `Data` si importa lo stesso.
+
+**Sessioni scadute**
+- In `createSession` (`auth/session.ts`), prima dell'insert: `DELETE FROM sessions WHERE expires_at <= now`. Nessun job, nessun timer.
+- Test integration: una sessione scaduta di un altro utente sparisce dopo un login.
+
+### 20.2 M18 — Prossimo turno e turni rimasti
+
+**Versione**: commit `chore: bump version to 2.1.0` (solo `package.json`).
+
+**"Il tuo prossimo turno"**
+- In `domain/reports.ts` una funzione `nextShift(database, login, now)`: tra le iscrizioni del login, il primo evento con `week <= active_week` non ancora passato (§8.2), ordinato per `week`, `weekday`, `start_time`, `id`. Restituisce titolo, tipo, settimana, giorno, data concreta (può essere null), orari, id evento; `null` se non c'è.
+- Lo mostrano `/calendar` (sopra la griglia, per tutte le settimane visualizzate) e `/profile` (in cima): titolo, giorno e data, orario, link al `.ics` dell'evento quando la data concreta non è null. Se è `null` il riquadro non c'è.
+- Si aggiorna con il real-time già presente (`event_changed`, `week_activated`).
+- Test: unit/integration sui casi nessuna iscrizione, solo eventi passati, evento in una settimana futura non attivata (escluso), due eventi lo stesso giorno (vince l'orario prima); e2e: dopo l'iscrizione il riquadro mostra l'evento.
+
+**"N di M turni questa settimana"**
+- Nel `load` di `/calendar`, se `max_events_per_user > 0`: conta le iscrizioni dell'utente nella settimana visualizzata con la stessa regola di §8.5.1 punto 5 (tutte, anche assenti). Estrai il conteggio in una funzione usata sia dal controllo di iscrizione sia dal `load`, così la regola resta una.
+- Mostra "N di M turni questa settimana". Quando `N >= M` i pulsanti "Iscriviti" di quella settimana sono disattivati con il motivo visibile (`error_weekly_limit`). Il server resta l'unico controllo vero.
+- Se `max_events_per_user = 0` (nessun limite) non si mostra nulla.
+- Test: integration sul conteggio condiviso; e2e: al limite il pulsante è disattivato e il testo è visibile; con limite 0 il contatore non c'è.
+
+### 20.3 M19 — Duplica evento e settimana come template
+
+**Duplica evento**
+- Action `?/duplicateEvent` in `/admin` con `id`, `week` (1–4), `weekday` (1–7). Copia titolo, descrizione, tipo, orari, posti e compenso; `event_date` null; nessuna iscrizione. Riusa la transazione e il log di `createEvent` (`CREATE_EVENT`, descrizione "Duplicato dall'evento ID x").
+- UI: pulsante "Duplica" nella scheda evento admin, apre un `<dialog>` con settimana e giorno (default: quelli dell'evento).
+- Test: integration (copia dei campi, niente iscrizioni, 404 su id inesistente, solo admin); e2e del flusso.
+
+**Salva settimana come template**
+- Action `?/saveWeekAsTemplate` in `/admin` con `week`, `name`, `description`, `targetWeek` (default la settimana stessa). Legge gli eventi della settimana e crea il template con lo stesso codice di `createTemplate` (stessi limiti: 1–200 eventi, log `CREATE_TEMPLATE`). Settimana vuota: avviso, niente template.
+- Test: integration (eventi copiati, settimana vuota, solo admin); e2e: il template appare in `/admin/templates` e si applica.
+
+### 20.4 M20 — Chiusura della piscina
+
+- Pulsante "Chiudi piscina" in `/admin`, porta a `/admin/close-pool` (solo admin, coperta dalla matrice e2e).
+- Passo 1, salva i dati: link a `summary.csv` e `detailed.csv` (esistenti) e casella obbligatoria "Ho scaricato i dati".
+- Passo 2, cosa azzerare (tutte facoltative, nessuna preselezionata):
+  - tutti gli eventi (con le iscrizioni);
+  - whitelist;
+  - settimane: `active_week` e `display_week` a 1;
+  - date del pool: `pool_start` e `pool_end` a null.
+  I template e i log non si toccano mai.
+- Passo 3: conferma in un `<dialog>` che elenca le scelte.
+- Action `closePool` in un nuovo `domain/pool.ts`, una sola transazione: `lockAdmin`, `settings` FOR UPDATE, `deletionSnapshot` per gli eventi, snapshot della whitelist, poi le cancellazioni e l'update scelti. Un solo log `CLOSE_POOL` con `old_value` = `{ events, whitelist, settings }` delle parti azzerate. Poi `publish` di `log_created`, `event_changed` (`bulk_delete`) e `week_activated` se le settimane cambiano.
+- Nessuna scelta selezionata o casella del passo 1 non spuntata: avviso, nessuna modifica.
+- Si può usare a fine piscina senza azzerare nulla, e di nuovo all'inizio della piscina nuova per azzerare.
+- Test: integration su ogni combinazione rilevante (solo eventi, solo whitelist, tutto, niente), sul contenuto del log e sul rollback se una parte fallisce; e2e del flusso completo con e senza JavaScript.
+
+### 20.5 M21 — Display: evento in corso e prossimo
+
+- In `domain/display.ts`, per ogni evento di `display_week` con data concreta: stato `ongoing` se `now` è tra inizio e fine (Europe/Rome), `next` per il primo evento non ancora iniziato della settimana. Gli altri stati restano quelli di §8.6.
+- Il display li evidenzia (etichette "In corso" e "Prossimo", stile da `docs/v2/design/`).
+- Il display richiama `invalidate('app:display')` ogni 60 secondi, oltre al real-time già presente, così anche "Passato" si aggiorna senza ricaricare.
+- Test: unit sugli stati (prima, durante, all'ora esatta di fine, dopo, data null, cambio ora legale); e2e: con un evento in corso l'etichetta è visibile.
+
+### 20.6 M22 — Feed calendario personale (dopo la produzione)
+
+Si inizia solo quando il sito è online sul dominio vero con un certificato valido: Google Calendar non legge feed da `localhost` né con certificati autofirmati.
+
+- Colonna `users.calendar_token_hash` (null = nessun feed). Il token è casuale (stesso generatore delle sessioni), nel DB si salva solo l'hash, come per le sessioni.
+- Route pubblica `GET /calendar/feed/[token].ics` (aggiunta a `isPublicPath` e alla matrice e2e). Token sconosciuto: 404. Contenuto: un VCALENDAR con gli eventi a cui il login è iscritto, con `week <= active_week` e data concreta non null; per ogni evento lo stesso VEVENT di `domain/ics.ts` (allarmi compresi), `UID` stabile per evento e `SEQUENCE` che cresce quando l'evento cambia (da `updated_at`).
+- `/profile`: "Abbonati al calendario" (link `webcal://`), "Copia link" e "Rigenera link" (action che sostituisce l'hash e invalida il link vecchio, log `CALENDAR_FEED_RESET`).
+- nginx: `limit_req` sulla route del feed, come per `/auth/`.
+- Il token è nel path, che nginx scrive nell'access log: per questa route usa `access_log off`.
+- Test: integration (contenuto del feed, settimane future escluse, token rigenerato invalida il vecchio); e2e: 404 con token sbagliato, 200 `text/calendar` con quello giusto.
+- Verifica manuale con Ismail: iPhone (Calendario → Aggiungi abbonamento) e Google Calendar (aggiornamento lento, anche 12–24 ore).
