@@ -2362,3 +2362,25 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Verifica finale di Ismail.
+
+## 2026-10-26 — Verifica finale, correzioni della review — completato
+
+**Fatto**
+- Orologio del display a 24 ore in tutte le lingue (`hourCycle: 'h23'`). In inglese `01:50:13 PM` superava gli 8 caratteri riservati e faceva tornare lo spostamento di layout.
+- `docs/v2/CUTOVER.md`: il display usa la lingua del browser della TV e non ha il selettore; aprire una volta `/language/it?to=/display` fissa l'italiano.
+
+**Commit**
+- vedi `git log`: `fix(display): use a 24-hour clock in every language`, `docs: explain how to pin the TV display to Italian`.
+
+**Controlli**
+- `pnpm ci:local`: verde, 227 unit, 277 integration, 155 e2e.
+- CI su GitHub: M16 run 40325539457 verde, sei job; questa voce viene verificata dopo il push.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna.
+
+**Domande / blocchi**
+- HSTS sul dominio di produzione, cancellazione di `legacy/`, passaggio dei dati e rilettura delle traduzioni restano a Ismail.
+
+**Prossimo passo**
+- Nessuno: lavoro del piano completato.
