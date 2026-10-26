@@ -2444,3 +2444,39 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Arresto della sessione dopo il commit e push dei documenti e la verifica della relativa CI. M18 resta da fare e non è stato iniziato.
+
+
+## 2026-10-26 — M18 — completato
+
+**Fatto**
+- Versione `2.1.0` con il commit dedicato richiesto, contenente solo `package.json`.
+- `nextShift(database, login, now)` in `domain/reports.ts`: legge solo le iscrizioni del login nelle settimane attivate, esclude gli eventi passati secondo §8.2 e ordina per settimana, giorno, inizio e id. Mantiene le iscrizioni segnate assenti e gestisce data concreta nulla e limite esatto dell'orario di fine.
+- Nuovo `src/lib/components/NextShift.svelte`, condiviso perché lo stesso riquadro compare sopra la griglia del calendario e in cima al profilo: titolo, settimana, giorno, data e orari, con link ICS solo quando la data è disponibile. Non compare senza un prossimo turno. Nel calendario è indipendente dalla settimana visualizzata.
+- Il calendario riusa l'invalidazione real-time già esistente; il profilo ora dichiara `app:profile` e usa lo stesso helper SSE con cleanup per `event_changed`, `week_activated` e riconnessione.
+- Estratto `countWeeklyRegistrations` in `domain/registrations.ts`, usato sia dal controllo server nella transazione d'iscrizione sia dai dati del calendario. Conta tutte le iscrizioni della settimana visualizzata, comprese le assenze. Il contatore mostra «N di M turni questa settimana» e sparisce con limite 0; restano i posti grafici e i compensi già presenti quando il contatore è visibile.
+- Al limite, i pulsanti per nuove iscrizioni sono disabilitati e associati con `aria-describedby` al motivo visibile `error_weekly_limit`. Disiscrizione e controllo server restano operativi.
+- Nuove stringhe in italiano, inglese e francese. Nessuna dipendenza o migrazione aggiunta, nessun cambiamento ai moduli successivi.
+
+**Commit**
+- `04231c7` — `chore: bump version to 2.1.0` (solo `package.json`).
+- `e1ae195` — `feat: show next shifts and weekly booking limits`.
+- Chiusura del diario e dello stato M18 nel successivo commit documentale.
+
+**Controlli**
+- `corepack pnpm ci:local`: exit 0; 238 unit, 285 integration, 165 e2e, totale 688. Lint, check e build verdi; svelte-check senza errori o warning. `git diff --check` verde.
+- Integration: nessuna iscrizione, altro login, soli eventi passati, settimana futura non attivata e successiva attivazione, ordine settimana/giorno/orario/id, assenza inclusa, data nulla e scadenza esatta in Europe/Rome. Prossimo turno indipendente dalla settimana visualizzata. Conteggio condiviso limitato a login e settimana, con assenze; stessa regola applicata dall'iscrizione, limite 0 illimitato.
+- E2e desktop/mobile/WebKit, con e senza JavaScript: prossimo turno dopo l'iscrizione, link ICS e assenza del link senza data, contatore al limite e pulsante disabilitato con motivo visibile; richiesta diretta respinta dal server; contatore assente con limite 0. Profilo aggiornato tramite SSE dopo una disiscrizione in un'altra scheda. Controlli di layout, temi, CSP, traduzioni e comportamento precedente verdi.
+- Corretti prima del risultato verde: metadati mancanti nel nuovo fixture integration, asserzioni sul link ICS che ora verificano la destinazione risolta dal browser e altezza iniziale del riquadro. Reso compatto il riquadro con i token esistenti; il test che richiede due biglietti nel viewport desktop è rimasto invariato.
+- CI [40351849655](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40351849655) su `e1ae195`: `gh run watch --exit-status` exit 0, sei job verdi (lint, unit, integration, legacy-import, e2e, docker).
+- Dettaglio e2e CI: 164 passati direttamente e 1 passato al primo retry. Stesso test WebKit del fallback avatar prima dell'idratazione, `tests/e2e/profile.test.ts:223`, già segnalato nelle sessioni precedenti. Nessuna modifica a quel test o ai timeout; causa non attribuita a M18. Tutti i 165 e2e locali passati senza retry.
+
+**Decisioni prese dentro il perimetro del piano**
+- Riutilizzati helper, form e token esistenti. Nessun componente generico aggiunto oltre al riquadro effettivamente condiviso dalle due pagine.
+- Branch `v2.0.0`, nessun worktree o tag. Porte `5432` e `4173` usate per i test locali; configurazione dello stack invariata. Nessun volume cancellato, app e nginx lasciati fermi.
+
+**Domande / blocchi**
+- Nessun blocco aperto per M18. Resta segnalata l'intermittenza del test WebKit preesistente, passato al retry in CI.
+- Da verificare a mano: presentazione del prossimo turno e del limite con dati reali su telefono e desktop, rilettura dei nuovi testi inglesi e francesi. Nessuna prova su un deploy di produzione.
+
+**Prossimo passo**
+- Arresto dopo commit/push dei documenti e verifica della relativa CI. M19 resta da fare e non è stato iniziato.
