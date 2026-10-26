@@ -2128,11 +2128,13 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 - Misura finale senza L2: mobile P82/A100/BP100/SEO100, FCP/LCP e Speed Index 3622,34 ms, CLS 0,002747; desktop P98/A100/BP100/SEO100, FCP/LCP e Speed Index 865,69 ms, CLS 0,007096. TBT 0 ms in entrambi. Nessun errore di contrasto, nome accessibile o ordine dei titoli. Contrasto delle settimane non aperte misurato nel browser: 6,08:1 chiaro, 7,91:1 scuro.
 - corepack pnpm ci:local exit 0: 224 unit, 277 integration, 141 e2e, totale 642; Chromium desktop/mobile, WebKit e prove senza JS verdi. Check zero errori e warning, lint/build verdi. Dopo il solo reset finale letter-spacing dei titoli, ripetuti check/lint/build e galleria: 3/3 verdi, 82 immagini rigenerate nei due temi; screenshot riletti. Nessuna nuova violazione CSP.
 
+- CI GitHub [40295195870](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40295195870) su fdb1cc0: gh run watch --exit-status exit 0, tutti i sei job verdi (lint, unit, integration, legacy-import, e2e, docker). Verificato anche c0ee267 come antenato: installer browser terminato e test e2e completati, nessuna modifica al metodo di installazione.
+
 **Decisioni autorizzate e applicate**
 - EventCard con headingLevel 2/3/4 tramite svelte:element: 4 predefinito, 3 nel calendario, 2 nella landing. Admin, display e dialog restano su 4. Nome del pulsante avatar ricavato dal contenuto con prefisso sr-only e iniziali accessibili solo nell'header; alt vuoto per la foto dell'header, profilo invariato. Test aggiornati per livelli, nome visibile e alt.
 
 **Domande / blocchi**
-- Nessuna domanda di implementazione aperta. Resta la verifica della CI remota; OAuth/foto 42 reali, Safari fisico e TV reale restano verifiche manuali separate.
+- Nessuna domanda di implementazione aperta. OAuth/foto 42 reali, Safari fisico e TV reale restano verifiche manuali separate.
 
 **Prossimo passo**
-- Push dei commit piccoli e sei job verdi con id nel diario. Se l'installer browser si blocca di nuovo, fermarsi e riportare senza cambiarlo. Stack normale ripristinato su 8080/8443: app/DB healthy, nginx -t verde, landing/health 200 con CSP HTML e nosniff, avatar anonimo 401/no-store/nosniff. Nessun volume eliminato né controllo HSTS. M15 non iniziato.
+- Lavoro completato; attendere indicazioni di Ismail. Stack normale ripristinato su 8080/8443: app/DB healthy, nginx -t verde, landing/health 200 con CSP HTML e nosniff, avatar anonimo 401/no-store/nosniff. Nessun volume eliminato né controllo HSTS. M15 non iniziato.
