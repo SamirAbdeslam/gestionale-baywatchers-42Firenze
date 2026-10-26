@@ -1,12 +1,16 @@
-import { getProfile } from '#lib/server/domain/reports.ts';
+import { getProfile, nextShift } from '#lib/server/domain/reports.ts';
 import { formatEventDate } from '#lib/server/domain/dates.ts';
 import { getLocale } from '#lib/paraglide/runtime.js';
 import type { PageServerLoad } from './$types';
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, depends }) => {
+	depends('app:profile');
 	const { db } = await import('#lib/server/db/index.ts');
-	const profile = await getProfile(db, locals.user, new Date());
+	const now = new Date();
+	const profile = await getProfile(db, locals.user, now);
+	const shift = await nextShift(db, profile.user.login, now);
 	const { imageUrl, ...user } = profile.user;
 	return {
+		nextShift: shift ? { ...shift, formattedDate: formatEventDate(shift.date, getLocale()) } : null,
 		profile: {
 			...profile,
 			user: { ...user, hasImage: Boolean(imageUrl) },

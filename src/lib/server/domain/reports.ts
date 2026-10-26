@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import type { db } from '../db/index.ts';
 import type { User } from '../auth/session.ts';
@@ -76,6 +76,44 @@ export async function getParticipants(
 	assertAdmin(actor);
 	const login = z.string().regex(loginPattern).optional().parse(input);
 	return readParticipantReports(database, login, 2, now);
+}
+
+export async function nextShift(database: typeof db, login: string, now: Date) {
+	const [config] = await database
+		.select({ poolStart: settings.poolStart, activeWeek: settings.activeWeek })
+		.from(settings)
+		.where(eq(settings.id, 1));
+	if (!config) throw new Error('Settings row is missing');
+	const rows = await database
+		.select({
+			id: events.id,
+			title: events.title,
+			kind: events.kind,
+			week: events.week,
+			weekday: events.weekday,
+			eventDate: events.eventDate,
+			startTime: events.startTime,
+			endTime: events.endTime
+		})
+		.from(registrations)
+		.innerJoin(events, eq(events.id, registrations.eventId))
+		.where(and(eq(registrations.participantLogin, login), lte(events.week, config.activeWeek)))
+		.orderBy(events.week, events.weekday, events.startTime, events.id);
+	for (const row of rows) {
+		const date = concreteDate(row, config.poolStart);
+		if (!isPassed(date, row.endTime, now))
+			return {
+				id: row.id,
+				title: row.title,
+				kind: row.kind,
+				week: row.week,
+				weekday: row.weekday,
+				date,
+				startTime: row.startTime.slice(0, 5),
+				endTime: row.endTime.slice(0, 5)
+			};
+	}
+	return null;
 }
 
 export async function getProfile(database: typeof db, actor: User | null, now = new Date()) {

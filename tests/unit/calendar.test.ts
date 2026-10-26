@@ -1,6 +1,12 @@
 import { expect, it, vi } from 'vitest';
 import { getCalendar } from '../../src/lib/server/domain/calendar.ts';
 import type { User } from '../../src/lib/server/auth/session.ts';
+vi.mock('../../src/lib/server/domain/reports.ts', () => ({
+	nextShift: vi.fn().mockResolvedValue(null)
+}));
+vi.mock('../../src/lib/server/domain/registrations.ts', () => ({
+	countWeeklyRegistrations: vi.fn().mockResolvedValue(0)
+}));
 vi.mock('../../src/lib/server/domain/events.ts', () => ({
 	readWeekEvents: vi.fn().mockResolvedValue([])
 }));

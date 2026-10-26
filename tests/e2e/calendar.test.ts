@@ -161,9 +161,11 @@ for (const { javaScriptEnabled, reducedMotion } of [
 							.getByRole('button')
 					).toHaveCount(0);
 					if (javaScriptEnabled) await page.getByRole('tab', { name: /^Lun/ }).click();
-					await expect(page.locator('[data-counter-value]')).toHaveText(
-						`0${limit ? '/3' : ''} · 0 ₳`
-					);
+					if (limit)
+						await expect(page.locator('[data-counter-value]')).toHaveText(
+							'0 di 3 turni questa settimana · 0 ₳'
+						);
+					else await expect(page.locator('[data-counter-value]')).toHaveCount(0);
 					await article.getByRole('button', { name: 'Prendo il turno', exact: true }).click();
 					const dialog = page.getByRole('dialog', { name: 'Il turno è tuo', exact: true });
 					await expect(dialog).toBeVisible();
@@ -185,9 +187,16 @@ for (const { javaScriptEnabled, reducedMotion } of [
 					await dialog.getByRole('button', { name: 'Chiudi', exact: true }).click();
 					await expect(dialog).not.toBeVisible();
 					await expect(article.locator('strong')).toHaveText(fixture.name);
-					await expect(page.locator('[data-counter-value]')).toHaveText(
-						`1${limit ? '/3' : ''} · 200 ₳`
-					);
+					if (limit)
+						await expect(page.locator('[data-counter-value]')).toHaveText(
+							'1 di 3 turni questa settimana · 200 ₳'
+						);
+					else await expect(page.locator('[data-counter-value]')).toHaveCount(0);
+					const next = page.getByRole('region', { name: 'Il tuo prossimo turno', exact: true });
+					await expect(next).toContainText(fixture.title);
+					await expect(
+						next.getByRole('link', { name: 'Scarica file ICS', exact: true })
+					).toHaveJSProperty('href', `${origin}/events/${fixture.id}/calendar.ics`);
 					await expect(article).toContainText('3/3');
 					await expect(article).toHaveClass(/\bmine\b/);
 					await expect(page.locator('.ticket-flyer,.ticket-restore,.paper-fiber')).toHaveCount(0);
@@ -196,9 +205,11 @@ for (const { javaScriptEnabled, reducedMotion } of [
 						article.getByRole('button', { name: 'Prendo il turno', exact: true })
 					).toBeVisible();
 					await expect(article).not.toHaveClass(/\bmine\b/);
-					await expect(page.locator('[data-counter-value]')).toHaveText(
-						`0${limit ? '/3' : ''} · 0 ₳`
-					);
+					if (limit)
+						await expect(page.locator('[data-counter-value]')).toHaveText(
+							'0 di 3 turni questa settimana · 0 ₳'
+						);
+					else await expect(page.locator('[data-counter-value]')).toHaveCount(0);
 					await expect(page.locator('.ticket-flyer,.ticket-restore,.paper-fiber')).toHaveCount(0);
 					expect((await page.request.get('/participants/123')).status()).toBe(404);
 					expect((await page.request.get('/events/2147483647/calendar.ics')).status()).toBe(404);
@@ -216,7 +227,9 @@ for (const { javaScriptEnabled, reducedMotion } of [
 					}
 					await client`UPDATE settings SET max_events_per_user=11 WHERE id=1`;
 					await page.reload();
-					await expect(page.locator('[data-counter-value]')).toHaveText('0/11 · 0 ₳');
+					await expect(page.locator('[data-counter-value]')).toHaveText(
+						'0 di 11 turni questa settimana · 0 ₳'
+					);
 					await expect(page.locator('[data-counter-slot]')).toHaveCount(0);
 					expect(alerts).toBe(0);
 				} finally {
@@ -241,6 +254,9 @@ test(
 			await expect(dialog.getByRole('link', { name: 'Google Calendar', exact: true })).toHaveCount(
 				0
 			);
+			await expect(
+				page.getByRole('region', { name: 'Il tuo prossimo turno', exact: true }).getByRole('link')
+			).toHaveCount(0);
 			const response = await page.request.get(`/events/${fixture.id}/calendar.ics`);
 			expect(response.status()).toBe(409);
 			expect(await response.text()).toContain("Impossibile determinare la data dell'evento");
@@ -267,3 +283,89 @@ test(
 		}
 	}
 );
+
+for (const javaScriptEnabled of [true, false]) {
+	test.describe(`weekly shifts JavaScript ${javaScriptEnabled}`, () => {
+		test.use({ javaScriptEnabled });
+		test(
+			'disables new bookings at the weekly limit and shows the next shift on both pages',
+			{ tag: '@shared-db' },
+			async ({ page, context }) => {
+				const fixture = await setup(page.request);
+				try {
+					await client`UPDATE settings SET max_events_per_user=1 WHERE id=1`;
+					const [second] =
+						await client`INSERT INTO events(title,week,weekday,event_date,start_time,end_time) VALUES (${'Second ' + fixture.name},2,1,'2099-01-05','12:00','13:00') RETURNING id`;
+					await page.goto('/calendar');
+					await expect(
+						page.getByRole('region', { name: 'Il tuo prossimo turno', exact: true })
+					).toHaveCount(0);
+					await page
+						.locator('.calendar')
+						.getByRole('article', { name: fixture.title, exact: true })
+						.getByRole('button', { name: 'Prendo il turno', exact: true })
+						.click();
+					await page
+						.getByRole('dialog')
+						.getByRole('button', { name: 'Chiudi', exact: true })
+						.click();
+					await expect(page.locator('[data-counter-value]')).toHaveText(
+						'1 di 1 turni questa settimana · 200 ₳'
+					);
+					const secondButton = page
+						.locator('.calendar')
+						.getByRole('article', { name: 'Second ' + fixture.name, exact: true })
+						.getByRole('button', { name: 'Prendo il turno', exact: true });
+					await expect(secondButton).toBeDisabled();
+					await expect(secondButton).toHaveAttribute('aria-describedby', 'weekly-limit-reason');
+					await expect(page.locator('#weekly-limit-reason')).toContainText(
+						'Hai raggiunto il limite massimo di 1 eventi'
+					);
+					await expect(
+						page.getByRole('region', { name: 'Il tuo prossimo turno', exact: true })
+					).toContainText(fixture.title);
+					// The server enforces the same limit even if the disabled UI is bypassed.
+					const rejected = await page.request.post('/calendar?/register', {
+						form: { id: String(second.id) },
+						headers: { origin }
+					});
+					expect(rejected.status()).toBe(400);
+					await page.goto('/calendar?week=1');
+					await expect(page.locator('[data-counter-value]')).toContainText('0 di 1 turni');
+					await expect(
+						page.getByRole('region', { name: 'Il tuo prossimo turno', exact: true })
+					).toContainText(fixture.title);
+					await page.goto('/profile');
+					const next = page.getByRole('region', { name: 'Il tuo prossimo turno', exact: true });
+					await expect(next).toContainText(fixture.title);
+					await expect(next).toContainText('09:00–11:00');
+					await expect(next.getByRole('link')).toHaveJSProperty(
+						'href',
+						`${origin}/events/${fixture.id}/calendar.ics`
+					);
+					if (javaScriptEnabled) {
+						const otherTab = await context.newPage();
+						try {
+							await otherTab.goto('/calendar');
+							await otherTab
+								.locator('.calendar')
+								.getByRole('article', { name: fixture.title, exact: true })
+								.getByRole('button', { name: 'Lascio', exact: true })
+								.first()
+								.click();
+							await expect(next).toHaveCount(0);
+						} finally {
+							await otherTab.close();
+						}
+					}
+					await client`UPDATE settings SET max_events_per_user=0 WHERE id=1`;
+					await page.goto('/calendar');
+					await expect(page.locator('[data-counter-value]')).toHaveCount(0);
+					await expect(secondButton).toBeEnabled();
+				} finally {
+					await fixture.cleanup();
+				}
+			}
+		);
+	});
+}

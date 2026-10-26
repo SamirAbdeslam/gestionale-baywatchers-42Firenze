@@ -305,5 +305,7 @@
 	"whitelist_note": "Togliere qualcuno dalla lista non cancella i turni che ha già preso.",
 	"template_more_details": "Giorno e descrizione",
 	"nav_language": "Lingua",
-	"error_campus": "L'accesso è riservato agli studenti e allo staff di 42 Firenze."
+	"error_campus": "L'accesso è riservato agli studenti e allo staff di 42 Firenze.",
+	"shift_next_title": "Il tuo prossimo turno",
+	"calendar_weekly_shifts": "{count} di {limit} turni questa settimana"
 }

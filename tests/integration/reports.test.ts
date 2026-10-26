@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { afterAll, beforeEach, expect, it, vi } from 'vitest';
 import * as schema from '../../src/lib/server/db/schema.ts';
 import type { User } from '../../src/lib/server/auth/session.ts';
-import { getParticipants } from '../../src/lib/server/domain/reports.ts';
+import { getParticipants, nextShift } from '../../src/lib/server/domain/reports.ts';
 import { GET as summary } from '../../src/routes/admin/participants/summary.csv/+server.ts';
 import { GET as detailed } from '../../src/routes/admin/participants/detailed.csv/+server.ts';
 import { GET as personal } from '../../src/routes/admin/participants/[login].csv/+server.ts';
@@ -150,4 +150,74 @@ it('serves all three CSV endpoints with exact headers, filenames, CRLF and valid
 		personal({ ...event, params: { login: 'bad login' } } as Parameters<typeof personal>[0])
 	).rejects.toMatchObject({ status: 400 });
 	expect(await client`SELECT * FROM action_logs`).toHaveLength(0);
+});
+
+const shiftNow = new Date('2026-10-26T10:00:00Z');
+async function bookedShift(
+	values: Partial<typeof schema.events.$inferInsert> = {},
+	login = 'alpha'
+) {
+	const [event] = await database
+		.insert(schema.events)
+		.values({
+			title: 'Next shift',
+			kind: 'exam',
+			week: 1,
+			weekday: 1,
+			startTime: '13:00',
+			endTime: '14:00',
+			...values
+		})
+		.returning();
+	await database
+		.insert(schema.registrations)
+		.values({ eventId: event.id, participantLogin: login, attended: false });
+	return event;
+}
+it('returns no next shift for no bookings, other logins or only passed events', async () => {
+	await client`UPDATE settings SET active_week=1 WHERE id=1`;
+	expect(await nextShift(database, 'alpha', shiftNow)).toBeNull();
+	await bookedShift({}, 'other');
+	await bookedShift({ eventDate: '2000-01-01' });
+	expect(await nextShift(database, 'alpha', shiftNow)).toBeNull();
+});
+it('excludes unactivated weeks even with an explicit future date, then includes them on activation', async () => {
+	await client`UPDATE settings SET active_week=1 WHERE id=1`;
+	const event = await bookedShift({ week: 2, eventDate: '2099-01-01' });
+	expect(await nextShift(database, 'alpha', shiftNow)).toBeNull();
+	await client`UPDATE settings SET active_week=2 WHERE id=1`;
+	expect(await nextShift(database, 'alpha', shiftNow)).toMatchObject({
+		id: event.id,
+		week: 2,
+		date: '2099-01-01'
+	});
+});
+it('orders next shifts by week, weekday, start time and id, retaining absent bookings', async () => {
+	await client`UPDATE settings SET active_week=2 WHERE id=1`;
+	await bookedShift({ week: 2 });
+	await bookedShift({ weekday: 2 });
+	await bookedShift({ startTime: '16:00', endTime: '17:00' });
+	const first = await bookedShift({ title: 'First', startTime: '12:00', endTime: '13:00' });
+	await bookedShift({ title: 'Same time later id', startTime: '12:00', endTime: '13:00' });
+	expect(await nextShift(database, 'alpha', shiftNow)).toEqual({
+		id: first.id,
+		title: 'First',
+		kind: 'exam',
+		week: 1,
+		weekday: 1,
+		date: '2026-10-26',
+		startTime: '12:00',
+		endTime: '13:00'
+	});
+});
+it('keeps an event exactly at its Rome end time and excludes it one millisecond later', async () => {
+	await client`UPDATE settings SET active_week=1 WHERE id=1`;
+	const event = await bookedShift({ startTime: '10:00', endTime: '11:00' });
+	expect(await nextShift(database, 'alpha', shiftNow)).toMatchObject({ id: event.id });
+	expect(await nextShift(database, 'alpha', new Date(shiftNow.getTime() + 1))).toBeNull();
+});
+it('keeps undated bookings when the pool is unset', async () => {
+	await client`UPDATE settings SET active_week=1,pool_start=null WHERE id=1`;
+	const event = await bookedShift();
+	expect(await nextShift(database, 'alpha', shiftNow)).toMatchObject({ id: event.id, date: null });
 });

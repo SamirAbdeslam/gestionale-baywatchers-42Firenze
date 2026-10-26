@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { and, count, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import type { db, Transaction } from '../db/index.ts';
+import type { db, Transaction, Database } from '../db/index.ts';
 import { users, events, registrations, settings, whitelist } from '../db/schema.ts';
 import { assertAdmin, assertUser, lockAdmin, loginPattern } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
@@ -55,6 +55,15 @@ const failure = (
 	params: { count?: number } = {}
 ): RegistrationResult => ({ ok: false, status, messages: [{ type: 'error', key, params }] });
 type Operation = 'register' | 'unregister' | 'add' | 'remove' | 'attendance';
+
+export async function countWeeklyRegistrations(database: Database, login: string, week: number) {
+	const [total] = await database
+		.select({ n: count() })
+		.from(registrations)
+		.innerJoin(events, eq(registrations.eventId, events.id))
+		.where(and(eq(registrations.participantLogin, login), eq(events.week, week)));
+	return total.n;
+}
 
 async function passed(tx: Transaction, event: typeof events.$inferSelect, now: Date) {
 	const [config] = await tx.select().from(settings).where(eq(settings.id, 1));
@@ -117,12 +126,8 @@ async function changeRegistration(
 				const { config, isPassed: ended } = await passed(tx, event, now);
 				if (ended) return failure('error_event_passed');
 				if (config.maxEventsPerUser > 0) {
-					const [total] = await tx
-						.select({ n: count() })
-						.from(registrations)
-						.innerJoin(events, eq(registrations.eventId, events.id))
-						.where(and(eq(registrations.participantLogin, login), eq(events.week, event.week)));
-					if (total.n >= config.maxEventsPerUser)
+					const total = await countWeeklyRegistrations(tx, login, event.week);
+					if (total >= config.maxEventsPerUser)
 						return failure('error_weekly_limit', 400, { count: config.maxEventsPerUser });
 				}
 				const [existing] = await tx

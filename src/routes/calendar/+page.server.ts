@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { formAction } from '#lib/server/form-action.ts';
 import { register, unregister } from '#lib/server/domain/registrations.ts';
 import { getCalendar } from '#lib/server/domain/calendar.ts';
-import { formatWeekDates } from '#lib/server/domain/dates.ts';
+import { formatWeekDates, formatEventDate } from '#lib/server/domain/dates.ts';
 import { getLocale } from '#lib/paraglide/runtime.js';
 import { m } from '#lib/paraglide/messages.js';
 import type { Actions, PageServerLoad } from './$types';
@@ -20,6 +20,12 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 		);
 		return {
 			...data,
+			nextShift: data.nextShift
+				? {
+						...data.nextShift,
+						formattedDate: formatEventDate(data.nextShift.date, getLocale())
+					}
+				: null,
 			...formatWeekDates(data, getLocale())
 		};
 	} catch (cause) {

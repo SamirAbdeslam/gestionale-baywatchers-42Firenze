@@ -170,6 +170,7 @@ it('formats the own profile load, ignores target-user query parameters and prese
 	await fixture();
 	await client`UPDATE settings SET pool_start=null WHERE id=1`;
 	const event = {
+		depends: () => {},
 		locals: { user: actor },
 		url: new URL('http://localhost/profile?login=staff&userId=2')
 	};

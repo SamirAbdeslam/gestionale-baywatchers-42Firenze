@@ -305,5 +305,7 @@
 	"whitelist_note": "Retirer quelqu’un de la liste n’annule pas les créneaux déjà pris.",
 	"template_more_details": "Jour et description",
 	"nav_language": "Langue",
-	"error_campus": "L’accès est réservé aux étudiants et au personnel de 42 Firenze."
+	"error_campus": "L’accès est réservé aux étudiants et au personnel de 42 Firenze.",
+	"shift_next_title": "Votre prochain créneau",
+	"calendar_weekly_shifts": "{count} créneaux sur {limit} cette semaine"
 }

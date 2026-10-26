@@ -1,14 +1,27 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { invalidate } from '$app/navigation';
+	import { listenRealtime } from '#lib/realtime.ts';
+	import NextShift from '#lib/components/NextShift.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { formatNumber } from '#lib/format.ts';
 	import { weekdays } from '#lib/weekdays.ts';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
+	onMount(() => {
+		const reload = () => {
+			void invalidate('app:profile');
+		};
+		return listenRealtime((event) => {
+			if (event.type !== 'log_created') reload();
+		}, reload);
+	});
 </script>
 
 <svelte:head><title>{m.nav_profile()} — {m.app_name()}</title></svelte:head>
 <h1 class="sr-only">{m.nav_profile()}</h1>
+{#if data.nextShift}<NextShift shift={data.nextShift} />{/if}
 <div class="profile-layout">
 	<section class="profile" aria-label={m.nav_profile()}>
 		<div class="identity">

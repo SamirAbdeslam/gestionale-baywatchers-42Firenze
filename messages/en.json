@@ -305,5 +305,7 @@
 	"whitelist_note": "Removing someone from the list does not cancel the shifts they have already taken.",
 	"template_more_details": "Day and description",
 	"nav_language": "Language",
-	"error_campus": "Access is restricted to students and staff of 42 Firenze."
+	"error_campus": "Access is restricted to students and staff of 42 Firenze.",
+	"shift_next_title": "Your next shift",
+	"calendar_weekly_shifts": "{count} of {limit} shifts this week"
 }

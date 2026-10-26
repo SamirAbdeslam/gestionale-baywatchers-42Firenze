@@ -6,6 +6,7 @@
 	import { listenRealtime } from '#lib/realtime.ts';
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import NextShift from '#lib/components/NextShift.svelte';
 	import WeekNav from '#lib/components/WeekNav.svelte';
 	import ParticipantBadge from '#lib/components/ParticipantBadge.svelte';
 	import { calendarTotals } from '#lib/calendar-view.ts';
@@ -56,6 +57,9 @@
 		if (closest) selectedDay = Number(closest.dataset.weekday);
 	}
 	const totals = $derived(calendarTotals(data.events, data.user?.login ?? ''));
+	const weeklyLimitReached = $derived(
+		data.weeklyRegistrationCount !== null && data.weeklyRegistrationCount >= data.maxEventsPerUser
+	);
 	const registered = $derived(data.events.find((event) => event.id === form?.registeredEventId));
 	let activated = $state<{ week: number } | null>(null);
 	let busy = $state(false);
@@ -118,28 +122,36 @@
 				)?.date}
 			</p>{/if}
 		<h1>{m.calendar_week({ week: formatNumber(data.week) })}</h1>
-		<section class="shift-counter" aria-label={m.calendar_your_shifts()}>
-			<h2>{m.calendar_your_shifts()}</h2>
-			<div class="counter-values">
-				{#if data.maxEventsPerUser > 0 && data.maxEventsPerUser <= 10}<div
-						class="counter-seats"
-						aria-hidden="true"
+		{#if data.weeklyRegistrationCount !== null}<section
+				class="shift-counter"
+				aria-label={m.calendar_your_shifts()}
+			>
+				<h2>{m.calendar_your_shifts()}</h2>
+				<div class="counter-values">
+					{#if data.maxEventsPerUser > 0 && data.maxEventsPerUser <= 10}<div
+							class="counter-seats"
+							aria-hidden="true"
+						>
+							{#each Array.from({ length: data.maxEventsPerUser }, (_, i) => i) as i (i)}<span
+									class="counter-seat"
+									class:own={i < data.weeklyRegistrationCount!}
+									data-counter-slot={i}
+								></span>{/each}
+						</div>{/if}
+					<span class="mono" data-counter-value
+						>{m.calendar_weekly_shifts({
+							count: formatNumber(data.weeklyRegistrationCount),
+							limit: formatNumber(data.maxEventsPerUser)
+						})} · {formatNumber(totals.compensation)} ₳</span
 					>
-						{#each Array.from({ length: data.maxEventsPerUser }, (_, i) => i) as i (i)}<span
-								class="counter-seat"
-								class:own={i < totals.count}
-								data-counter-slot={i}
-							></span>{/each}
-					</div>{/if}
-				<span class="mono" data-counter-value
-					>{formatNumber(totals.count)}{data.maxEventsPerUser > 0
-						? `/${formatNumber(data.maxEventsPerUser)}`
-						: ''} · {formatNumber(totals.compensation)} ₳</span
-				>
-			</div>
-		</section>
+				</div>
+			</section>{/if}
 		<WeekNav week={data.week} activeWeek={data.activeWeek} />
 	</div>
+	{#if weeklyLimitReached}<p id="weekly-limit-reason">
+			{m.error_weekly_limit({ count: formatNumber(data.maxEventsPerUser) })}
+		</p>{/if}
+	{#if data.nextShift}<NextShift shift={data.nextShift} />{/if}
 	{#if registered}
 		<Dialog
 			label={m.calendar_add()}
@@ -276,7 +288,13 @@
 									use:enhance={animateRegistration}
 								>
 									<input type="hidden" name="id" value={event.id} />
-									<button class:danger={event.state === 'registered'} type="submit" disabled={busy}
+									<button
+										class:danger={event.state === 'registered'}
+										type="submit"
+										disabled={busy || (event.state === 'available' && weeklyLimitReached)}
+										aria-describedby={event.state === 'available' && weeklyLimitReached
+											? 'weekly-limit-reason'
+											: undefined}
 										>{event.state === 'registered'
 											? m.calendar_unregister()
 											: m.calendar_register()}</button

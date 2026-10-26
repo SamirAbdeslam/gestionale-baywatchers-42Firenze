@@ -6,6 +6,8 @@ import { assertUser } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { concreteDate, visibleWeekDays, digits, isPassed } from './dates.ts';
 import { readWeekEvents } from './events.ts';
+import { nextShift } from './reports.ts';
+import { countWeeklyRegistrations } from './registrations.ts';
 import { googleCalendarUrl } from './ics.ts';
 
 const querySchema = z.object({ week: digits(5).pipe(z.number().int()).optional() });
@@ -58,6 +60,11 @@ export async function getCalendar(
 		week,
 		activeWeek: config.activeWeek,
 		maxEventsPerUser: config.maxEventsPerUser,
+		weeklyRegistrationCount:
+			config.maxEventsPerUser > 0
+				? await countWeeklyRegistrations(database, actor.login, week)
+				: null,
+		nextShift: await nextShift(database, actor.login, now),
 		days: visibleWeekDays(visibleEvents, config.poolStart, week),
 		events: visibleEvents
 	};

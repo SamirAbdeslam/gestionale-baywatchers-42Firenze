@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as schema from '../../src/lib/server/db/schema.ts';
 import type { User } from '../../src/lib/server/auth/session.ts';
 import { getCalendar } from '../../src/lib/server/domain/calendar.ts';
+import { countWeeklyRegistrations, register } from '../../src/lib/server/domain/registrations.ts';
 import { downloadIcs } from '../../src/lib/server/domain/ics.ts';
 import { GET } from '../../src/routes/events/[id]/calendar.ics/+server.ts';
 import { actions } from '../../src/routes/calendar/+page.server.ts';
@@ -214,4 +215,58 @@ it('hides future-week ICS from users while preserving admin access', async () =>
 	} as Parameters<typeof GET>[0]);
 	expect(response.status).toBe(200);
 	expect(await response.text()).toContain('SUMMARY:Fixture');
+});
+
+it('shares the weekly count between calendar and registration, including absences and only the displayed week', async () => {
+	await client`UPDATE settings SET max_events_per_user=2 WHERE id=1`;
+	await database.insert(schema.whitelist).values({ login: user.login });
+	const absent = await event();
+	const present = await event({ weekday: 2 });
+	const otherWeek = await event({ week: 1 });
+	const available = await event({ weekday: 3 });
+	await database.insert(schema.registrations).values([
+		{ eventId: absent.id, participantLogin: user.login, attended: false },
+		{ eventId: present.id, participantLogin: user.login },
+		{ eventId: otherWeek.id, participantLogin: user.login },
+		{ eventId: available.id, participantLogin: 'other' }
+	]);
+	expect(await countWeeklyRegistrations(database, user.login, 3)).toBe(2);
+	const data = await getCalendar(database, user, {}, now);
+	expect(data.weeklyRegistrationCount).toBe(2);
+	expect((await getCalendar(database, user, { week: '1' }, now)).weeklyRegistrationCount).toBe(1);
+	expect(
+		await register(
+			database,
+			user,
+			{ id: available.id },
+			{ ipAddress: '127.0.0.1', userAgent: 'weekly count test' },
+			now
+		)
+	).toMatchObject({
+		ok: false,
+		messages: [{ key: 'error_weekly_limit', params: { count: 2 } }]
+	});
+	await client`UPDATE settings SET max_events_per_user=0 WHERE id=1`;
+	expect((await getCalendar(database, user, {}, now)).weeklyRegistrationCount).toBeNull();
+	expect(
+		(
+			await register(
+				database,
+				user,
+				{ id: available.id },
+				{ ipAddress: '127.0.0.1', userAgent: 'weekly count test' },
+				now
+			)
+		).ok
+	).toBe(true);
+});
+it('returns the next shift independently of the displayed week', async () => {
+	const future = await event({ week: 3, eventDate: '2099-01-01' });
+	await database
+		.insert(schema.registrations)
+		.values({ eventId: future.id, participantLogin: user.login });
+	expect((await getCalendar(database, user, { week: '1' }, now)).nextShift).toMatchObject({
+		id: future.id,
+		week: 3
+	});
 });
