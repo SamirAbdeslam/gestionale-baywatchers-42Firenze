@@ -300,3 +300,89 @@ test(
 		}
 	}
 );
+
+for (const javaScriptEnabled of [true, false]) {
+	test.describe(`M19 JavaScript ${javaScriptEnabled}`, () => {
+		test.use({ javaScriptEnabled });
+		test(
+			'duplicates an event and saves its week as a template that can be applied',
+			{ tag: '@shared-db' },
+			async ({ page }) => {
+				const name = `M19_${randomUUID().slice(0, 8)}`;
+				const savedEvents = await client`SELECT * FROM events`;
+				const savedRegistrations = await client`SELECT * FROM registrations`;
+				let templateId: number | undefined;
+				try {
+					await login(page.request);
+					await client`DELETE FROM events WHERE week IN (3,4)`;
+					const [source] =
+						await client`INSERT INTO events (title,description,kind,week,weekday,event_date,start_time,end_time,max_slots,compensation) VALUES (${name},'Edited preset','rush',3,7,'2026-11-01','10:00','11:00',3,450) RETURNING id`;
+					await client`INSERT INTO registrations (event_id,participant_login) VALUES (${source.id},'m19_participant')`;
+					await page.goto('/admin?week=3');
+					const article = page.getByRole('article', { name, exact: true });
+					await article.getByRole('button', { name: 'Duplica', exact: true }).click();
+					const duplicate = page.getByRole('dialog', { name: 'Duplica', exact: true });
+					await expect(duplicate.getByLabel('Settimana evento', { exact: true })).toHaveValue('3');
+					await expect(duplicate.getByLabel('Giorno', { exact: true })).toHaveValue('7');
+					await duplicate.getByLabel('Settimana evento', { exact: true }).selectOption('4');
+					await duplicate.getByLabel('Giorno', { exact: true }).selectOption('1');
+					await duplicate.getByRole('button', { name: 'Duplica', exact: true }).click();
+					await expect(page.getByRole('status')).toContainText('Evento creato');
+					await page.goto('/admin?week=4');
+					await expect(article).toBeVisible();
+					await expect(article).toContainText('0/3');
+					await expect(article).not.toContainText('m19_participant');
+					await page
+						.getByRole('button', { name: 'Salva settimana come template', exact: true })
+						.click();
+					const save = page.getByRole('dialog', {
+						name: 'Salva settimana come template',
+						exact: true
+					});
+					await expect(save.getByLabel('Settimana target', { exact: true })).toHaveValue('4');
+					await save.getByLabel('Nome template', { exact: true }).fill(name);
+					await save.getByLabel('Descrizione template', { exact: true }).fill('Saved week');
+					await save.getByLabel('Settimana target', { exact: true }).selectOption('3');
+					await save.getByRole('button', { name: 'Salva template', exact: true }).click();
+					await expect(page.getByRole('status')).toContainText(`Template "${name}" creato`);
+					const [template] = await client`SELECT id FROM week_templates WHERE name=${name}`;
+					templateId = template.id;
+					await page.goto('/admin/templates');
+					const card = page.getByRole('article', { name, exact: true });
+					await expect(card).toContainText('1 eventi');
+					await card.getByRole('checkbox', { name: 'Sovrascrivi', exact: true }).check();
+					await card.getByRole('button', { name: /^Applica template W/ }).click();
+					await expect(page.getByRole('status')).toContainText(`Template "${name}" applicato!`);
+					await page.goto('/admin?week=3');
+					await expect(article).toBeVisible();
+					await expect(article).toContainText('0/3');
+					const [applied] = await client`SELECT weekday,kind,event_date FROM events WHERE week=3`;
+					expect(applied).toMatchObject({ weekday: 1, kind: 'rush', event_date: null });
+					expect(
+						await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
+					).toBe(true);
+					await client`DELETE FROM events WHERE week=4`;
+					await page.goto('/admin?week=4');
+					await page
+						.getByRole('button', { name: 'Salva settimana come template', exact: true })
+						.click();
+					await save.getByLabel('Nome template', { exact: true }).fill(name + '_empty');
+					await save.getByRole('button', { name: 'Salva template', exact: true }).click();
+					await expect(page.getByRole('status')).toContainText('La settimana è vuota');
+					expect(
+						await client`SELECT id FROM week_templates WHERE name=${name + '_empty'}`
+					).toHaveLength(0);
+				} finally {
+					await client.begin(async (tx) => {
+						await tx`DELETE FROM events`;
+						if (savedEvents.length) await tx`INSERT INTO events ${tx(savedEvents)}`;
+						if (savedRegistrations.length)
+							await tx`INSERT INTO registrations ${tx(savedRegistrations)}`;
+						if (templateId !== undefined)
+							await tx`DELETE FROM week_templates WHERE id=${templateId}`;
+					});
+				}
+			}
+		);
+	});
+}

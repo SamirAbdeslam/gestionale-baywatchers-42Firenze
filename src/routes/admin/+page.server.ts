@@ -9,6 +9,7 @@ import {
 } from '#lib/server/domain/settings.ts';
 import {
 	createEvent,
+	duplicateEvent,
 	updateEvent,
 	deleteEvent,
 	deleteDayEvents,
@@ -16,6 +17,7 @@ import {
 	deleteAllEvents,
 	listWeekEvents
 } from '#lib/server/domain/events.ts';
+import { saveWeekAsTemplate } from '#lib/server/domain/templates.ts';
 import { formAction } from '#lib/server/form-action.ts';
 import {
 	addParticipant,
@@ -53,6 +55,12 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 	}
 };
 export const actions: Actions = {
+	duplicateEvent: (event) =>
+		formAction(event, duplicateEvent, {
+			success: 'admin_event_created',
+			notFound: 'error_event_not_found'
+		}),
+	saveWeekAsTemplate: (event) => formAction(event, saveWeekAsTemplate),
 	setPoolDates: (event) =>
 		formAction(event, setPoolDates, {
 			success: 'admin_settings_saved',

@@ -6,6 +6,7 @@ import * as schema from '../../src/lib/server/db/schema.ts';
 import type { User } from '../../src/lib/server/auth/session.ts';
 import {
 	createEvent,
+	duplicateEvent,
 	updateEvent,
 	deleteEvent,
 	deleteDayEvents,
@@ -249,6 +250,7 @@ it.each([updateEvent, deleteEvent])(
 	}
 );
 it.each([
+	duplicateEvent,
 	createEvent,
 	updateEvent,
 	deleteEvent,
@@ -354,5 +356,78 @@ it.each([
 		expect(messages).toHaveLength(0);
 	} finally {
 		await client`ALTER TABLE action_logs DROP CONSTRAINT test_reject_events`;
+	}
+});
+
+it('duplicates edited preset fields with no fixed date or registrations and one creation audit', async () => {
+	const source = await fixture({
+		kind: 'exam',
+		title: 'Edited title',
+		description: '',
+		compensation: 321,
+		eventDate: '2026-11-01'
+	});
+	const copy = await duplicateEvent(
+		database,
+		actor,
+		{ id: source.id, week: '4', weekday: '1' },
+		info,
+		now
+	);
+	expect(copy).toMatchObject({
+		title: source.title,
+		description: '',
+		kind: 'exam',
+		compensation: 321,
+		startTime: source.startTime,
+		endTime: source.endTime,
+		maxSlots: source.maxSlots,
+		week: 4,
+		weekday: 1,
+		eventDate: null,
+		createdAt: now,
+		updatedAt: now
+	});
+	expect(copy.id).not.toBe(source.id);
+	expect(await client`SELECT * FROM registrations WHERE event_id=${copy.id}`).toHaveLength(0);
+	expect(await client`SELECT * FROM registrations WHERE event_id=${source.id}`).toHaveLength(2);
+	const logs = await database.select().from(schema.actionLogs);
+	expect(logs).toHaveLength(1);
+	expect(logs[0]).toMatchObject({
+		actionType: 'CREATE_EVENT',
+		description: `Duplicato dall'evento ID ${source.id}`,
+		resourceId: String(copy.id),
+		newValue: { id: copy.id, eventDate: null }
+	});
+	expect(messages).toEqual([
+		{ type: 'log_created', id: logs[0].id },
+		{ type: 'event_changed', eventId: copy.id, week: 4, action: 'create' }
+	]);
+});
+it('returns 404 and rejects invalid duplicate destinations without writes', async () => {
+	await expect(
+		duplicateEvent(database, actor, { id: 999, week: 1, weekday: 1 }, info, now)
+	).rejects.toMatchObject({ status: 404 });
+	const source = await fixture();
+	for (const invalid of [{ week: 0 }, { week: 5 }, { weekday: 0 }, { weekday: 8 }]) {
+		await expect(
+			duplicateEvent(database, actor, { id: source.id, week: 1, weekday: 1, ...invalid }, info, now)
+		).rejects.toThrow();
+	}
+	expect(await client`SELECT * FROM events`).toHaveLength(1);
+	expect(await client`SELECT * FROM action_logs`).toHaveLength(0);
+	expect(messages).toHaveLength(0);
+});
+it('rolls back a duplicate if its creation audit fails', async () => {
+	const source = await fixture();
+	await client`ALTER TABLE action_logs ADD CONSTRAINT test_duplicate_audit CHECK (action_type = 'LOGIN')`;
+	try {
+		await expect(
+			duplicateEvent(database, actor, { id: source.id, week: 4, weekday: 7 }, info, now)
+		).rejects.toThrow();
+		expect(await client`SELECT * FROM events`).toHaveLength(1);
+		expect(messages).toHaveLength(0);
+	} finally {
+		await client`ALTER TABLE action_logs DROP CONSTRAINT test_duplicate_audit`;
 	}
 });

@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { count, desc, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import type { db } from '../db/index.ts';
+import type { db, Transaction } from '../db/index.ts';
 import type { User } from '../auth/session.ts';
 import { assertAdmin, lockAdmin } from '../auth/guards.ts';
 import { events, settings, templateEvents, weekTemplates } from '../db/schema.ts';
@@ -28,6 +28,7 @@ export type TemplateNotice = {
 		| 'template_applied'
 		| 'template_existing'
 		| 'template_empty'
+		| 'template_week_empty'
 		| 'template_import_empty'
 		| 'template_imported'
 		| 'template_skipped';
@@ -77,31 +78,104 @@ export async function createTemplate(
 	const { events: entries, ...details } = templateSchema.parse(input);
 	const logId = await database.transaction(async (tx) => {
 		const user = await lockAdmin(tx, actor);
-		const [template] = await tx
-			.insert(weekTemplates)
-			.values({ ...details, createdAt: now })
-			.returning();
-		await tx.insert(templateEvents).values(
-			entries.map((entry) => ({
-				...entry,
-				kind: inferKind(entry.title),
-				templateId: template.id
-			}))
+		return insertTemplate(
+			tx,
+			user,
+			details,
+			entries.map((entry) => ({ ...entry, kind: inferKind(entry.title) })),
+			info,
+			now
 		);
-		return audit(tx, {
-			...info,
-			actor: user,
-			actionType: 'CREATE_TEMPLATE',
-			description: `Creato template '${template.name}' per la settimana ${template.targetWeek}.`,
-			resourceType: 'template',
-			resourceId: String(template.id)
-		});
 	});
 	publish({ type: 'log_created', id: logId });
 	return {
 		ok: true,
 		messages: [notice('success', 'template_created', { name: details.name, count: entries.length })]
 	};
+}
+
+async function insertTemplate(
+	tx: Transaction,
+	user: User,
+	details: Omit<z.output<typeof templateSchema>, 'events'>,
+	entries: (z.output<typeof templateEventSchema> & { kind: EventKind })[],
+	info: RequestInfo,
+	now: Date
+) {
+	const [template] = await tx
+		.insert(weekTemplates)
+		.values({ ...details, createdAt: now })
+		.returning();
+	await tx.insert(templateEvents).values(
+		entries.map((entry) => ({
+			...entry,
+			templateId: template.id
+		}))
+	);
+	return audit(tx, {
+		...info,
+		actor: user,
+		actionType: 'CREATE_TEMPLATE',
+		description: `Creato template '${template.name}' per la settimana ${template.targetWeek}.`,
+		resourceType: 'template',
+		resourceId: String(template.id)
+	});
+}
+
+export async function saveWeekAsTemplate(
+	database: typeof db,
+	actor: User | null,
+	input: unknown,
+	info: RequestInfo,
+	now: Date
+) {
+	assertAdmin(actor);
+	const { week, ...details } = templateSchema
+		.omit({ events: true })
+		.extend({
+			week: digits(1).pipe(weekNumber),
+			targetWeek: digits(1).pipe(weekNumber).optional()
+		})
+		.parse(input);
+	const targetWeek = details.targetWeek ?? week;
+	const result = await database.transaction(async (tx) => {
+		const user = await lockAdmin(tx, actor);
+		const rows = await tx
+			.select()
+			.from(events)
+			.where(eq(events.week, week))
+			.orderBy(events.weekday, events.startTime, events.id)
+			.for('update');
+		if (!rows.length) return { ok: false, messages: [notice('warning', 'template_week_empty')] };
+		const parsed = templateSchema.parse({
+			...details,
+			targetWeek,
+			events: rows.map((row) => ({
+				...row,
+				startTime: row.startTime.slice(0, 5),
+				endTime: row.endTime.slice(0, 5)
+			}))
+		});
+		const logId = await insertTemplate(
+			tx,
+			user,
+			{ name: parsed.name, description: parsed.description, targetWeek },
+			parsed.events.map((entry, index) => ({
+				...entry,
+				kind: rows[index].kind
+			})),
+			info,
+			now
+		);
+		return {
+			ok: true,
+			messages: [notice('success', 'template_created', { name: parsed.name, count: rows.length })],
+			logId
+		};
+	});
+	if ('logId' in result && result.logId !== undefined)
+		publish({ type: 'log_created', id: result.logId });
+	return { ok: result.ok, messages: result.messages };
 }
 
 export async function applyTemplate(

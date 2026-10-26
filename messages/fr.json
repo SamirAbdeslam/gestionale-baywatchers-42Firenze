@@ -307,5 +307,8 @@
 	"nav_language": "Langue",
 	"error_campus": "L’accès est réservé aux étudiants et au personnel de 42 Firenze.",
 	"shift_next_title": "Votre prochain créneau",
-	"calendar_weekly_shifts": "{count} créneaux sur {limit} cette semaine"
+	"calendar_weekly_shifts": "{count} créneaux sur {limit} cette semaine",
+	"admin_duplicate_event": "Dupliquer",
+	"admin_save_week_template": "Enregistrer la semaine comme modèle",
+	"template_week_empty": "La semaine est vide : aucun modèle créé."
 }

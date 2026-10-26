@@ -307,5 +307,8 @@
 	"nav_language": "Lingua",
 	"error_campus": "L'accesso è riservato agli studenti e allo staff di 42 Firenze.",
 	"shift_next_title": "Il tuo prossimo turno",
-	"calendar_weekly_shifts": "{count} di {limit} turni questa settimana"
+	"calendar_weekly_shifts": "{count} di {limit} turni questa settimana",
+	"admin_duplicate_event": "Duplica",
+	"admin_save_week_template": "Salva settimana come template",
+	"template_week_empty": "La settimana è vuota: nessun template creato."
 }

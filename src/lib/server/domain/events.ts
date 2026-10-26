@@ -118,25 +118,72 @@ export async function createEvent(
 	const { event, logId } = await database.transaction(async (tx) => {
 		// Match registration lock order before event writes and the audit's user FK.
 		const user = await lockAdmin(tx, actor);
-		const [event] = await tx
-			.insert(events)
-			.values({
-				...parsed,
-				...details,
-				createdAt: now,
-				updatedAt: now
-			})
-			.returning();
-		const logId = await audit(tx, {
-			...info,
-			actor: user,
-			actionType: 'CREATE_EVENT',
-			description: `Creato evento '${event.title}' (${event.weekday}, ${parsed.startTime}-${parsed.endTime}) per la settimana ${event.week}.`,
-			resourceType: 'event',
-			resourceId: String(event.id),
-			newValue: event
-		});
-		return { event, logId };
+		return insertEvent(tx, user, { ...parsed, ...details }, info, now);
+	});
+	publish({ type: 'log_created', id: logId });
+	publish({ type: 'event_changed', eventId: event.id, week: event.week, action: 'create' });
+	return event;
+}
+
+async function insertEvent(
+	tx: Transaction,
+	actor: User,
+	values: typeof events.$inferInsert,
+	info: RequestInfo,
+	now: Date,
+	description?: string
+) {
+	const [event] = await tx
+		.insert(events)
+		.values({ ...values, createdAt: now, updatedAt: now })
+		.returning();
+	const logId = await audit(tx, {
+		...info,
+		actor,
+		actionType: 'CREATE_EVENT',
+		description:
+			description ??
+			`Creato evento '${event.title}' (${event.weekday}, ${values.startTime}-${values.endTime}) per la settimana ${event.week}.`,
+		resourceType: 'event',
+		resourceId: String(event.id),
+		newValue: event
+	});
+	return { event, logId };
+}
+
+export async function duplicateEvent(
+	database: typeof db,
+	actor: User | null,
+	input: unknown,
+	info: RequestInfo,
+	now: Date
+) {
+	assertAdmin(actor);
+	const parsed = z.strictObject({ id, week, weekday }).parse(input);
+	const { event, logId } = await database.transaction(async (tx) => {
+		const user = await lockAdmin(tx, actor);
+		const [source] = await tx.select().from(events).where(eq(events.id, parsed.id)).for('update');
+		if (!source) error(404, m.error_event_not_found());
+		const { title, description, kind, startTime, endTime, maxSlots, compensation } = source;
+		return insertEvent(
+			tx,
+			user,
+			{
+				title,
+				description,
+				kind,
+				startTime,
+				endTime,
+				maxSlots,
+				compensation,
+				week: parsed.week,
+				weekday: parsed.weekday,
+				eventDate: null
+			},
+			info,
+			now,
+			`Duplicato dall'evento ID ${source.id}`
+		);
 	});
 	publish({ type: 'log_created', id: logId });
 	publish({ type: 'event_changed', eventId: event.id, week: event.week, action: 'create' });

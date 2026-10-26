@@ -175,6 +175,20 @@
 	<Dialog label={m.admin_create_event()} title={m.admin_create_event()}>
 		{@render createEventForm('create')}
 	</Dialog>
+	<Dialog label={m.admin_save_week_template()} title={m.admin_save_week_template()}>
+		<form method="POST" action={`?/saveWeekAsTemplate&week=${data.week}`} use:enhance>
+			<input type="hidden" name="week" value={data.week} />
+			<label for="week-template-name">{m.template_name()}</label>
+			<input id="week-template-name" name="name" maxlength="120" required />
+			<label for="week-template-description">{m.template_description()}</label>
+			<textarea id="week-template-description" name="description" maxlength="500"></textarea>
+			<label for="week-template-target">{m.template_target_week()}</label>
+			<select id="week-template-target" name="targetWeek" value={data.week}>
+				{#each weeks as week (week)}<option value={week}>{week}</option>{/each}
+			</select>
+			<button type="submit">{m.template_save()}</button>
+		</form>
+	</Dialog>
 	<div class="danger-actions">
 		<Dialog label={m.admin_delete_week()} title={m.admin_confirm_delete_week()}>
 			{@render confirmDelete('deleteWeekEvents', { week: data.week })}
@@ -401,6 +415,22 @@
 
 							{#snippet actions()}
 								<div class="event-actions">
+									<Dialog label={m.admin_duplicate_event()} title={m.admin_duplicate_event()}>
+										<form method="POST" action={`?/duplicateEvent&week=${data.week}`} use:enhance>
+											<input type="hidden" name="id" value={event.id} />
+											<label for={`duplicate-week-${event.id}`}>{m.admin_event_week()}</label>
+											<select id={`duplicate-week-${event.id}`} name="week" value={event.week}>
+												{#each weeks as week (week)}<option value={week}>{week}</option>{/each}
+											</select>
+											<label for={`duplicate-day-${event.id}`}>{m.admin_event_weekday()}</label>
+											<select id={`duplicate-day-${event.id}`} name="weekday" value={event.weekday}>
+												{#each weekdays as day, index (index)}<option value={index + 1}
+														>{day()}</option
+													>{/each}
+											</select>
+											<button type="submit">{m.admin_duplicate_event()}</button>
+										</form>
+									</Dialog>
 									<Dialog label={m.admin_edit_event()} title={m.admin_edit_event()} icon="edit">
 										<form method="POST" action={`?/updateEvent&week=${data.week}`} use:enhance>
 											<input type="hidden" name="id" value={event.id} />

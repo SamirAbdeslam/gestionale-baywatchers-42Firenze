@@ -307,5 +307,8 @@
 	"nav_language": "Language",
 	"error_campus": "Access is restricted to students and staff of 42 Firenze.",
 	"shift_next_title": "Your next shift",
-	"calendar_weekly_shifts": "{count} of {limit} shifts this week"
+	"calendar_weekly_shifts": "{count} of {limit} shifts this week",
+	"admin_duplicate_event": "Duplicate",
+	"admin_save_week_template": "Save week as template",
+	"template_week_empty": "The week is empty: no template created."
 }

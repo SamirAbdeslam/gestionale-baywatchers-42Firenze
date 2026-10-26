@@ -6,6 +6,7 @@ import * as schema from '../../src/lib/server/db/schema.ts';
 import type { User } from '../../src/lib/server/auth/session.ts';
 import {
 	createTemplate,
+	saveWeekAsTemplate,
 	applyTemplate,
 	deleteTemplate,
 	importTemplates,
@@ -393,4 +394,103 @@ it('returns an empty kind array and stable weekday/time/id order in the existing
 		eventCount: 4,
 		kinds: ['welcome', 'exam', 'cluster', 'rush']
 	});
+});
+
+it('saves only the selected week as a reusable template and applies it without dates or registrations', async () => {
+	const [source] = await database
+		.insert(schema.events)
+		.values({
+			...entry,
+			title: 'Edited exam',
+			description: 'Test',
+			kind: 'rush',
+			week: 1,
+			weekday: 7,
+			eventDate: '2026-11-01'
+		})
+		.returning();
+	await database.insert(schema.events).values({ ...entry, kind: 'custom', week: 2 });
+	await database
+		.insert(schema.registrations)
+		.values({ eventId: source.id, participantLogin: 'student' });
+	const result = await saveWeekAsTemplate(
+		database,
+		admin,
+		{ week: '1', name: 'Saved', description: 'Reusable', targetWeek: '4' },
+		info,
+		now
+	);
+	expect(result).toMatchObject({
+		ok: true,
+		messages: [{ key: 'template_created', params: { count: 1, name: 'Saved' } }]
+	});
+	const [template] = await listTemplates(database, admin);
+	expect(template).toMatchObject({
+		name: 'Saved',
+		description: 'Reusable',
+		targetWeek: 4,
+		eventCount: 1
+	});
+	const [copy] = await database.select().from(schema.templateEvents);
+	expect(copy).toMatchObject({
+		title: source.title,
+		description: source.description,
+		kind: 'rush',
+		weekday: 7,
+		startTime: source.startTime,
+		endTime: source.endTime,
+		maxSlots: source.maxSlots,
+		compensation: source.compensation
+	});
+	const logs = await database.select().from(schema.actionLogs);
+	expect(logs).toHaveLength(1);
+	expect(logs[0]).toMatchObject({ actionType: 'CREATE_TEMPLATE', resourceId: String(template.id) });
+	expect(messages).toEqual([{ type: 'log_created', id: logs[0].id }]);
+	await applyTemplate(database, admin, { id: template.id }, info, now);
+	const [applied] = await client`SELECT * FROM events WHERE week=4`;
+	expect(applied).toMatchObject({ title: source.title, kind: 'rush', event_date: null });
+	expect(await client`SELECT * FROM registrations WHERE event_id=${applied.id}`).toHaveLength(0);
+});
+it('warns for an empty week without creating a template or audit', async () => {
+	expect(
+		await saveWeekAsTemplate(database, admin, { week: 3, name: 'Empty' }, info, now)
+	).toMatchObject({ ok: false, messages: [{ type: 'warning', key: 'template_week_empty' }] });
+	expect(await client`SELECT * FROM week_templates`).toHaveLength(0);
+	expect(await client`SELECT * FROM action_logs`).toHaveLength(0);
+	expect(messages).toHaveLength(0);
+});
+it('defaults the target to the selected week and enforces the 200-event limit', async () => {
+	await database.insert(schema.events).values({ ...entry, kind: 'custom', week: 3 });
+	await saveWeekAsTemplate(database, admin, { week: 3, name: 'Default' }, info, now);
+	expect((await listTemplates(database, admin))[0].targetWeek).toBe(3);
+	await database
+		.insert(schema.events)
+		.values(Array.from({ length: 200 }, () => ({ ...entry, kind: 'custom' as const, week: 3 })));
+	await expect(
+		saveWeekAsTemplate(database, admin, { week: 3, name: 'Too many' }, info, now)
+	).rejects.toThrow();
+	expect(await client`SELECT * FROM week_templates`).toHaveLength(1);
+	expect(await client`SELECT * FROM action_logs`).toHaveLength(1);
+});
+it('guards saving a week and rolls back the template when auditing fails', async () => {
+	for (const [actor, status] of [
+		[null, 401],
+		[user, 403]
+	] as const) {
+		await expect(saveWeekAsTemplate(database, actor, {}, info, now)).rejects.toMatchObject({
+			status
+		});
+	}
+	await database.insert(schema.events).values({ ...entry, kind: 'custom', week: 1 });
+	await client`ALTER TABLE action_logs ADD CONSTRAINT test_save_week_audit CHECK (action_type = 'LOGIN')`;
+	try {
+		await expect(
+			saveWeekAsTemplate(database, admin, { week: 1, name: 'Rollback' }, info, now)
+		).rejects.toThrow();
+		expect(await client`SELECT * FROM week_templates`).toHaveLength(0);
+		expect(await client`SELECT * FROM template_events`).toHaveLength(0);
+		expect(messages).toHaveLength(0);
+	} finally {
+		await client`ALTER TABLE action_logs DROP CONSTRAINT test_save_week_audit`;
+	}
 });
