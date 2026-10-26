@@ -2384,3 +2384,63 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Nessuno: lavoro del piano completato.
+
+
+## 2026-10-26 — M17 — blocco risolto, ripresa autorizzata
+
+**Fatto**
+- Letto integralmente `docs/v2/PLAN.md` e letta l'ultima voce del diario. Confermati branch `v2.0.0` e unica modifica iniziale in `docs/v2/PLAN.md`.
+- Rilevato durante la lettura un conflitto tra le porte autorizzate nella richiesta della sessione e il controllo locale obbligatorio. Nessuna implementazione di M17; M18 non iniziato. Piano lasciato identico alla versione ricevuta.
+
+**Commit**
+- Nessuno: arresto al rilevamento del conflitto, prima del commit del piano. Nessun push.
+
+**Controlli**
+- `pnpm ci:local`: non eseguito; zero test eseguiti in questa sessione.
+- CI su GitHub: non eseguita (nessun push, nessuna run avviata).
+- Verifica in sola lettura: `package.json` avvia `compose.dev.yaml` e usa il database di test su `localhost:5432`; `compose.dev.yaml` pubblica `127.0.0.1:5432:5432`; `playwright.config.ts` avvia `node build` con `PORT=4173`. Il piano conferma questi valori in §14.3 e §15.2.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna. Nessun servizio avviato e nessuna configurazione modificata per aggirare il vincolo.
+
+**Domande / blocchi**
+- Risolto da Ismail: porte `5432` e `4173` autorizzate solo per i test locali (`pnpm ci:local`); le porte esposte dello stack restano `8080` e `8443`. Ismail ha fermato app e nginx senza toccare volumi; resta attivo il database su `127.0.0.1:5432`. Ripresa di M17 autorizzata, senza iniziare M18.
+
+**Prossimo passo**
+- Chiarimento ricevuto: committare il piano con `docs(plan): add 2.1.0 audit fixes and features`, eseguire solo M17 e completare i controlli e la pubblicazione richiesti. Login OAuth reale e verifica del builder aggiornato resteranno da verificare a mano dopo l'implementazione.
+
+
+## 2026-10-26 — M17 — completato
+
+**Fatto**
+- D6: `FIRENZE_CAMPUS_ID = 52` e lettura validata di `campus_users` con default vuoto. Ammessi i membri del campus Firenze e i login in `ADMIN_LOGINS`; lo staff di altri campus è respinto. Il ruolo si calcola solo dopo l'ammissione. Il callback respinge prima di chiamare la persistenza: nessun utente creato o aggiornato, sessione o log; redirect a `/?error=campus` e messaggio nella landing in italiano, inglese e francese.
+- D7: eliminata la data dal builder, dal modello del form, dalla validazione e dallo schema dei template. L'import CSV ignora `Data` e `Date`, anche invalide o relative a pool vecchi. Aggiornati i testi nelle tre lingue e §7 e §8.9 del piano nello stesso commit della migrazione.
+- Nuovi file `drizzle/0002_married_sage.sql` e `drizzle/meta/0002_snapshot.json`, generati da Drizzle con il relativo journal: servono a eliminare solo `template_events.event_date`. Le date degli eventi reali restano invariate; quelle degli eventi applicati dai template derivano dal pool.
+- Adeguata la preparazione dell'import SQLite usata anche dal seed: ignora le date dei template e scrive solo le colonne rimaste. `legacy/` non modificata.
+- `createSession` elimina tutte le sessioni con scadenza minore o uguale a `now` prima dell'insert, nella transazione di login già esistente, senza timer o job.
+- Stato M17 aggiornato in §19. Nessun aumento di versione; M18 non iniziato.
+
+**Commit**
+- `186a845` — `docs(plan): add 2.1.0 audit fixes and features` (piano iniziale identico a quello ricevuto).
+- `75cde19` — `fix: enforce Firenze campus access and complete M17 audit fixes`.
+- Chiusura del diario e dello stato M17 nel successivo commit documentale.
+
+**Controlli**
+- `corepack pnpm ci:local`: exit 0; 238 unit, 278 integration, 159 e2e, totale 675. Lint, check e build verdi, nessun errore o warning di svelte-check. `git diff --check` verde.
+- Unit: profili Firenze, altri campus anche staff, campus assente o malformato, eccezione per admin hardcoded; callback respinto senza chiamare persistenza, impostare cookie di sessione o scrivere log applicativi. CSV con colonne `Data` e `Date` ignorate.
+- Integration: login elimina sessioni scadute di un altro utente, inclusa la scadenza esatta, mantenendo quelle valide. Creazione/applicazione/import template e import SQLite verificati con lo schema migrato; data invalida nel template legacy ignorata.
+- E2e: messaggio campus con e senza JavaScript su desktop/mobile; builder senza campo data, salvataggio/applicazione/import con e senza JavaScript; controlli responsive e CSP anche WebKit verdi in locale.
+- Due errori introdotti durante il lavoro sono stati corretti prima del risultato verde: variabile inutilizzata nell'import e serializzazione delle date nel nuovo fixture integration. Nessun controllo saltato o configurazione di test cambiata.
+- CI [40346075351](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40346075351) su `75cde19`: `gh run watch --exit-status` exit 0, sei job verdi (lint, unit, integration, legacy-import, e2e, docker).
+- Dettaglio e2e CI: 158 passati direttamente e 1 passato al primo retry. `tests/e2e/profile.test.ts:223`, fallback avatar prima dell'idratazione su WebKit, timeout 30000 ms e `page.goto` nel finally a riga 271 con pagina/context/browser chiuso; stesso caso già documentato nelle sessioni precedenti. Test e timeout invariati, causa non attribuita a M17.
+
+**Decisioni prese dentro il perimetro del piano**
+- Chiarimento di Ismail applicato: `5432` e `4173` usate per `ci:local`; configurazione dello stack su `8080` e `8443` invariata. App e nginx lasciati fermi come predisposto da Ismail; nessun volume cancellato.
+- Nessuna dipendenza, branch, worktree o tag aggiunto. Nessuna modifica ai moduli M18–M22.
+
+**Domande / blocchi**
+- Nessun blocco aperto per M17. Rimane segnalata l'intermittenza del test WebKit preesistente, verde al retry in CI e senza retry nella suite locale; nessuna indagine aggiuntiva fuori dal perimetro richiesto.
+- Da verificare a mano: login OAuth reale con account Firenze e di altro campus (anche staff), eccezione `ADMIN_LOGINS`, rilettura dei nuovi testi inglesi/francesi e controllo del builder senza data con applicazione al pool corrente. Le verifiche automatiche usano risposte 42 simulate.
+
+**Prossimo passo**
+- Arresto della sessione dopo il commit e push dei documenti e la verifica della relativa CI. M18 resta da fare e non è stato iniziato.

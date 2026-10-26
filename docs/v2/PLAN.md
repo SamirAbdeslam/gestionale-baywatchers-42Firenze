@@ -1027,7 +1027,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M14 Integrazione design | completato (d671485) |
 | M15 Stack finale e consegna | completato (21f093e) |
 | M16 Inglese e francese | completato (35b7201) |
-| M17 Correzioni dell'audit | da fare |
+| M17 Correzioni dell'audit | completato (75cde19) |
 | M18 Prossimo turno e turni rimasti | da fare |
 | M19 Duplica evento e settimana come template | da fare |
 | M20 Chiusura della piscina | da fare |
