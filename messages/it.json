@@ -304,5 +304,6 @@
 	"whitelist_intro": "Solo chi è in lista può prendere turni. Gli admin possono comunque aggiungere chiunque a un evento.",
 	"whitelist_count": "{count} login",
 	"whitelist_note": "Togliere qualcuno dalla lista non cancella i turni che ha già preso.",
-	"template_more_details": "Giorno, data e descrizione"
+	"template_more_details": "Giorno, data e descrizione",
+	"nav_language": "Lingua"
 }
