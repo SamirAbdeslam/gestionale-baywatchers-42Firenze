@@ -110,7 +110,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      # no build tools in the Playwright image; better-sqlite3 is only needed by the legacy import
+      - run: pnpm install --frozen-lockfile --ignore-scripts && pnpm run prepare
       - run: pnpm db:migrate
       - run: pnpm db:seed
       - run: pnpm build
