@@ -2329,3 +2329,36 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - M16.
+
+## 2026-10-26 — M16 — completato, pronto per la verifica finale
+
+**Fatto**
+- `messages/en.json` e `messages/fr.json` complete, con le stesse chiavi di `it.json`; `project.inlang/settings.json` con `it`, `en`, `fr`. I nomi delle colonne CSV nel testo d'aiuto dei template restano quelli reali.
+- Selettore di lingua nell'header, visibile anche da non loggati e su mobile. Il pulsante con il codice della lingua apre un menu `popover` con tre link, che funziona anche senza JavaScript.
+- La rotta `GET /language/[locale]` imposta il cookie Paraglide e reindirizza solo a URL della stessa origine. È pubblica in `isPublicPath`.
+- Date e numeri usavano già `Intl` con `getLocale()`. Titoli degli eventi, CSV e descrizioni dei log restano in italiano.
+- Test:
+  - unit sulle stesse chiavi e sugli stessi segnaposto nei tre file;
+  - e2e per inglese e francese, con e senza JS: cambio lingua, login di sviluppo, calendario e iscrizione;
+  - e2e sulla rotta: locale sconosciuto e redirect esterni come `//host`, `/\host`, tab e `https://…`.
+- Galleria del design rigenerata in italiano: l'header contiene il selettore e i turni passati hanno lo stub neutro.
+
+**Commit**
+- ccebbf1 feat(i18n): add English and French translations
+- e9d7550 feat(i18n): add a language switcher that works without JavaScript
+- abf05d8 docs: document languages and refresh the design gallery
+- 35b7201 fix(i18n): redirect only to same-origin URLs after a language change
+
+**Controlli**
+- `pnpm ci:local`: verde, 227 unit, 277 integration, 155 e2e.
+- CI su GitHub: M15 run 40323565916 verde, sei job; M16 in fondo a questa voce dopo il push.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nomi delle lingue scritti nella lingua stessa (Italiano, English, Français), fuori dai file di messaggi.
+
+**Domande / blocchi**
+- HSTS sul dominio di produzione, cancellazione di `legacy/` e passaggio dei dati: decisioni di Ismail.
+- Le traduzioni inglese e francese vanno rilette da chi parla quelle lingue.
+
+**Prossimo passo**
+- Verifica finale di Ismail.
