@@ -155,6 +155,22 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
   - **Chiusura** Rifai Lighthouse mobile e desktop su `/calendar` (stack HTTPS su 8443) e riporta i punteggi nel diario. Obiettivi: CLS mobile < 0,1, nessun errore di contrasto, di nome accessibile o di ordine dei titoli. Rigenera la galleria solo se cambia l'aspetto. Nessun riferimento ad AI nei commit. M15 non iniziato.
   - **Risposte di Ismail (2026-10-26)**: autorizzato EventCard con prop numerico del livello e svelte:element, h4 predefinito; h3 nel calendario e h2 nella landing, h4 in admin/display/dialog. Il nome del pulsante avatar deve contenere @login e iniziali visibili; testo sr-only nel pulsante, iniziali accessibili solo nell'header, immagine header con alt vuoto; profilo invariato. L2 da annullare: «provato, FCP invariato (mobile 3,62→3,71 s, desktop 0,864→0,853 s), annullato». Lighthouse 13.4.1 tramite npx, simulate, mobile e desktop su 8443, solo seed del DB di test, nessun cookie/token nei report o nel repository, JSON fuori repo; nessuna modifica a package.json/lockfile.
 
+- 2026-10-26: revisione di `dcb859e`..`fdb1cc0`: tutto approvato, CI `40295195870` con i sei job verdi. Due ritocchi di accessibilità, poi M15 resta fermo fino al mio via.
+  - **Ponytail 31 (lean)** `src/routes/+page.svelte` L32, L45, L58: le tre `EventCard` d'anteprima stanno dentro `.preview` con `aria-hidden="true"`, quindi `headingLevel={2}` non ha effetto né per gli screen reader né per Lighthouse. Togli le tre righe: resta h4, il valore predefinito. Era una mia indicazione sbagliata.
+  - **Ponytail 32 (a11y)** `src/routes/display/+page.svelte` L53-62: la settimana è `h1` e i giorni sono `h3`, quindi manca un livello come in L5. Porta i giorni a `h2` con una classe propria e le card a `headingLevel={3}`. L'aspetto non deve cambiare: se gli stili globali di `h2` differiscono da quelli di `h3`, ripristina le misure attuali con CSS circoscritto alla pagina, come fatto per `.day-heading` nel calendario. Aggiorna `tests/e2e/display.test.ts` verificando `level: 2` per i giorni e `level: 3` per un titolo di card.
+  - **Chiusura** `corepack pnpm ci:local` verde, Lighthouse 13.4.1 su `/display` (mobile e desktop, stesse regole della misura precedente) senza errori di ordine dei titoli, commit `fix(a11y): ...`, push e sei job verdi con id nel diario. Rigenera la galleria solo se cambia l'aspetto. M15 non iniziato.
+
+- 2026-10-26: **CI e2e bloccata, causa trovata.** Nel log della run cancellata `39964427309` il passo `pnpm exec playwright install --with-deps chromium webkit` esegue `apt-get update`. Il mirror `http://azure.archive.ubuntu.com` del runner non risponde (`Ign:2..15`). Dopo l'ultimo `Get:5 ... noble-security InRelease` alle 13:51:30 non arriva più nulla fino alla cancellazione delle 19:49. La run `40302378178` di `18701b4` è ferma sullo stesso passo da 09:49 UTC, mentre nelle run riuscite il passo dura circa 40 s. Il problema è la rete del runner GitHub verso il mirror apt, non il nostro codice.
+  - **CI-1** In `.github/workflows/ci.yml` il job `e2e` gira nel container ufficiale `mcr.microsoft.com/playwright:v1.64.1-noble`. La versione è la stessa di `@playwright/test` in `package.json`: browser e dipendenze di sistema sono già nell'immagine, quindi niente `apt` e niente download dei browser. Togli il passo `playwright install`. Nel job imposta `DATABASE_URL: postgres://bay:bay@postgres:5432/baywatchers_test`, perché dal container il servizio si chiama `postgres` e non `localhost`. Lascia invariati `ORIGIN`, gli altri job e il `DATABASE_URL` globale. Togli `ports` dal servizio solo se non serve più. Tieni `timeout-minutes: 30`.
+  - **CI-2** Accanto alla versione di `@playwright/test` in `package.json` non si possono mettere commenti. Metti quindi un commento di una riga nel workflow: `# shortcut: image tag must match @playwright/test in package.json, bump both together`. Se le versioni non coincidono, i test devono fallire subito con l'errore di browser mancante di Playwright, non restare bloccati.
+  - **Verifica** `corepack pnpm ci:local` verde, commit `ci: run e2e in the Playwright container`, push e sei job verdi con id nel diario. Il push annulla da solo la run bloccata (`cancel-in-progress`). Se nel container compaiono problemi di permessi, utente root, sandbox di Chromium o cache pnpm, fermati e riporta senza aggirarli. M15 non iniziato.
+
+- 2026-10-26: **CI e2e nel container: fallisce l'installazione delle dipendenze.** Nella run `40305382981` di `f7fe466` l'e2e si ferma dopo 55 s su `pnpm install`, con `better-sqlite3 install: gyp ERR! stack Error: not found: make`. L'immagine Playwright non contiene `make` e `g++`, che sul runner standard sono già installati. Gli altri cinque job sono verdi. Decisione di Ismail: opzione 1, nessuna compilazione nativa nel job e2e.
+  - **CI-3** Solo nel job `e2e` di `.github/workflows/ci.yml` sostituisci `pnpm install --frozen-lockfile` con `pnpm install --frozen-lockfile --ignore-scripts && pnpm run prepare`. `--ignore-scripts` salta anche lo script `prepare` del progetto (Paraglide e `svelte-kit sync`), per questo va rilanciato a mano. Esbuild usa il pacchetto binario della piattaforma. Gli altri job non cambiano. Commento di una riga sul perché: `# no build tools in the Playwright image; better-sqlite3 is only needed by the legacy import`.
+  - **Perché dovrebbe bastare** `better-sqlite3` carica il modulo nativo solo in `new Database(...)` (`node_modules/better-sqlite3/lib/database.js` L46). Il seed importa `scripts/import-legacy.ts` ma, per quanto ho visto, usa solo `writeData` e non apre file SQLite. Verificalo.
+  - **Verifica locale prima del push** Lavora in una copia temporanea fuori dal repo, non nella cartella di Ismail, e senza toccare i volumi Docker. In quella copia lancia `pnpm install --frozen-lockfile --ignore-scripts && pnpm run prepare`. Controlla che `node_modules/better-sqlite3/build` non esista. Poi, sul DB di test, `pnpm db:migrate`, `pnpm db:seed`, `pnpm build` e `pnpm test:e2e`. Se il seed o un e2e richiede il binding nativo, fermati e riporta: si passa all'opzione 2 solo con il mio via.
+  - **Chiusura** `corepack pnpm ci:local` verde nel repo, commit `ci: skip native builds in the e2e container`, push e sei job verdi con id nel diario. Poi committa il diario. M15 non iniziato.
+
 ---
 
 ## Voci
@@ -2138,3 +2154,65 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Lavoro completato; attendere indicazioni di Ismail. Stack normale ripristinato su 8080/8443: app/DB healthy, nginx -t verde, landing/health 200 con CSP HTML e nosniff, avatar anonimo 401/no-store/nosniff. Nessun volume eliminato né controllo HSTS. M15 non iniziato.
+
+
+## 2026-10-26 — Ponytail 31 e 32 — CI remota in attesa
+
+**Fatto**
+- Ponytail 31: rimossi i tre headingLevel espliciti dalle EventCard decorative della landing, già escluse dall'albero accessibile con aria-hidden; torna il valore predefinito h4.
+- Ponytail 32: display con giorni h2.day-heading e titoli delle card h3. CSS locale con le misure precedenti degli h3 (1.17em, letter-spacing normal), senza modificare gli stili globali. E2e aggiornati per verificare esplicitamente i livelli 2 e 3 con/senza JavaScript.
+- Nessuna modifica a query, action, schema, migrazioni, dipendenze, CSP o legacy. M15 non iniziato.
+
+**Controlli**
+- corepack pnpm ci:local exit 0: 224 unit, 277 integration, 141 e2e (642 totali); lint/check/build verdi, svelte-check senza errori o warning. Chromium desktop/mobile e WebKit verdi.
+- Confronto prima/dopo di 12 screenshot temporanei: landing e display a 360/768/1280 px nei due temi, immagini byte-identiche. Galleria non rigenerata perché l'aspetto non cambia.
+- Lighthouse 13.4.1 su HTTPS /display, simulate, preset mobile predefinito e desktop; solo seed dev_user del DB di test, credenziali 42 disabilitate, nessun cookie/token nei report o nel repository, JSON sanitizzati fuori repo. Mobile P78/A100/BP100/SEO100, FCP/LCP 3609,95 ms, CLS 0,123686, TBT 0 ms; desktop P94/A100/BP100/SEO100, FCP 826,92 ms, LCP 866,92 ms, CLS 0,127522, TBT 0 ms. Nessun errore di ordine dei titoli, contrasto o nome accessibile; nessun errore console. CLS riportato come misura, nessun intervento aggiuntivo richiesto da Ponytail 31/32.
+- git diff --check verde. Immagine Docker ricostruita, stack normale ripristinato su 8080/8443 con app/DB healthy. Smoke con CA locale: landing/health 200 con CSP HTML e nosniff, avatar anonimo 401/no-store/nosniff; nginx -t verde. Nessun volume eliminato, nessun controllo HSTS o node build rimasto sull’host.
+- Commit 18701b4 fix(a11y): correct display heading levels and trim decorative props, pubblicato. CI [40302378178](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40302378178): cinque job verdi; alle 09:54:43 UTC il job e2e è ancora su playwright install --with-deps chromium webkit, iniziato alle 09:49:00 UTC, prima dei test. Log del job non disponibili finché è in corso. Non dichiarata verde, installer invariato; nessun nuovo push per evitare di cancellarla.
+
+**Domande / blocchi**
+- Installazione browser remota più lenta delle run precedenti, senza evidenza sufficiente per distinguere lentezza e blocco. Richiesta indicazione a Ismail prima di ulteriori interventi, come da note.
+
+**Prossimo passo**
+- Chiarire con Ismail se attendere il timeout di 30 minuti della run attuale; poi completare la verifica CI e pubblicare il diario. M15 non iniziato.
+
+
+## 2026-10-26 — CI-1 e CI-2 — bloccato nella verifica remota
+
+**Fatto**
+- Solo job e2e in .github/workflows/ci.yml: container ufficiale mcr.microsoft.com/playwright:v1.64.1-noble, DATABASE_URL locale al job con host postgres, rimosso il mapping della porta del servizio e il passo playwright install. Timeout 30 minuti conservato; DATABASE_URL globale, ORIGIN e altri cinque job invariati.
+- Inserito il commento shortcut richiesto per aggiornare insieme tag dell'immagine e @playwright/test. Verificata staticamente la corrispondenza 1.64.1; nessun download/installazione dei browser aggiunto.
+- Commit f7fe466 ci: run e2e in the Playwright container, pubblicato. Il push ha cancellato automaticamente la vecchia run 40302378178. Nessuna modifica a codice applicativo, dipendenze, schema, migrazioni o legacy. M15 non iniziato.
+
+**Controlli**
+- corepack pnpm ci:local exit 0: 224 unit, 277 integration e 141 e2e (642 totali); lint/check/build verdi, check senza errori o warning. git diff --check verde.
+- Stack normale ripristinato su 8080/8443, app/DB healthy; landing e health HTTPS 200 con CA locale, CSP e nosniff presenti. Nessun volume eliminato.
+- CI [40305382981](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40305382981): gh run watch --exit-status exit 1. Lint, unit, integration, legacy-import e docker verdi. E2e fallisce in pnpm install --frozen-lockfile, prima di migrazioni/build/test: better-sqlite3@13.0.3 esegue node-gyp rebuild e termina con Error: not found: make. Il container ufficiale è stato inizializzato; il precedente passo apt dei browser non esiste più.
+
+**Domande / blocchi**
+- La compilazione nativa di better-sqlite3 richiede strumenti assenti dall'immagine Playwright. Fermato come richiesto, senza installare pacchetti, cambiare immagine, saltare script o applicare altri aggiramenti. Serve una decisione di Ismail prima di intervenire.
+
+**Prossimo passo**
+- Chiarire la gestione della dipendenza nativa nel job e2e, poi completare la verifica dei sei job e pubblicare il diario. M15 non iniziato.
+
+
+## 2026-10-26 — CI-3 e chiusura Ponytail 31/32 — completato
+
+**Fatto**
+- Solo installazione del job e2e: pnpm install --frozen-lockfile --ignore-scripts && pnpm run prepare, con il commento richiesto. Immagine Playwright 1.64.1-noble, host postgres, timeout e altri cinque job invariati. Nessuna modifica a dipendenze, lockfile o codice applicativo; nessun apt, build tool, eccezione sandbox o aggiramento dei permessi aggiunto.
+- Confermata la catena del seed: scripts/seed.ts importa writeData da import-legacy.ts; il binding di better-sqlite3 viene caricato solo costruendo Database nel percorso di import SQLite, non eseguito dal seed.
+- Commit 290d4d8 ci: skip native builds in the e2e container, pubblicato.
+
+**Controlli**
+- Copia pulita temporanea fuori repo, dipendenze e store separati: install --ignore-scripts, prepare, db:migrate, db:seed, build ed e2e tutti con exit 0. Tutti i 141 e2e verdi, inclusi Chromium desktop/mobile, WebKit e casi senza JS. node_modules/better-sqlite3/build assente prima e dopo i test: nessun binding compilato riutilizzato.
+- DB della prova in un container PostgreSQL separato, dati su tmpfs, senza montare volumi esistenti; container rimosso dopo la prova. Nessuna modifica ai node_modules della cartella di Ismail durante la verifica nella copia.
+- corepack pnpm ci:local nel repo exit 0: 224 unit, 277 integration, 141 e2e, totale 642; lint/check/build verdi, check senza errori o warning. git diff --check verde.
+- Stack normale ripristinato su 8080/8443, app/DB healthy; landing/health HTTPS 200 con CA locale, CSP e nosniff presenti. Nessun volume eliminato. M15 non iniziato.
+
+- CI [40308454799](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40308454799) su 290d4d8: gh run watch --exit-status exit 0, tutti i sei job verdi (lint, unit, integration, legacy-import, e2e, docker). Il container ufficiale supera installazione senza script, prepare, migrazioni, seed, build ed e2e; nessun intervento su apt, permessi, root, sandbox o cache. Verificati anche gli antenati 18701b4 (Ponytail 31/32) e f7fe466 (CI-1/2).
+
+**Domande / blocchi**
+- Nessuno.
+
+**Prossimo passo**
+- Attendere indicazioni di Ismail. M15 non iniziato.
