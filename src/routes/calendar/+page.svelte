@@ -122,30 +122,29 @@
 				)?.date}
 			</p>{/if}
 		<h1>{m.calendar_week({ week: formatNumber(data.week) })}</h1>
-		{#if data.weeklyRegistrationCount !== null}<section
-				class="shift-counter"
-				aria-label={m.calendar_your_shifts()}
-			>
-				<h2>{m.calendar_your_shifts()}</h2>
-				<div class="counter-values">
-					{#if data.maxEventsPerUser > 0 && data.maxEventsPerUser <= 10}<div
-							class="counter-seats"
-							aria-hidden="true"
-						>
-							{#each Array.from({ length: data.maxEventsPerUser }, (_, i) => i) as i (i)}<span
-									class="counter-seat"
-									class:own={i < data.weeklyRegistrationCount!}
-									data-counter-slot={i}
-								></span>{/each}
-						</div>{/if}
-					<span class="mono" data-counter-value
-						>{m.calendar_weekly_shifts({
-							count: formatNumber(data.weeklyRegistrationCount),
-							limit: formatNumber(data.maxEventsPerUser)
-						})} · {formatNumber(totals.compensation)} ₳</span
+		<section class="shift-counter" aria-label={m.calendar_your_shifts()}>
+			<h2>{m.calendar_your_shifts()}</h2>
+			<div class="counter-values">
+				{#if data.maxEventsPerUser > 0 && data.maxEventsPerUser <= 10}<div
+						class="counter-seats"
+						aria-hidden="true"
 					>
-				</div>
-			</section>{/if}
+						{#each Array.from({ length: data.maxEventsPerUser }, (_, i) => i) as i (i)}<span
+								class="counter-seat"
+								class:own={i < data.weeklyRegistrationCount!}
+								data-counter-slot={i}
+							></span>{/each}
+					</div>{/if}
+				<span class="mono" data-counter-value
+					>{data.weeklyRegistrationCount !== null
+						? m.calendar_weekly_shifts({
+								count: formatNumber(data.weeklyRegistrationCount),
+								limit: formatNumber(data.maxEventsPerUser)
+							})
+						: formatNumber(totals.count)} · {formatNumber(totals.compensation)} ₳</span
+				>
+			</div>
+		</section>
 		<WeekNav week={data.week} activeWeek={data.activeWeek} />
 	</div>
 	{#if weeklyLimitReached}<p id="weekly-limit-reason">

@@ -165,7 +165,11 @@ for (const { javaScriptEnabled, reducedMotion } of [
 						await expect(page.locator('[data-counter-value]')).toHaveText(
 							'0 di 3 turni questa settimana · 0 ₳'
 						);
-					else await expect(page.locator('[data-counter-value]')).toHaveCount(0);
+					else await expect(page.locator('[data-counter-value]')).toHaveText('0 · 0 ₳');
+					await expect(
+						page.getByRole('region', { name: 'I tuoi turni', exact: true })
+					).toBeVisible();
+					if (!limit) await expect(page.locator('[data-counter-slot]')).toHaveCount(0);
 					await article.getByRole('button', { name: 'Prendo il turno', exact: true }).click();
 					const dialog = page.getByRole('dialog', { name: 'Il turno è tuo', exact: true });
 					await expect(dialog).toBeVisible();
@@ -191,7 +195,7 @@ for (const { javaScriptEnabled, reducedMotion } of [
 						await expect(page.locator('[data-counter-value]')).toHaveText(
 							'1 di 3 turni questa settimana · 200 ₳'
 						);
-					else await expect(page.locator('[data-counter-value]')).toHaveCount(0);
+					else await expect(page.locator('[data-counter-value]')).toHaveText('1 · 200 ₳');
 					const next = page.getByRole('region', { name: 'Il tuo prossimo turno', exact: true });
 					await expect(next).toContainText(fixture.title);
 					await expect(
@@ -209,7 +213,7 @@ for (const { javaScriptEnabled, reducedMotion } of [
 						await expect(page.locator('[data-counter-value]')).toHaveText(
 							'0 di 3 turni questa settimana · 0 ₳'
 						);
-					else await expect(page.locator('[data-counter-value]')).toHaveCount(0);
+					else await expect(page.locator('[data-counter-value]')).toHaveText('0 · 0 ₳');
 					await expect(page.locator('.ticket-flyer,.ticket-restore,.paper-fiber')).toHaveCount(0);
 					expect((await page.request.get('/participants/123')).status()).toBe(404);
 					expect((await page.request.get('/events/2147483647/calendar.ics')).status()).toBe(404);
@@ -360,7 +364,14 @@ for (const javaScriptEnabled of [true, false]) {
 					}
 					await client`UPDATE settings SET max_events_per_user=0 WHERE id=1`;
 					await page.goto('/calendar');
-					await expect(page.locator('[data-counter-value]')).toHaveCount(0);
+					await expect(
+						page.getByRole('region', { name: 'I tuoi turni', exact: true })
+					).toBeVisible();
+					await expect(page.locator('[data-counter-value]')).toHaveText(
+						javaScriptEnabled ? '0 · 0 ₳' : '1 · 200 ₳'
+					);
+					await expect(page.locator('[data-counter-value]')).not.toContainText(' di ');
+					await expect(page.locator('[data-counter-slot]')).toHaveCount(0);
 					await expect(secondButton).toBeEnabled();
 				} finally {
 					await fixture.cleanup();
