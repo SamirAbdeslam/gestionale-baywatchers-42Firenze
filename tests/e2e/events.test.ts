@@ -217,6 +217,8 @@ test(
 				.getByRole('button', { name: 'Chiudi messaggio', exact: true })
 				.click();
 			await expect(page.getByRole('alert')).toHaveCount(0);
+			await expect(page.locator('.notices .notice')).not.toBeVisible();
+			await expect(page.locator('.notices summary')).not.toBeVisible();
 			await create(page, title);
 			const article = page.getByRole('article', { name: title, exact: true });
 			await expect(article).toBeVisible();

@@ -70,12 +70,8 @@
 		{/if}
 		<ThemeSwitch />
 		{#if data.user}
-			<button
-				class="identity"
-				type="button"
-				popovertarget="user-menu"
-				aria-label={m.nav_user_menu({ login: data.user.login })}
-			>
+			<button class="identity" type="button" popovertarget="user-menu">
+				<span class="sr-only">{m.nav_user_menu({ login: data.user.login })}</span>
 				<Avatar
 					login={data.user.login}
 					name={data.user.displayName || data.user.login}

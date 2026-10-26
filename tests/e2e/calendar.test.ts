@@ -81,10 +81,10 @@ for (const { javaScriptEnabled, reducedMotion } of [
 					await expect(
 						page.getByRole('heading', { name: 'Settimana 2', exact: true })
 					).toBeVisible();
-					await expect(
-						page.getByRole('link', { name: 'Settimana successiva', exact: true })
-					).toHaveCount(0);
-					// On mobile with JavaScript only the selected day panel is shown; the day still exists.
+					await expect(page.getByRole('link', { name: /W02.*Settimana successiva/ })).toHaveCount(
+						0
+					);
+					// Day panels remain in the horizontally scrollable calendar on mobile.
 					await expect(
 						page.getByRole('heading', { name: /Domenica/, includeHidden: true })
 					).toHaveCount(1);
@@ -124,17 +124,26 @@ for (const { javaScriptEnabled, reducedMotion } of [
 							await staff.dispose();
 						}
 					}
-					await page.getByRole('link', { name: 'Settimana precedente', exact: true }).click();
+					await page.getByRole('link', { name: /W01.*Settimana precedente/ }).click();
 					await expect(page).toHaveURL('/calendar?week=1');
 					if (javaScriptEnabled) await expect(page.locator('#panel-1')).toBeVisible();
+					await expect(page.getByRole('link', { name: /W01.*Settimana precedente/ })).toHaveCount(
+						0
+					);
+					await page.getByRole('link', { name: /W02.*Settimana successiva/ }).click();
 					await expect(
-						page.getByRole('link', { name: 'Settimana precedente', exact: true })
-					).toHaveCount(0);
-					await page.getByRole('link', { name: 'Settimana successiva', exact: true }).click();
+						page
+							.getByRole('navigation', { name: 'Settimane', exact: true })
+							.getByRole('link', { name: /W02/ })
+					).toHaveAttribute('aria-current', 'page');
+					await expect(page.getByRole('heading', { name: /Lunedì/, level: 2 })).toHaveCount(1);
 					const article = page
 						.locator('.calendar')
 						.getByRole('article', { name: fixture.title, exact: true });
 					await expect(article).toContainText('2/3');
+					await expect(
+						article.getByRole('heading', { name: fixture.title, exact: true, level: 3 })
+					).toBeVisible();
 					await expect(article).toContainText('₳ 200');
 					await expect(article).toContainText('09:00–11:00');
 					await expect(article).toContainText(fixture.name + '_visible');

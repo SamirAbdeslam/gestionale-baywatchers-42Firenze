@@ -201,6 +201,11 @@ test(
 					)
 					.toBeGreaterThan(0);
 			}
+			await expect(header.locator('.avatar img')).toHaveAttribute('alt', '');
+			await expect(profile.locator('.avatar img')).toHaveAttribute(
+				'alt',
+				'Immagine di Avatar Student'
+			);
 			const data = await page.request.get('/profile/__data.json');
 			expect(await data.text()).not.toContain(cdnUrl);
 			expect(await data.text()).not.toContain('imageUrl');

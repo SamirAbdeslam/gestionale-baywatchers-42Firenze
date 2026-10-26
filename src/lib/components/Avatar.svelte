@@ -31,10 +31,10 @@
 		<img
 			bind:this={image}
 			src={resolve('/avatar/[login]', { login })}
-			alt={m.profile_image({ name })}
+			alt={size === 'header' ? '' : m.profile_image({ name })}
 		/>
 	{:else}
-		<span aria-hidden="true"
+		<span aria-hidden={size === 'header' ? undefined : true}
 			>{(name || login)
 				.trim()
 				.split(/\s+/)

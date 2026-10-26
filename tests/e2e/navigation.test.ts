@@ -30,6 +30,13 @@ for (const javaScriptEnabled of [true, false]) {
 				);
 				const menu = page.getByRole('navigation', { name: 'Menu utente', exact: true });
 				const trigger = page.getByRole('button', { name: /^Menu utente di / });
+				const initials = (await page.locator('.identity .avatar').textContent())!.trim();
+				await expect(trigger).toHaveAccessibleName(new RegExp(initials));
+				const visibleLogin = page.locator('.identity .user-login');
+				if (await visibleLogin.isVisible())
+					await expect(trigger).toHaveAccessibleName(
+						new RegExp((await visibleLogin.textContent())!.trim())
+					);
 				await trigger.click();
 				await expect(menu).toBeVisible();
 				await page.keyboard.press('Escape');

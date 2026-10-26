@@ -230,14 +230,18 @@
 				data-weekday={day.weekday}
 				aria-labelledby={`day-${day.weekday}`}
 			>
-				<h3 class:today={day.isoDate !== null && day.isoDate === today} id={`day-${day.weekday}`}>
+				<h2
+					class="day-heading"
+					class:today={day.isoDate !== null && day.isoDate === today}
+					id={`day-${day.weekday}`}
+				>
 					{#if day.date}<span class="day-number">{day.date.split(' ')[0]}</span>{/if}<span
 						>{weekdays[day.weekday - 1]()}</span
 					>{#if day.isoDate !== null && day.isoDate === today}<small>{m.calendar_today()}</small
 						>{/if}
-				</h3>
+				</h2>
 				{#each data.events.filter((event) => event.weekday === day.weekday) as event (event.id)}
-					<EventCard {event} mine={event.isRegistered}>
+					<EventCard {event} mine={event.isRegistered} headingLevel={3}>
 						<p
 							class:own={event.isRegistered}
 							class:full={event.registeredCount >= event.maxSlots}
@@ -318,12 +322,13 @@
 		font: var(--font-mono-sm) var(--font-mono);
 		margin: 0;
 	}
-	h3 {
+	.day-heading {
+		letter-spacing: normal;
 		display: flex;
 		align-items: baseline;
 		gap: var(--space-sm);
 	}
-	h3 .day-number {
+	.day-heading .day-number {
 		font-size: var(--font-title-mobile);
 		font-weight: 800;
 		font-family: var(--font-heading);
@@ -381,7 +386,7 @@
 		padding-inline: var(--space-sm);
 		min-width: 0;
 	}
-	h3 {
+	.day-heading {
 		padding-bottom: var(--space-sm);
 		border-bottom: var(--border-strong) solid var(--color-border);
 		text-transform: uppercase;

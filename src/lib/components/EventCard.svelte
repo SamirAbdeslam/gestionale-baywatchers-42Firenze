@@ -8,6 +8,7 @@
 		children,
 		actions,
 		meta,
+		headingLevel = 4,
 		orientation = 'auto',
 		mine = event.state === 'registered'
 	}: {
@@ -24,6 +25,7 @@
 		children?: Snippet;
 		actions?: Snippet;
 		meta?: Snippet;
+		headingLevel?: 2 | 3 | 4;
 		orientation?: 'auto' | 'horizontal' | 'vertical';
 		mine?: boolean;
 	} = $props();
@@ -49,7 +51,7 @@
 		<div class="ghost" aria-hidden="true"></div>
 		<span class="sr-only">{labels[event.kind]()}</span>
 		<div class="stub-heading">
-			<h4>{event.title}</h4>
+			<svelte:element this={`h${headingLevel}`} class="ticket-title">{event.title}</svelte:element>
 			{#if actions}{@render actions()}{/if}
 		</div>
 		{#if mine}<span class="owned" aria-hidden="true">{m.ticket_owned()}</span>{/if}
@@ -117,11 +119,12 @@
 		gap: var(--space-xs);
 		min-width: 0;
 	}
-	.stub-heading h4 {
+	.stub-heading .ticket-title {
 		flex: 1 1 var(--ticket-stub-width);
 		min-width: 0;
 		margin: 0;
 		font: 700 var(--font-size-body)/1.2 var(--font-heading);
+		letter-spacing: normal;
 		display: -webkit-box;
 		-webkit-box-orient: vertical;
 		-webkit-line-clamp: 2;

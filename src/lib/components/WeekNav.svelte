@@ -5,11 +5,11 @@
 	let { week, activeWeek }: { week: number; activeWeek: number } = $props();
 </script>
 
-<nav class="weeks" aria-label={m.calendar_events()}>
+<nav class="weeks" aria-label={m.calendar_weeks()}>
 	{#each Array.from({ length: Math.max(4, activeWeek) }, (_, i) => i + 1) as value (value)}
 		{#snippet chip()}
 			<span class="code">W{String(value).padStart(2, '0')}</span>
-			<span
+			<span class="week-state"
 				>{value < activeWeek
 					? m.week_closed()
 					: value === activeWeek
@@ -23,11 +23,13 @@
 				class:active={value === activeWeek}
 				href="{resolve('/calendar')}?week={value}"
 				aria-current={value === week ? 'page' : undefined}
-				aria-label={value === week - 1
-					? m.calendar_previous()
-					: value === week + 1
-						? m.calendar_next()
-						: m.calendar_week({ week: formatNumber(value) })}>{@render chip()}</a
+				>{@render chip()}<span class="sr-only"
+					>{value === week - 1
+						? m.calendar_previous()
+						: value === week + 1
+							? m.calendar_next()
+							: m.calendar_week({ week: formatNumber(value) })}</span
+				></a
 			>{/if}
 	{/each}
 </nav>
@@ -68,7 +70,8 @@
 		outline-offset: calc(-1 * var(--space-xs));
 	}
 	.unopened {
-		opacity: var(--opacity-faint);
+		color: var(--color-muted);
+		border-style: dashed;
 	}
 	@media (max-width: 767px) {
 		.weeks {
@@ -77,7 +80,7 @@
 		.week {
 			align-items: center;
 		}
-		.week > span:last-child {
+		.week > .week-state {
 			display: none;
 		}
 		.week {

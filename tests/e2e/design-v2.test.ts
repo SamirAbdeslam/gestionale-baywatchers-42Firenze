@@ -82,9 +82,9 @@ for (const javaScriptEnabled of [true, false]) {
 						).toBeLessThanOrEqual(bounds.x + bounds.width + 1);
 						const second = (await panels.first().locator('.ticket').nth(1).boundingBox())!;
 						expect(second.y + second.height).toBeLessThanOrEqual(900);
-						await expect(panels.first().locator('.ticket-stub h4').first()).toContainText(
-							'Compact 1'
-						);
+						await expect(
+							panels.first().locator('.ticket-stub .ticket-title').first()
+						).toContainText('Compact 1');
 						await expect(panels.first().locator('.ticket-body').first()).not.toContainText('5 Gen');
 						await capture('1280-calendario-compatto');
 						await page.setViewportSize({ width: 1920, height: 1080 });
