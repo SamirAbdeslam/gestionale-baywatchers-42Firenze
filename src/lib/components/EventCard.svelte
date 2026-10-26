@@ -93,8 +93,10 @@
 		margin-block: var(--space-md);
 		min-width: 0;
 	}
+	/* Neutral stub instead of opacity, so past tickets keep AA text contrast. */
 	.ticket.passed {
-		opacity: var(--opacity-muted);
+		--kind-fill: var(--color-raised);
+		--kind-ink: var(--color-muted);
 	}
 	.ticket-stub {
 		position: relative;
