@@ -56,6 +56,9 @@ Il primo deve rispondere `200`. Il secondo deve rispondere `308` verso `https://
 3. In **Admin → Whitelist** aggiungere i login dei baywatcher.
 4. Creare gli eventi della settimana, a mano o da **Admin → Template**: builder oppure import CSV.
 5. Aprire `/display`, con `?token=<DISPLAY_TOKEN>` se il token è impostato, e verificare la TV.
+   Il display usa la lingua del browser della TV e non ha il selettore. Se esce in un'altra lingua, aprire una
+   volta sulla TV `<ORIGIN>/language/it?to=/display`, aggiungendo `?token=…` al percorso se serve: il cookie fissa
+   l'italiano.
 
 ## 4. Spegnimento del legacy
 
