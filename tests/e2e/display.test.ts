@@ -134,3 +134,46 @@ for (const javaScriptEnabled of [true, false])
 			}
 		);
 	});
+
+test(
+	'reserves clock space before hydration without moving the display grid',
+	{ tag: '@shared-db' },
+	async ({ page }) => {
+		const fixture = await setup();
+		try {
+			for (const width of [360, 1280]) {
+				await page.setViewportSize({ width, height: 900 });
+				let release!: () => void;
+				const gate = new Promise<void>((resolve) => {
+					release = resolve;
+				});
+				await page.route('**/_app/**/*.js', async (route) => {
+					await gate;
+					await route.continue();
+				});
+				try {
+					await page.goto('/display', { waitUntil: 'commit' });
+					await expect(page.locator('.clock')).toBeVisible();
+					await page.evaluate(() => document.fonts.ready);
+					const before = (await page.locator('.display-grid').boundingBox())!;
+					const clock = (await page.locator('.clock').boundingBox())!;
+					expect(clock.width).toBeGreaterThan(0);
+					expect(clock.height).toBeGreaterThan(0);
+					release();
+					await expect(page.locator('.clock')).toHaveText(/\d{2}:\d{2}:\d{2}/);
+					await page.evaluate(() => document.fonts.ready);
+					const after = (await page.locator('.display-grid').boundingBox())!;
+					expect(Math.abs(after.y - before.y)).toBeLessThan(1);
+					expect(
+						await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
+					).toBe(true);
+				} finally {
+					release();
+					await page.unroute('**/_app/**/*.js');
+				}
+			}
+		} finally {
+			await fixture.cleanup();
+		}
+	}
+);

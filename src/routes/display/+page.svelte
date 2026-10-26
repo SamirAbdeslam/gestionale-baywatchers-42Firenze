@@ -107,6 +107,9 @@
 	}
 	.clock {
 		font-size: var(--font-display);
+		min-inline-size: 8ch;
+		min-block-size: calc(1em * var(--line-height));
+		white-space: nowrap;
 	}
 	footer {
 		color: var(--color-ok);
@@ -134,6 +137,11 @@
 	}
 	.full {
 		color: var(--color-danger);
+	}
+	@media (max-width: 767px) {
+		.clock {
+			font-size: var(--font-display-mobile);
+		}
 	}
 	/* Keep numeric media queries aligned with --bp-md and --bp-lg. */
 	@media (min-width: 768px) {
