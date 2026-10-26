@@ -178,6 +178,43 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
   - **D1 (documentazione)** Ho aggiornato la specifica di design in `~/personal_github/baywatchers-design/DESIGN-V2.md`: §6 rotta `/avatar` e nome accessibile dell'avatar, nuovo §11 su accessibilità e Lighthouse. Copiala identica in `docs/v2/design/DESIGN-V2.md`.
   - **Chiusura** `corepack pnpm ci:local` verde. Commit piccoli: `test(e2e): ...` solo se T1 cambia il test, `docs: ...` per DESIGN-V2 e diario, compresa la precisazione sul test instabile ancora non committata. Push e sei job verdi con id nel diario. M15 non iniziato.
 
+- 2026-10-26: **Piano di lavoro fino alla fine: fix, poi M15, poi M16.** Questa voce autorizza i tre blocchi in sequenza, nello stesso ordine, senza attendere un mio via tra un blocco e l'altro. Valgono le regole del PLAN (§1): `ci:local` verde, push a fine di ogni blocco, CI con i sei job verdi prima del blocco successivo e una voce di diario per ogni sessione. Se qualcosa non va come descritto, fermati e chiedi. Alla fine Ismail fa fare una verifica finale: non iniziare altro lavoro.
+  - **Blocco A — fix prima di M15**
+    - **A1 (CLS `/display`)** Lighthouse 13.4.1 mobile su `/display` riporta CLS 0,119, con 2 spostamenti di layout; desktop 0,128. Individua gli elementi che si spostano (audit `layout-shifts` / `cls-culprits-insight`) e correggi la causa, per esempio con dimensioni riservate o font. Non nascondere contenuti e non usare stili inline. Obiettivo: CLS < 0,1 in mobile e desktop. Rimisura con le stesse regole delle misure precedenti e riporta i valori nel diario.
+    - **A2 (`robots.txt`)** `/robots.txt` oggi risponde con una pagina HTML e Lighthouse toglie punti SEO. Aggiungi `static/robots.txt` con due righe: `User-agent: *` e `Allow: /`. Verifica che sia servito come `text/plain` anche dietro nginx. Test e2e o di integrazione: risposta 200 `text/plain`.
+    - Commit `fix(display): ...` e `fix(seo): ...`, push e CI verde.
+  - **Blocco B — M15, con queste modifiche al PLAN decise da Ismail**
+    - **Niente dump**: `scripts/backup.sh` non va fatto, e nel README non c'è la sezione backup e ripristino. La produzione parte con un **database vuoto**. Il passaggio dei dati dal vecchio sito si deciderà in un secondo momento.
+    - **`docs/v2/CUTOVER.md`** è il runbook di avvio con DB vuoto:
+      - preparazione di `.env` (senza valori segreti nel documento);
+      - certificato;
+      - `docker compose up -d --build`;
+      - migrazioni;
+      - controlli di salute;
+      - primo login 42 di `igilani`, admin da `ADMIN_LOGINS`;
+      - impostazioni iniziali (date del pool, settimana attiva);
+      - stop del vecchio Flask.
+    - Niente import di `calendar.db` nel runbook. Mantieni la sezione HSTS esistente: la decisione resta mia, scrivila sotto "Domande / blocchi", non implementarla e continua con il resto.
+    - **`compose.yaml` definitivo** secondo §15.3: `db` senza porte esposte, `app` senza porte, `restart: unless-stopped`, healthcheck. Mai `docker compose down -v`. Porte autorizzate: solo 8080 e 8443.
+    - **`README.md` nuovo**: setup, sviluppo, test, stack completo, certificato locale, redirect URI 42 da registrare (azione manuale mia). Gli script di import legacy restano nel repo: nel README c'è una riga che li indica come strumento disponibile, non usato nel cutover.
+    - **`legacy/` non va cancellata.** Non ho dato la conferma scritta: lasciala intatta e chiedimelo a fine lavoro.
+    - Aggiorna lo stato di M15 nella tabella §19. Commit piccoli (`chore(docker): ...`, `docs: ...`), push e CI verde.
+  - **Blocco C — M16 (§11)**
+    - `messages/en.json` e `messages/fr.json` complete, con le stesse chiavi di `it.json`.
+    - Selettore di lingua nel layout, visibile anche su mobile e da non loggati (landing). Deve funzionare senza JavaScript, cioè impostare il cookie della strategia Paraglide tramite link o form. Niente stili inline, CSP invariata, nome accessibile, contrasto AA, nessuno spostamento di layout.
+    - Date e numeri con `Intl` nella lingua corrente. Restano in italiano titoli e descrizioni degli eventi, CSV e descrizioni dei log.
+    - Test che verifica le stesse chiavi nei tre file. E2e di un flusso per lingua (login di sviluppo, calendario, iscrizione), con e senza JS.
+    - Traduzioni naturali, non letterali. Termini 42 come "wallet", "₳" e "intra" restano invariati.
+    - Rigenera la galleria solo se cambia l'aspetto, e solo in italiano.
+    - Aggiorna lo stato di M16 nella tabella §19. Commit `feat(i18n): ...`, push e CI verde.
+  - **Fine** Ultima voce del diario con stato "pronto per la verifica finale". Includi:
+    - elenco dei commit;
+    - id delle run CI;
+    - misure Lighthouse (A1);
+    - domande aperte: HSTS, cancellazione di `legacy/`, passaggio dati.
+
+    Poi fermati. Nessun riferimento ad AI nei commit. Non stampare `.env` né segreti.
+
 ---
 
 ## Voci
@@ -2244,3 +2281,51 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Attendere indicazioni di Ismail. M15 non iniziato.
+
+
+## 2026-10-26 — Piano fino alla fine, blocco A — in attesa di decisione sul contrasto
+
+**Fatto**
+- A1: identificato lo spostamento della griglia causato dall'orologio vuoto in SSR. Prova prima/dopo idratazione: +248 px a 360 px e +29,875 px a 1280 px; su mobile il testo dell'orologio andava a capo. Riservati 8ch e altezza di riga nel CSS, white-space nowrap e token tipografico mobile esistente. Nessun contenuto nascosto né stile inline.
+- A2: static/robots.txt con le due righe richieste; test e2e per 200 text/plain e contenuto esatto. Verificato anche tramite nginx su HTTPS 8443.
+- Test mirati 8/8 e corepack pnpm ci:local exit 0: 224 unit, 277 integration, 145 e2e (646 totali). Nuovo e2e con script sospesi prima dell'idratazione verifica spazio dell'orologio, posizione della griglia invariata e assenza di overflow a 360/1280 px; Chromium desktop/mobile verdi. Check/lint/build e controlli di design/CSP WebKit verdi. git diff --check verde.
+- Lighthouse 13.4.1 simulate, preset mobile e desktop su HTTPS /display, seed dev_user del DB di test, credenziali 42 disabilitate; nessun cookie/token nei report o nel repo, JSON sanitizzati fuori repo. Mobile P82/A95/BP100/SEO100, FCP/LCP 3616,94 ms, CLS 0,004983; desktop P98/A95/BP100/SEO100, FCP 838,81 ms, LCP 878,81 ms, CLS 0,021127. TBT 0 ms in entrambi. Obiettivo CLS <0,1 raggiunto (prima 0,123686/0,127522).
+
+**Domande / blocchi**
+- La nuova misura segnala contrasto insufficiente sui biglietti passati: EventCard.svelte applica opacity: var(--opacity-muted), pari a 0.5, all'intero article. Testi su stub dell'esame 2,61:1, metadati 2,27:1, stato 2,32:1. Il CSS è preesistente, non modificato dal fix dell'orologio; gli eventi conclusi del seed lo rendono visibile nella misura corrente. Richiesta autorizzazione prima di intervenire sul componente condiviso e sul suo stato passato. Nessuna correzione ulteriore applicata.
+- Blocco A non ancora committato/pubblicato. Blocchi B e C non iniziati: rispettata la sequenza con CI verde prima del blocco successivo. Stack normale ripristinato su 8080/8443 con app/DB healthy, senza cancellare volumi.
+
+**Prossimo passo**
+- Chiarire la gestione del contrasto dei turni passati con Ismail, poi completare A con ci:local/push/CI verde prima di B e C.
+
+## 2026-10-26 — Blocco A e M15 — completato
+
+**Fatto**
+- A: autorizzata da Ismail la rimozione dell'opacità dei turni passati. `EventCard.svelte` usa uno stub neutro (`--kind-fill: var(--color-raised)`, `--kind-ink: var(--color-muted)`): contrasto 5,55:1 nel tema chiaro e 6,02:1 nello scuro. Lo stato «Concluso» resta. Rimosso il token `--opacity-muted`, non più usato.
+- M15, con le modifiche decise da Ismail:
+  - niente `scripts/backup.sh` e nessuna sezione backup;
+  - `docs/v2/CUTOVER.md` riscritto come runbook di avvio con database vuoto; la sezione HSTS resta da decidere;
+  - `compose.yaml` con `restart: unless-stopped` anche per `db` e `nginx`;
+  - `README.md` nuovo.
+- `legacy/` non toccata.
+
+**Commit**
+- e315cf2 fix(display): reserve clock space to avoid layout shift
+- 43e1740 fix(seo): serve a plain text robots.txt
+- 9e82964 fix(a11y): keep text contrast on past tickets
+- 1bf275b chore(docker): restart database and proxy with the stack
+- 0afcd95 docs: rewrite README for setup, tests and the full stack
+- 21f093e docs: add cutover runbook starting from an empty database
+
+**Controlli**
+- `pnpm ci:local`: verde, 145 e2e (blocco A).
+- CI su GitHub: run 40322676861 verde, sei job (blocco A).
+
+**Decisioni prese dentro il perimetro del piano**
+- `robots.txt` con `Allow: /`. Il runbook indica che il redirect HTTP in `nginx/nginx.conf` punta a `localhost:8443` e va cambiato per un dominio pubblico.
+
+**Domande / blocchi**
+- HSTS sul dominio di produzione, cancellazione di `legacy/` e passaggio dei dati: decisioni di Ismail.
+
+**Prossimo passo**
+- M16.

@@ -1002,5 +1002,5 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M12 Profilo | completato (2e6d514) |
 | M13 Log di audit | completato (5b835d1) |
 | M14 Integrazione design | completato (d671485) |
-| M15 Stack finale e consegna | da fare |
+| M15 Stack finale e consegna | completato (21f093e) |
 | M16 Inglese e francese | da fare |
