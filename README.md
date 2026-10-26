@@ -8,7 +8,7 @@ Gestione dei turni Baywatchers di 42 Firenze. Comprende:
 - profilo;
 - aggiornamenti in tempo reale.
 
-Stack: SvelteKit, Svelte 5, Postgres 17, Drizzle, Paraglide e nginx.
+Stack: SvelteKit, Svelte 5, Postgres 17, Drizzle, Paraglide (it, en, fr) e nginx.
 
 - Piano e decisioni: [docs/v2/PLAN.md](docs/v2/PLAN.md).
 - Diario: [docs/v2/SESSIONS.md](docs/v2/SESSIONS.md).
@@ -101,6 +101,12 @@ docker compose up -d --build
 - I certificati restano in `nginx/certs/`, fuori da Git e dall'immagine Docker.
 - Build senza Compose: `docker build --build-arg ORIGIN=https://localhost:8443 .`.
 - Non usare `docker compose down -v`: cancella il volume del database.
+
+## Lingue
+
+Le stringhe dell'interfaccia sono in `messages/it.json`, `messages/en.json` e `messages/fr.json`, con le stesse
+chiavi. Un test lo verifica. La lingua si sceglie dal selettore nell'header e viene salvata in un cookie. Titoli
+degli eventi, CSV e descrizioni dei log restano in italiano.
 
 ## Import dal legacy
 
