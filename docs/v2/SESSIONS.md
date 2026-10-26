@@ -2225,7 +2225,7 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 - Diario pubblicato con ccc37b8; questa precisazione sul test flaky resta locale. Chiarire con Ismail se indagare il timeout e completare la verifica della run del commit del diario. M15 non iniziato.
 
 
-## 2026-10-26 — T1 e D1 — verifiche locali completate
+## 2026-10-26 — T1 e D1 — completato
 
 **Fatto**
 - T1: eseguito il comando richiesto pnpm exec playwright test tests/e2e/profile.test.ts:223 --project=webkit-shared --repeat-each=30. Problema non riprodotto: 30/30 before hydration e 30/30 after hydration verdi su WebKit, più 86 test dei progetti dipendenti (146 totali, exit 0). Nessun retry locale; test, timeout, progetti e codice applicativo invariati, come richiesto in caso di mancata riproduzione. L'ipotesi sul gate resta non verificata: non è stata dichiarata causa.
@@ -2236,8 +2236,11 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 - corepack pnpm ci:local exit 0: 224 unit, 277 integration e 141 e2e, totale 642; lint/check/build verdi, check senza errori o warning. git diff --check verde.
 - Nessuna modifica a dipendenze, workflow, schema, migrazioni, query, action o legacy. Nessuna rigenerazione della galleria: l'applicazione non cambia.
 
+- CI [40312275031](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40312275031) su cafca56: gh run watch --exit-status exit 0, sei job verdi. Riepilogo e2e verificato nei log: 141 passed, nessun flaky o retry. T1 e D1 completati senza modificare il test.
+- Stack normale ripristinato su 8080/8443 con app/DB healthy; landing/health HTTPS 200 con CA locale, CSP e nosniff presenti. Nessun volume eliminato.
+
 **Domande / blocchi**
-- Nessuno nelle verifiche locali. Il timeout intermittente della vecchia run non è riprodotto nelle 30 prove richieste, quindi il test resta invariato.
+- Nessuno. Il timeout intermittente della vecchia run non è riprodotto nelle 30 prove richieste; anche la nuova CI passa senza retry, quindi il test resta invariato.
 
 **Prossimo passo**
-- Push della documentazione, sei job CI verdi e id nel diario. Ripristinare lo stack normale e attendere Ismail. M15 non iniziato.
+- Attendere indicazioni di Ismail. M15 non iniziato.
