@@ -8,9 +8,9 @@ vi.mock('#lib/server/avatar.ts', () => ({ avatarResponse: mocks.download }));
 beforeEach(() => {
 	vi.clearAllMocks();
 });
-function event(login: string, authenticated = true) {
+function event(login: string, authenticated = true, actorLogin = login) {
 	return {
-		locals: { user: authenticated ? { role: 'user', login: 'self' } : null },
+		locals: { user: authenticated ? { role: 'user', login: actorLogin } : null },
 		params: { login }
 	} as unknown as Parameters<typeof GET>[0];
 }
@@ -44,5 +44,17 @@ it('returns a generic 404 when the database lookup fails', async () => {
 		expect(mocks.download).not.toHaveBeenCalled();
 	} finally {
 		log.mockRestore();
+	}
+});
+
+it('rejects another user’s avatar before any lookup or network access', async () => {
+	const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Unexpected request'));
+	try {
+		expect((await GET(event('other', true, 'self'))).status).toBe(404);
+		expect(mocks.where).not.toHaveBeenCalled();
+		expect(mocks.download).not.toHaveBeenCalled();
+		expect(fetch).not.toHaveBeenCalled();
+	} finally {
+		fetch.mockRestore();
 	}
 });

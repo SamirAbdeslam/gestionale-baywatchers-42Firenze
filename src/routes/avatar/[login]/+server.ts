@@ -6,7 +6,8 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	assertUser(locals.user);
-	if (!loginPattern.test(params.login)) return new Response(null, { status: 404 });
+	if (params.login !== locals.user.login || !loginPattern.test(params.login))
+		return new Response(null, { status: 404 });
 	try {
 		const { db } = await import('#lib/server/db/index.ts');
 		const [user] = await db

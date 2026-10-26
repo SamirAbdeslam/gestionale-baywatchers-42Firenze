@@ -86,7 +86,12 @@ test('the authorization matrix covers every admin route and named action', () =>
 });
 for (const actor of ['anonymous', 'user', 'admin'] as const)
 	test(`authorization matrix: ${actor}`, { tag: '@shared-db' }, async ({ request }) => {
-		if (actor !== 'anonymous') await devLogin(request, actor === 'admin');
+		if (actor !== 'anonymous') {
+			await devLogin(request, actor === 'admin');
+			const avatar = await request.get('/avatar/dev_admin', { maxRedirects: 0 });
+			expect(avatar.status()).toBe(404);
+			expect(avatar.headers()['cache-control']).toBe('private, no-store');
+		}
 		const before = await snapshot();
 		for (const route of adminRoutes) {
 			const response = await request.get(route.url, { maxRedirects: 0 });
