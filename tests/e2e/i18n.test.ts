@@ -16,9 +16,11 @@ const origin = 'http://localhost:4173';
 test('the language route accepts known locales and same-site paths only', async ({ request }) => {
 	expect((await request.get('/language/de', { maxRedirects: 0 })).status()).toBe(404);
 	for (const [to, location] of [
-		['/calendar?week=2', '/calendar?week=2'],
+		['/calendar?week=2', `${origin}/calendar?week=2`],
 		['//evil.example', '/'],
 		['/\\evil.example', '/'],
+		['/\t/evil.example', '/'],
+		['/.//evil.example', `${origin}//evil.example`],
 		['https://evil.example', '/']
 	]) {
 		const response = await request.get(`/language/fr?to=${encodeURIComponent(to)}`, {

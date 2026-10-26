@@ -13,7 +13,8 @@ export const GET: RequestHandler = ({ params, url, cookies }) => {
 		httpOnly: false,
 		sameSite: 'lax'
 	});
-	const to = url.searchParams.get('to') ?? '/';
-	// Only same-site paths: '//host' and '/\host' would leave the site.
-	redirect(303, /^\/(?![/\\])/.test(to) ? to : '/');
+	// Parse like the browser does and redirect to the absolute URL: a bare path such as
+	// '//host' (also reachable via '/.//host' or tabs) would leave the site.
+	const target = new URL(url.searchParams.get('to') ?? '/', url);
+	redirect(303, target.origin === url.origin ? target.href : '/');
 };
