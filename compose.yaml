@@ -12,6 +12,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
   app:
     build:
       context: .
@@ -35,6 +36,7 @@ services:
       - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - app
+    restart: unless-stopped
 
 volumes:
   pgdata:
