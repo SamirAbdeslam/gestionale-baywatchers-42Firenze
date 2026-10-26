@@ -97,6 +97,10 @@ Pulsante unico **OK**, non "Annulla".
   Calendario / Profilo / Admin.
 - Avatar: foto 42 rotonda (32 px nell'header, 56 px nel profilo) con bordo 2 px `--color-signal`. Se la foto manca o non
   si carica: cerchio con le iniziali, come nella v1.
+- La foto arriva da `/avatar/<login>`. Ognuno può chiedere soltanto la propria; un login diverso risponde 404. Il server
+  la scarica dal CDN 42 e la passa al browser senza salvarla. Solo il browser la tiene in cache (`private`, 24 h).
+- Il pulsante dell'avatar ha un nome accessibile che contiene il testo visibile (@login e, senza foto, le iniziali). Nell'header
+  la foto ha `alt` vuoto; nel profilo ha `alt` con il nome.
 - Disegnare il menu aperto su desktop e su mobile, e un avatar con foto e uno con iniziali.
 
 ## 7. Admin Settimane
@@ -166,3 +170,17 @@ nuovi valori:
   scorrimento.
 - Nessun pulsante "Chiudi" testuale nei messaggi; nessun "Logout" né "Profilo" nella barra desktop.
 - Contrasto AA in entrambi i temi su stub, pillole e messaggi.
+
+## 11. Accessibilità e prestazioni (Lighthouse, 26 ottobre 2026)
+
+- Ordine dei titoli:
+  - `h1` per la settimana;
+  - `h2` per i giorni nel calendario e nel display;
+  - `h3` per le card sotto un giorno `h2`;
+  - `h4` altrove: admin, dialog e anteprima della landing.
+- Chip W01–W04 delle settimane non aperte: testo `--color-muted` e bordo tratteggiato, senza opacità. Contrasto AA.
+- Nomi accessibili: contengono sempre il testo visibile. Le descrizioni in più vanno in uno span `sr-only`, non in un
+  `aria-label` che sostituisce il testo. La `nav` delle settimane si chiama «Settimane».
+- `<meta name="description">` in tutte le pagine.
+- Obiettivi Lighthouse: CLS sotto 0,1 su mobile e desktop, nessun errore di accessibilità. Gli stili inline di SvelteKit
+  (`inlineStyleThreshold`) sono stati provati e scartati: nessun guadagno di FCP.

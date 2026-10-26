@@ -171,6 +171,13 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
   - **Verifica locale prima del push** Lavora in una copia temporanea fuori dal repo, non nella cartella di Ismail, e senza toccare i volumi Docker. In quella copia lancia `pnpm install --frozen-lockfile --ignore-scripts && pnpm run prepare`. Controlla che `node_modules/better-sqlite3/build` non esista. Poi, sul DB di test, `pnpm db:migrate`, `pnpm db:seed`, `pnpm build` e `pnpm test:e2e`. Se il seed o un e2e richiede il binding nativo, fermati e riporta: si passa all'opzione 2 solo con il mio via.
   - **Chiusura** `corepack pnpm ci:local` verde nel repo, commit `ci: skip native builds in the e2e container`, push e sei job verdi con id nel diario. Poi committa il diario. M15 non iniziato.
 
+- 2026-10-26: revisione di `290d4d8`/`ccc37b8`: approvati, la CI `40308454799` ha i sei job verdi. Restano due punti, poi M15 attende il mio via.
+  - **T1 (bassa, test instabile)** `tests/e2e/profile.test.ts:223`, variante "before hydration", solo su `webkit-shared`. Nella run `40308454799` ha superato i 30 s dentro il `try` al primo tentativo e poi è passata al retry. Su Chromium e mobile dura circa 0,5 s. Ipotesi non verificata: con gli script `/_app/**/*.js` bloccati dal `gate`, WebKit a volte non segnala l'errore dell'immagine, quindi `waitForFunction` resta in attesa fino al timeout. Riproduci in locale con `pnpm exec playwright test tests/e2e/profile.test.ts:223 --project=webkit-shared --repeat-each=30`.
+    - Se si riproduce, apri la traccia e correggi solo il test. Non allungare il timeout e non escludere WebKit. Se la causa è nell'app e non nel test, fermati e riporta.
+    - Se non si riproduce, scrivilo nel diario e lascia il test com'è.
+  - **D1 (documentazione)** Ho aggiornato la specifica di design in `~/personal_github/baywatchers-design/DESIGN-V2.md`: §6 rotta `/avatar` e nome accessibile dell'avatar, nuovo §11 su accessibilità e Lighthouse. Copiala identica in `docs/v2/design/DESIGN-V2.md`.
+  - **Chiusura** `corepack pnpm ci:local` verde. Commit piccoli: `test(e2e): ...` solo se T1 cambia il test, `docs: ...` per DESIGN-V2 e diario, compresa la precisazione sul test instabile ancora non committata. Push e sei job verdi con id nel diario. M15 non iniziato.
+
 ---
 
 ## Voci
@@ -2212,7 +2219,25 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 - CI [40308454799](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40308454799) su 290d4d8: gh run watch --exit-status exit 0, tutti i sei job verdi (lint, unit, integration, legacy-import, e2e, docker). Il container ufficiale supera installazione senza script, prepare, migrazioni, seed, build ed e2e; nessun intervento su apt, permessi, root, sandbox o cache. Verificati anche gli antenati 18701b4 (Ponytail 31/32) e f7fe466 (CI-1/2).
 
 **Domande / blocchi**
-- Nessuno.
+- Dettaglio della run 40308454799, verificato dopo il riepilogo dei job: 140 e2e passati direttamente e 1 flaky passato al retry. Caso WebKit tests/e2e/profile.test.ts:223, fallback avatar prima dell’idratazione; primo tentativo oltre 30000 ms, errore page.goto con pagina/context/browser chiuso nel finally a riga 271. Nessun errore di binding SQLite, installazione o build. Richiesta a Ismail prima di indagare o modificare questo comportamento non previsto; nessuna modifica a test o timeout.
 
 **Prossimo passo**
-- Attendere indicazioni di Ismail. M15 non iniziato.
+- Diario pubblicato con ccc37b8; questa precisazione sul test flaky resta locale. Chiarire con Ismail se indagare il timeout e completare la verifica della run del commit del diario. M15 non iniziato.
+
+
+## 2026-10-26 — T1 e D1 — verifiche locali completate
+
+**Fatto**
+- T1: eseguito il comando richiesto pnpm exec playwright test tests/e2e/profile.test.ts:223 --project=webkit-shared --repeat-each=30. Problema non riprodotto: 30/30 before hydration e 30/30 after hydration verdi su WebKit, più 86 test dei progetti dipendenti (146 totali, exit 0). Nessun retry locale; test, timeout, progetti e codice applicativo invariati, come richiesto in caso di mancata riproduzione. L'ipotesi sul gate resta non verificata: non è stata dichiarata causa.
+- D1: copiata identica la specifica ~/personal_github/baywatchers-design/DESIGN-V2.md in docs/v2/design/DESIGN-V2.md, comprese rotta/nome accessibile avatar (§6) e accessibilità/Lighthouse (§11). cmp e SHA-256 identici: 1b3d4220dfec40bf747e4a5ebf08e45f7353b601f026a50df7bd2ce5708a52d2.
+- Inclusa la precisazione rimasta locale: la run 40308454799 era verde con 140 e2e passati direttamente e uno passato al retry (fallback avatar prima dell'idratazione su WebKit). La successiva run del diario 40309548673 è conclusa con successo. Nessuna modifica al test non riprodotto; M15 non iniziato.
+
+**Controlli**
+- corepack pnpm ci:local exit 0: 224 unit, 277 integration e 141 e2e, totale 642; lint/check/build verdi, check senza errori o warning. git diff --check verde.
+- Nessuna modifica a dipendenze, workflow, schema, migrazioni, query, action o legacy. Nessuna rigenerazione della galleria: l'applicazione non cambia.
+
+**Domande / blocchi**
+- Nessuno nelle verifiche locali. Il timeout intermittente della vecchia run non è riprodotto nelle 30 prove richieste, quindi il test resta invariato.
+
+**Prossimo passo**
+- Push della documentazione, sei job CI verdi e id nel diario. Ripristinare lo stack normale e attendere Ismail. M15 non iniziato.
