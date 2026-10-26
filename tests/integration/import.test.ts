@@ -34,7 +34,9 @@ function edit(sql: string) {
 	}
 }
 it('imports and independently verifies the complete fixture and aligned sequences', async () => {
+	edit("UPDATE template_events SET event_date='invalid' WHERE id=1");
 	const report = await importLegacy(client, path);
+	expect((await client`SELECT count(*)::int AS n FROM template_events`)[0].n).toBe(21);
 	expect(report.tables.users).toEqual({ read: 60, imported: 60, skipped: 0 });
 	expect(report.tables.registrations).toEqual({ read: 362, imported: 360, skipped: 2 });
 	expect(report.tables.push_subscriptions).toEqual({ read: 1, imported: 0, skipped: 1 });

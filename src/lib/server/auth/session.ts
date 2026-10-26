@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, lte } from 'drizzle-orm';
 import type { Cookies } from '@sveltejs/kit';
 import type { Database } from '../db/index.ts';
 import { sessions, users } from '../db/schema.ts';
@@ -39,6 +39,7 @@ export function setSessionCookie(cookies: Cookies, token: string, expiresAt: Dat
 export async function createSession(database: Database, userId: number, now: Date) {
 	const token = generateSessionToken(),
 		expiresAt = new Date(now.getTime() + SESSION_DURATION);
+	await database.delete(sessions).where(lte(sessions.expiresAt, now));
 	await database.insert(sessions).values({ id: sessionId(token), userId, expiresAt });
 	return { token, expiresAt };
 }

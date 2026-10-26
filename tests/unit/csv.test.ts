@@ -20,11 +20,10 @@ it.each([',', ';'])(
 			weekday: 1,
 			kind: 'exam',
 			startTime: '09:00',
-			eventDate: '2026-10-26',
 			compensation: 200,
 			maxSlots: 2
 		});
-		expect(result.grouped.get(4)?.[0]).toMatchObject({ weekday: 7, eventDate: null });
+		expect(result.grouped.get(4)?.[0]).toMatchObject({ weekday: 7 });
 	}
 );
 it('falls back to latin-1 and defaults compensation and slots', () => {
@@ -38,13 +37,12 @@ it('falls back to latin-1 and defaults compensation and slots', () => {
 		maxSlots: 1
 	});
 });
-it('supports Date and multiline quoted fields', () => {
+it('ignores Date and supports multiline quoted fields', () => {
 	const result = parseTemplateCsv(
 		bytes('Week,Giorno,Orario,Tipo Evento,Date\n1,Lunedi,09:00-10:00,"Prima\nseconda",2026-10-26')
 	);
 	expect(result.grouped.get(1)?.[0]).toMatchObject({
-		title: 'Prima\nseconda',
-		eventDate: '2026-10-26'
+		title: 'Prima\nseconda'
 	});
 });
 it.each([
@@ -62,9 +60,7 @@ it.each([
 	'1,Lunedi,09:00-10:00,Title,-1,1,',
 	'1,Lunedi,09:00-10:00,Title,1.2,1,',
 	'1,Lunedi,09:00-10:00,Title,0,0,',
-	'1,Lunedi,09:00-10:00,Title,0,1e0,',
-	'1,Lunedi,09:00-10:00,Title,0,1,2026-02-30',
-	'1,Lunedi,09:00-10:00,Title,0,1,26/10/2026'
+	'1,Lunedi,09:00-10:00,Title,0,1e0,'
 ])('skips invalid rows and retains their source line: %s', (row) => {
 	const result = parseTemplateCsv(bytes(header + '\n' + row + '\n1,Lunedi,09:00-10:00,Valid,0,1,'));
 	expect(result.skipped).toEqual([2]);
@@ -96,3 +92,16 @@ it('quotes neutralized formulas and preserves CRLF inside a cell', () => {
 		'"\'=SUM(1,2)","line\r\nbreak"\r\n'
 	);
 });
+
+it.each(['Data', 'Date'])(
+	'ignores %s even when the date is invalid or from an old pool',
+	(column) => {
+		const result = parseTemplateCsv(
+			bytes(
+				`Week,Giorno,Orario,Tipo Evento,${column}\n1,Lunedi,09:00-10:00,Esami,invalid\n1,Lunedi,10:00-11:00,Cluster,2000-01-01`
+			)
+		);
+		expect(result.skipped).toEqual([]);
+		expect(result.grouped.get(1)).toHaveLength(2);
+	}
+);

@@ -53,7 +53,13 @@ it('upserts identities, recomputes roles, rotates sessions and commits exactly o
 	const listenerEvents: unknown[] = [];
 	const unsubscribe = subscribe((event) => listenerEvents.push(event));
 	try {
-		const admin = profileSchema.parse({ id: 42, login: 'Student', 'staff?': true, wallet: 100 });
+		const admin = profileSchema.parse({
+			campus_users: [{ campus_id: 52 }],
+			id: 42,
+			login: 'Student',
+			'staff?': true,
+			wallet: 100
+		});
 		const first = await login(database, { profile: admin }, info, now);
 		const second = await login(
 			database,
@@ -106,7 +112,18 @@ it('rolls back session and user writes if audit fails, without publishing', asyn
 	await client`ALTER TABLE action_logs ADD CONSTRAINT test_reject_login CHECK (action_type <> 'LOGIN')`;
 	try {
 		await expect(
-			login(database, { profile: profileSchema.parse({ id: 42, login: 'student' }) }, info, now)
+			login(
+				database,
+				{
+					profile: profileSchema.parse({
+						campus_users: [{ campus_id: 52 }],
+						id: 42,
+						login: 'student'
+					})
+				},
+				info,
+				now
+			)
 		).rejects.toThrow();
 		expect(await client`SELECT * FROM users`).toHaveLength(0);
 		expect(await client`SELECT * FROM sessions`).toHaveLength(0);
@@ -132,4 +149,18 @@ it('rejects nonexistent dev users and invalid audit action types', async () => {
 		)
 	).rejects.toThrow();
 	expect(await client`SELECT * FROM action_logs`).toHaveLength(0);
+});
+
+it('cleans expired sessions of other users at login, including the exact deadline', async () => {
+	const [other] = await client`INSERT INTO users(intra_id,login) VALUES (1,'other') RETURNING id`;
+	await database.insert(schema.sessions).values([
+		{ id: 'expired', userId: other.id, expiresAt: new Date(now.getTime() - 1) },
+		{ id: 'deadline', userId: other.id, expiresAt: now },
+		{ id: 'valid', userId: other.id, expiresAt: new Date(now.getTime() + 1) }
+	]);
+	const session = await login(database, { dev: { mode: 'create', login: 'new_user' } }, info, now);
+	expect((await client`SELECT id FROM sessions ORDER BY id`).map((row) => row.id)).toEqual(
+		[sessionId(session.token), 'valid'].sort()
+	);
+	expect(await validateSession(database, session.token, now)).not.toBeNull();
 });

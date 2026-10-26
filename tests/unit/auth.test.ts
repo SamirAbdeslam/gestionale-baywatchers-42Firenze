@@ -11,6 +11,8 @@ import {
 } from '../../src/lib/server/auth/guards.ts';
 import {
 	generateState,
+	CampusAccessError,
+	FIRENZE_CAMPUS_ID,
 	profileSchema,
 	oauthClient,
 	AUTHORIZE_URL,
@@ -86,10 +88,28 @@ it('validates profile identity, defaults malformed optional fields and recalcula
 		wallet: 0,
 		role: 'admin'
 	});
-	expect(profileSchema.parse({ id: 1, login: 'student', 'staff?': true }).role).toBe('admin');
-	expect(profileSchema.parse({ id: 1, login: 'student', 'staff?': false }).role).toBe('user');
-	expect(() => profileSchema.parse({ id: '1', login: 'student' })).toThrow();
-	expect(() => profileSchema.parse({ id: 1, login: '<script>' })).toThrow();
+	expect(
+		profileSchema.parse({
+			campus_users: [{ campus_id: 52 }],
+			id: 1,
+			login: 'student',
+			'staff?': true
+		}).role
+	).toBe('admin');
+	expect(
+		profileSchema.parse({
+			campus_users: [{ campus_id: 52 }],
+			id: 1,
+			login: 'student',
+			'staff?': false
+		}).role
+	).toBe('user');
+	expect(() =>
+		profileSchema.parse({ campus_users: [{ campus_id: 52 }], id: '1', login: 'student' })
+	).toThrow();
+	expect(() =>
+		profileSchema.parse({ campus_users: [{ campus_id: 52 }], id: 1, login: '<script>' })
+	).toThrow();
 });
 it('uses the fixed 42 endpoints and validates mocked token and profile responses', async () => {
 	const client = oauthClient({
@@ -107,7 +127,9 @@ it('uses the fixed 42 endpoints and validates mocked token and profile responses
 	const mocked = vi
 		.fn()
 		.mockResolvedValueOnce(Response.json({ access_token: 'test-token', token_type: 'bearer' }))
-		.mockResolvedValueOnce(Response.json({ id: 42, login: 'student' }));
+		.mockResolvedValueOnce(
+			Response.json({ id: 42, login: 'student', campus_users: [{ campus_id: 52 }] })
+		);
 	vi.stubGlobal('fetch', mocked);
 	expect((await fetchProfile(client, 'code')).login).toBe('student');
 	const tokenRequest = mocked.mock.calls[0][0] as Request;
@@ -216,5 +238,30 @@ it.each([
 	],
 	[undefined, '']
 ])('prefers the medium avatar and safely handles optional image data %j', (image, expected) => {
-	expect(profileSchema.parse({ id: 123, login: 'student', image }).imageUrl).toBe(expected);
+	expect(
+		profileSchema.parse({ campus_users: [{ campus_id: 52 }], id: 123, login: 'student', image })
+			.imageUrl
+	).toBe(expected);
+});
+
+it.each([
+	[{ campus_users: [{ campus_id: 52 }] }, 'user'],
+	[{ campus_users: [{ campus_id: 1 }, { campus_id: 52 }], 'staff?': true }, 'admin'],
+	[{ login: ' IGILANI ', campus_users: [{ campus_id: 1 }] }, 'admin'],
+	[{ login: 'igilani' }, 'admin']
+])('admits Florence members and listed admins: %j', (fields, role) => {
+	expect(FIRENZE_CAMPUS_ID).toBe(52);
+	expect(profileSchema.parse({ id: 42, login: 'student', ...fields }).role).toBe(role);
+});
+it.each([
+	{ campus_users: [{ campus_id: 1 }] },
+	{ campus_users: [{ campus_id: 1 }], 'staff?': true },
+	{},
+	{ 'staff?': true },
+	{ campus_users: null },
+	{ campus_users: [{ campus_id: '52' }] }
+])('denies profiles without verified Florence membership: %j', (fields) => {
+	expect(() => profileSchema.parse({ id: 42, login: 'student', ...fields })).toThrow(
+		CampusAccessError
+	);
 });

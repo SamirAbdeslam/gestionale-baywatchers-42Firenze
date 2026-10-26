@@ -1,0 +1,1 @@
+ALTER TABLE "template_events" DROP COLUMN "event_date";

@@ -186,7 +186,7 @@
 	"template_create_link": "Créer un modèle",
 	"template_list_empty": "Aucun modèle disponible",
 	"template_intro": "Des semaines types à appliquer en un clic. Les dates sont calculées à partir de la piscine en cours.",
-	"template_import_help": "Un modèle pour chaque semaine du fichier. Colonnes : Week, Giorno, Orario, Tipo Evento, Compenso, Partecipanti, Data (facultative).",
+	"template_import_help": "Un modèle pour chaque semaine du fichier. Colonnes : Week, Giorno, Orario, Tipo Evento, Compenso, Partecipanti. Les colonnes Data et Date sont ignorées.",
 	"template_target_week": "Semaine cible",
 	"template_event_count": "{count} événements",
 	"template_overwrite": "Écraser",
@@ -205,7 +205,6 @@
 	"template_event_title": "Titre",
 	"template_event_description": "Description de l’événement",
 	"template_event_day": "Jour",
-	"template_event_date": "Date facultative",
 	"template_event_start": "Début",
 	"template_event_end": "Fin",
 	"template_event_slots": "Places",
@@ -304,6 +303,7 @@
 	"whitelist_intro": "Seules les personnes de la liste peuvent prendre des créneaux. Les admins peuvent quand même ajouter n’importe qui à un événement.",
 	"whitelist_count": "{count} logins",
 	"whitelist_note": "Retirer quelqu’un de la liste n’annule pas les créneaux déjà pris.",
-	"template_more_details": "Jour, date et description",
-	"nav_language": "Langue"
+	"template_more_details": "Jour et description",
+	"nav_language": "Langue",
+	"error_campus": "L’accès est réservé aux étudiants et au personnel de 42 Firenze."
 }

@@ -142,7 +142,6 @@ export const templateEvents = pgTable(
 		description: text('description').notNull().default(''),
 		kind: eventKind('kind').notNull().default('custom'),
 		weekday: smallint('weekday').notNull(),
-		eventDate: date('event_date'),
 		startTime: time('start_time').notNull(),
 		endTime: time('end_time').notNull(),
 		maxSlots: integer('max_slots').notNull().default(10),

@@ -305,7 +305,7 @@ Il partecipante è identificato dal **login**, non da una FK su `users`, perché
 | `created_at` | `timestamptz` | `NOT NULL DEFAULT now()` |
 
 **`template_events`**
-Stesse colonne di `events` per `title`, `description`, `kind`, `weekday`, `event_date`, `start_time`, `end_time`, `max_slots`, `compensation` (stessi vincoli), più `id serial PK` e `template_id integer NOT NULL` FK `week_templates.id ON DELETE CASCADE`. Niente `week`: la settimana è `target_week` del template.
+Stesse colonne di `events` per `title`, `description`, `kind`, `weekday`, `start_time`, `end_time`, `max_slots`, `compensation` (stessi vincoli), più `id serial PK` e `template_id integer NOT NULL` FK `week_templates.id ON DELETE CASCADE`. Niente `week`: la settimana è `target_week` del template. Nessuna data assoluta (`event_date`): le date degli eventi applicati derivano dal pool (D7).
 
 **`whitelist`**
 | Colonna | Tipo | Vincoli |
@@ -526,13 +526,13 @@ Riferimento: `legacy/app.py:980`, `legacy/templates/admin.html`.
 Riferimento: `legacy/app.py:1569`–`1938`, `legacy/templates/create_template.html`.
 
 - **Lista** (`/admin/templates`): nome, descrizione, settimana target, data creazione, numero eventi; ordinata per `created_at` decrescente.
-- **Builder** (`/admin/templates/new`): nome (obbligatorio), descrizione, settimana target (1–4), lista eventi con giorno, data facoltativa, inizio, fine, posti (default 2), compenso (default 0), titolo, descrizione. Si possono aggiungere, modificare e rimuovere eventi prima di salvare. Almeno un evento. Il salvataggio invia un unico payload JSON validato con Zod (nel legacy: campi `events[i]` con JSON dentro). Log `CREATE_TEMPLATE`.
+- **Builder** (`/admin/templates/new`): nome (obbligatorio), descrizione, settimana target (1–4), lista eventi con giorno, inizio, fine, posti (default 2), compenso (default 0), titolo, descrizione. Si possono aggiungere, modificare e rimuovere eventi prima di salvare. Almeno un evento. Il salvataggio invia un unico payload JSON validato con Zod (nel legacy: campi `events[i]` con JSON dentro). Log `CREATE_TEMPLATE`.
 - **Applica** (`apply(templateId, overwrite)`):
   1. Template inesistente → 404.
   2. Se la settimana target ha eventi e `overwrite` è falso → warning con il numero di eventi esistenti ("Esistono già N eventi nella settimana W. Seleziona 'Sovrascrivi' per continuare.").
   3. Se `overwrite` è vero → cancella gli eventi della settimana (le iscrizioni cadono in cascata).
   4. Template senza eventi → warning "Template senza eventi".
-  5. Crea gli eventi con `week = target_week`. **Non** copia `event_date` (comportamento legacy: le date derivano dal pool corrente). Log `APPLY_TEMPLATE` ("... Sovrascrittura: true/false").
+  5. Crea gli eventi con `week = target_week`. La data deriva dal pool corrente; il template non contiene date assolute (D7). Log `APPLY_TEMPLATE` ("... Sovrascrittura: true/false").
   6. Messaggio di successo con il numero di eventi creati (ed eliminati, se sovrascrittura). Redirect/visualizzazione su `/admin?week=<target_week>`.
 - **Elimina**: log `DELETE_TEMPLATE`, eventi del template in cascata.
 - **CSV di esempio**: file `template_esempio.csv` con la sola riga di intestazione `Week,Giorno,Orario,Tipo Evento,Compenso,Partecipanti`.
@@ -540,10 +540,10 @@ Riferimento: `legacy/app.py:1569`–`1938`, `legacy/templates/create_template.ht
   - File obbligatorio, nome che finisce con `.csv` (case-insensitive), massimo 1 MB, massimo 2000 righe.
   - Decodifica UTF-8; se fallisce, latin-1. Rimuovi il BOM iniziale.
   - Separatore: `,` se nei primi 1024 caratteri le virgole sono più dei punti e virgola, altrimenti `;`.
-  - Colonne per nome di intestazione: `Week`, `Giorno`, `Orario`, `Tipo Evento`, `Compenso` (default `0`), `Partecipanti` (default `1`), facoltativa `Data` o `Date`.
-  - Una riga si **salta** (e si conta) se: manca uno tra Week, Giorno, Orario, Tipo Evento; `Orario` non contiene `-`; Compenso o Partecipanti non sono interi. Validazioni aggiunte rispetto al legacy (anch'esse saltano la riga): Week non in 1–4; Giorno non riconosciuto (nomi italiani, case-insensitive, con o senza accento: `Lunedi`/`Lunedì`); orari non validi o `inizio >= fine`; Partecipanti < 1; Compenso < 0; Data presente ma non in formato `YYYY-MM-DD`.
+  - Colonne per nome di intestazione: `Week`, `Giorno`, `Orario`, `Tipo Evento`, `Compenso` (default `0`), `Partecipanti` (default `1`), le colonne `Data` e `Date` vengono ignorate (D7).
+  - Una riga si **salta** (e si conta) se: manca uno tra Week, Giorno, Orario, Tipo Evento; `Orario` non contiene `-`; Compenso o Partecipanti non sono interi. Validazioni aggiunte rispetto al legacy (anch'esse saltano la riga): Week non in 1–4; Giorno non riconosciuto (nomi italiani, case-insensitive, con o senza accento: `Lunedi`/`Lunedì`); orari non validi o `inizio >= fine`; Partecipanti < 1; Compenso < 0.
   - `Orario` = `HH:MM-HH:MM` (spazi ammessi attorno ai valori).
-  - Si crea **un template per ogni settimana** presente nel file: nome `Week <w> - Import CSV`, descrizione `Template importato da CSV con <n> eventi`. Ogni evento: titolo = `Tipo Evento`, descrizione = `<Tipo Evento> - <Compenso>₳`, `kind = inferKind(titolo)`, `event_date = Data` se presente.
+  - Si crea **un template per ogni settimana** presente nel file: nome `Week <w> - Import CSV`, descrizione `Template importato da CSV con <n> eventi`. Ogni evento: titolo = `Tipo Evento`, descrizione = `<Tipo Evento> - <Compenso>₳`, `kind = inferKind(titolo)`.
   - Nessuna riga valida → warning "Nessun evento valido trovato nel CSV (saltate N righe)".
   - Successo → "Import completato! Creati X template con Y eventi totali" e, se ci sono righe saltate, un secondo messaggio con il numero e i numeri di riga (max 20 elencati).
   - Tutto in una transazione. Log `IMPORT_TEMPLATES`.

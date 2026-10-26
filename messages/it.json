@@ -186,7 +186,7 @@
 	"template_create_link": "Crea template",
 	"template_list_empty": "Nessun template disponibile",
 	"template_intro": "Settimane tipo da applicare con un clic. Le date si calcolano dal pool corrente.",
-	"template_import_help": "Un template per ogni settimana presente nel file. Colonne: Week, Giorno, Orario, Tipo Evento, Compenso, Partecipanti, Data (facoltativa).",
+	"template_import_help": "Un template per ogni settimana presente nel file. Colonne: Week, Giorno, Orario, Tipo Evento, Compenso, Partecipanti. Le colonne Data e Date vengono ignorate.",
 	"template_target_week": "Settimana target",
 	"template_event_count": "{count} eventi",
 	"template_overwrite": "Sovrascrivi",
@@ -205,7 +205,6 @@
 	"template_event_title": "Titolo",
 	"template_event_description": "Descrizione evento",
 	"template_event_day": "Giorno",
-	"template_event_date": "Data facoltativa",
 	"template_event_start": "Inizio",
 	"template_event_end": "Fine",
 	"template_event_slots": "Posti",
@@ -304,6 +303,7 @@
 	"whitelist_intro": "Solo chi è in lista può prendere turni. Gli admin possono comunque aggiungere chiunque a un evento.",
 	"whitelist_count": "{count} login",
 	"whitelist_note": "Togliere qualcuno dalla lista non cancella i turni che ha già preso.",
-	"template_more_details": "Giorno, data e descrizione",
-	"nav_language": "Lingua"
+	"template_more_details": "Giorno e descrizione",
+	"nav_language": "Lingua",
+	"error_campus": "L'accesso è riservato agli studenti e allo staff di 42 Firenze."
 }

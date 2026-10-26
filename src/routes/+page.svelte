@@ -18,6 +18,7 @@
 		<h1 class="sr-only">{m.landing_title()}</h1>
 		<Logo compact />
 		<p class="description">{m.landing_description()}</p>
+		{#if data.campusDenied}<p role="alert">{m.error_campus()}</p>{/if}
 		{#if data.loginFailed}<p role="alert">{m.auth_login_failed()}</p>{/if}
 		<div class="login">
 			<a class="button" href={resolve('/auth/login')}>{m.auth_login()} →</a><span

@@ -1,10 +1,12 @@
 import { beforeEach, expect, it, vi } from 'vitest';
+import { CampusAccessError } from '../../src/lib/server/auth/oauth42.ts';
 import { GET } from '../../src/routes/auth/callback/+server.ts';
 
 const mocks = vi.hoisted(() => ({ profile: vi.fn(), login: vi.fn(), cookie: vi.fn() }));
 vi.mock('#lib/server/db/index.ts', () => ({ db: {} }));
 vi.mock('#lib/server/env.ts', () => ({ readEnv: () => ({ ORIGIN: 'https://localhost:8443' }) }));
-vi.mock('#lib/server/auth/oauth42.ts', () => ({
+vi.mock('#lib/server/auth/oauth42.ts', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../../src/lib/server/auth/oauth42.ts')>()),
 	oauthClient: () => ({}),
 	fetchProfile: mocks.profile
 }));
@@ -78,6 +80,22 @@ it('never includes token-bearing provider errors in application logs', async () 
 		});
 		expect(JSON.stringify(log.mock.calls)).not.toMatch(/PRIVATE_TOKEN|PRIVATE_CODE/);
 		expect(mocks.cookie).not.toHaveBeenCalled();
+	} finally {
+		log.mockRestore();
+	}
+});
+
+it('redirects rejected campuses without persistence, session cookies or application logs', async () => {
+	const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+	mocks.profile.mockRejectedValueOnce(new CampusAccessError());
+	try {
+		await expect(GET(event('?code=code&state=state', 'state'))).rejects.toMatchObject({
+			status: 303,
+			location: '/?error=campus'
+		});
+		expect(mocks.login).not.toHaveBeenCalled();
+		expect(mocks.cookie).not.toHaveBeenCalled();
+		expect(log).not.toHaveBeenCalled();
 	} finally {
 		log.mockRestore();
 	}

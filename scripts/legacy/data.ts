@@ -92,8 +92,22 @@ export function prepareImport(source: LegacyRows, ignored: Record<string, number
 		created_at: legacyTimestamp(r.created_at)
 	}));
 	const template_events = source.template_events.flatMap((r) => {
-		const event = normalizeEvent(r, anomaly('template_events', r.id));
-		return event ? [{ ...event, template_id: r.template_id }] : [];
+		const event = normalizeEvent({ ...r, event_date: null }, anomaly('template_events', r.id));
+		if (!event) return [];
+		return [
+			{
+				id: event.id,
+				template_id: r.template_id,
+				title: event.title,
+				description: event.description,
+				kind: event.kind,
+				weekday: event.weekday,
+				start_time: event.start_time,
+				end_time: event.end_time,
+				max_slots: event.max_slots,
+				compensation: event.compensation
+			}
+		];
 	});
 	const whitelistSeen = new Set<string>();
 	const whitelist = source.baywatcher_whitelist.flatMap((r) => {

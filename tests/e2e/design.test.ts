@@ -82,9 +82,9 @@ test(
 							await page.getByRole('button', { name: 'Aggiungi riga', exact: true }).click();
 							const editor = page.getByRole('group', { name: `Evento ${day}`, exact: true });
 							await editor.getByLabel('Titolo', { exact: true }).fill('Sorveglianza esami');
-							await editor.getByText('Giorno, data e descrizione', { exact: true }).click();
+							await editor.getByText('Giorno e descrizione', { exact: true }).click();
 							await editor.getByLabel('Giorno', { exact: true }).selectOption(String(day));
-							await editor.getByText('Giorno, data e descrizione', { exact: true }).click();
+							await editor.getByText('Giorno e descrizione', { exact: true }).click();
 						}
 					}
 					await capture(name);

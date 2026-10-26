@@ -25,7 +25,6 @@ const entry = {
 	title: 'esami',
 	description: 'test',
 	weekday: 1,
-	eventDate: '2026-10-26',
 	startTime: '09:00',
 	endTime: '10:00',
 	maxSlots: 2,
@@ -70,10 +69,8 @@ it('creates validated events, lists count/newest first and writes one audit afte
 	const list = await listTemplates(database, admin);
 	expect(list.map((row) => row.name)).toEqual(['Newer', 'Template']);
 	expect(list[0]).toMatchObject({ eventCount: 1, targetWeek: 2, description: 'Description' });
-	expect(
-		await client`SELECT title,kind,event_date,max_slots FROM template_events ORDER BY id`
-	).toMatchObject([
-		{ title: 'Esami', kind: 'exam', event_date: '2026-10-26', max_slots: 2 },
+	expect(await client`SELECT title,kind,max_slots FROM template_events ORDER BY id`).toMatchObject([
+		{ title: 'Esami', kind: 'exam', max_slots: 2 },
 		{ title: 'Esami' }
 	]);
 	const logs = await database.select().from(schema.actionLogs);
@@ -83,7 +80,7 @@ it('creates validated events, lists count/newest first and writes one audit afte
 	).toBe(true);
 	expect(messages).toEqual(logs.map((log) => ({ type: 'log_created', id: log.id })));
 });
-it('applies to an empty week, drops specific dates, copies all remaining fields and publishes once', async () => {
+it('applies to an empty week with pool-derived dates, copies all fields and publishes once', async () => {
 	await createTemplate(database, admin, payload(), info, now);
 	messages = [];
 	const result = await applyTemplate(database, admin, { id: 1 }, info, now);
@@ -171,7 +168,7 @@ it('deletes only the template and its children with one audit', async () => {
 it('imports grouped weeks atomically with defaults, row numbers and one log', async () => {
 	const file = new File(
 		[
-			'Week;Giorno;Orario;Tipo Evento;Data\n1;Lunedì;09:00-10:00;Esami;2026-10-26\n9;Lunedi;09:00-10:00;Bad;\n4;Domenica;10:00-11:00;Cluster;'
+			'Week;Giorno;Orario;Tipo Evento;Data\n1;Lunedì;09:00-10:00;Esami;invalid\n9;Lunedi;09:00-10:00;Bad;\n4;Domenica;10:00-11:00;Cluster;'
 		],
 		'INPUT.CSV'
 	);

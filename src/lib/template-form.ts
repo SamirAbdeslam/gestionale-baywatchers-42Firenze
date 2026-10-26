@@ -2,7 +2,6 @@ export const emptyTemplateEvent = () => ({
 	title: '',
 	description: '',
 	weekday: '1',
-	eventDate: '',
 	startTime: '09:00',
 	endTime: '10:00',
 	maxSlots: '2',

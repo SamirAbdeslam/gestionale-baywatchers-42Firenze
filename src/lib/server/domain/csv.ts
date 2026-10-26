@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { digits, isoDate, weekNumber } from './dates.ts';
+import { digits, weekNumber } from './dates.ts';
 import { inferKind } from '#lib/kinds.ts';
 
 import { editable, timeOrder } from './events.ts';
@@ -8,11 +8,7 @@ export const templateEventSchema = z
 	.object({
 		...editable,
 		maxSlots: editable.maxSlots.default(2),
-		compensation: editable.compensation.default(0),
-		eventDate: z
-			.union([isoDate, z.literal('')])
-			.nullish()
-			.transform((value) => value || null)
+		compensation: editable.compensation.default(0)
 	})
 	.refine(timeOrder);
 
@@ -104,7 +100,6 @@ export function parseTemplateCsv(bytes: Uint8Array) {
 			title: fields['Tipo Evento'],
 			description: `${fields['Tipo Evento']} - ${fields.Compenso || '0'}₳`,
 			weekday: days.indexOf(day) + 1,
-			eventDate: fields.Data || fields.Date || null,
 			startTime: times.length === 2 ? times[0] : '',
 			endTime: times[1],
 			maxSlots: fields.Partecipanti || '1',

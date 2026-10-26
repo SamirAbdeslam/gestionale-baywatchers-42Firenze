@@ -2,7 +2,7 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { readEnv } from '#lib/server/env.ts';
-import { oauthClient, fetchProfile } from '#lib/server/auth/oauth42.ts';
+import { oauthClient, fetchProfile, CampusAccessError } from '#lib/server/auth/oauth42.ts';
 import { setSessionCookie } from '#lib/server/auth/session.ts';
 import { login } from '#lib/server/domain/auth.ts';
 import type { RequestHandler } from './$types';
@@ -32,7 +32,8 @@ export const GET: RequestHandler = async (event) => {
 			event.cookies.get('session')
 		);
 		setSessionCookie(event.cookies, session.token, session.expiresAt, env.ORIGIN);
-	} catch {
+	} catch (error) {
+		if (error instanceof CampusAccessError) redirect(303, '/?error=campus');
 		// Never log request URLs, tokens, provider response bodies or credential-bearing errors.
 		console.error('OAuth login failed', { id: randomUUID(), stage });
 		redirect(303, '/?error=login_failed');

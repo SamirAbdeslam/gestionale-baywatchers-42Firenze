@@ -2,6 +2,9 @@ import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { ADMIN_LOGINS } from '../admins.ts';
 
+export const FIRENZE_CAMPUS_ID = 52;
+export class CampusAccessError extends Error {}
+
 export const AUTHORIZE_URL = 'https://api.intra.42.fr/oauth/authorize';
 export const TOKEN_URL = 'https://api.intra.42.fr/oauth/token';
 export const PROFILE_URL = 'https://api.intra.42.fr/v2/me';
@@ -70,20 +73,26 @@ export const profileSchema = z
 			})
 			.catch({ link: '' }),
 		wallet: z.number().int().min(-2147483648).max(2147483647).catch(0),
-		'staff?': z.boolean().catch(false)
+		'staff?': z.boolean().catch(false),
+		campus_users: z.array(z.object({ campus_id: z.number() })).catch([])
 	})
-	.transform((profile) => ({
-		intraId: profile.id,
-		login: profile.login,
-		email: profile.email,
-		displayName: profile.displayname ?? profile.login,
-		imageUrl: profile.image.versions?.medium ?? profile.image.link,
-		wallet: profile.wallet,
-		role:
-			profile['staff?'] || ADMIN_LOGINS.some((login) => login.toLowerCase() === profile.login)
-				? ('admin' as const)
-				: ('user' as const)
-	}));
+	.transform((profile) => {
+		const listedAdmin = ADMIN_LOGINS.some((login) => login.toLowerCase() === profile.login);
+		if (
+			!listedAdmin &&
+			!profile.campus_users.some(({ campus_id }) => campus_id === FIRENZE_CAMPUS_ID)
+		)
+			throw new CampusAccessError();
+		return {
+			intraId: profile.id,
+			login: profile.login,
+			email: profile.email,
+			displayName: profile.displayname ?? profile.login,
+			imageUrl: profile.image.versions?.medium ?? profile.image.link,
+			wallet: profile.wallet,
+			role: profile['staff?'] || listedAdmin ? ('admin' as const) : ('user' as const)
+		};
+	});
 export type Profile = z.infer<typeof profileSchema>;
 export async function fetchProfile(client: ReturnType<typeof oauthClient>, code: string) {
 	const accessToken = await client.accessToken(code);

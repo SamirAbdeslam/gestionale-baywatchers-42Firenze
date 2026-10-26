@@ -47,13 +47,13 @@ for (const javaScriptEnabled of [true, false]) {
 					const first = page.getByRole('group', { name: 'Evento 1', exact: true });
 					await expect(first).toBeVisible();
 					if (javaScriptEnabled)
-						await first.getByText('Giorno, data e descrizione', { exact: true }).click();
+						await first.getByText('Giorno e descrizione', { exact: true }).click();
 					await first.getByLabel('Titolo', { exact: true }).fill(name + ' evento');
 					await first
 						.getByLabel('Descrizione evento', { exact: true })
 						.fill('Descrizione evento conservata');
 					await first.getByLabel('Giorno', { exact: true }).selectOption('7');
-					await first.getByLabel('Data facoltativa', { exact: true }).fill('2027-01-31');
+					await expect(page.locator('input[type="date"]')).toHaveCount(0);
 					await first.getByLabel('Inizio', { exact: true }).fill('11:00');
 					await first.getByLabel('Fine', { exact: true }).fill('12:00');
 					await first.getByLabel('Posti', { exact: true }).fill('3');
@@ -87,7 +87,6 @@ for (const javaScriptEnabled of [true, false]) {
 						Titolo: name + ' evento',
 						'Descrizione evento': 'Descrizione evento conservata',
 						Giorno: '7',
-						'Data facoltativa': '2027-01-31',
 						Inizio: '11:00',
 						Fine: '12:00',
 						Posti: '3',

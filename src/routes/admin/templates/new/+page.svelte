@@ -159,14 +159,6 @@
 								>
 							</div>
 							<div class="field">
-								<label for={`date-${index}`}>{m.template_event_date()}</label><input
-									id={`date-${index}`}
-									name={`events.${index}.eventDate`}
-									type="date"
-									bind:value={event.eventDate}
-								/>
-							</div>
-							<div class="field">
 								<label for={`description-${index}`}>{m.template_event_description()}</label
 								><textarea
 									id={`description-${index}`}

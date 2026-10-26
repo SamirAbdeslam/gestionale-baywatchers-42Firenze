@@ -243,3 +243,15 @@ test('rejects cross-origin form posts, invalid dev inputs and OAuth callbacks wi
 	expect(response.status()).toBe(303);
 	expect(response.headers().location).toBe('/?error=login_failed');
 });
+
+for (const javaScriptEnabled of [true, false]) {
+	test.describe(`campus denial JavaScript ${javaScriptEnabled}`, () => {
+		test.use({ javaScriptEnabled });
+		test('shows the campus restriction on the landing page', async ({ page }) => {
+			await page.goto('/?error=campus');
+			await expect(page.getByRole('alert')).toHaveText(
+				"L'accesso è riservato agli studenti e allo staff di 42 Firenze."
+			);
+		});
+	});
+}
