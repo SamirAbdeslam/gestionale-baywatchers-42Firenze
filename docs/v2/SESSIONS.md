@@ -142,6 +142,19 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 - 2026-10-23: **Design v2 autorizzato per l’implementazione** dalla specifica baywatchers-design/DESIGN-V2.md (copia nel repository: docs/v2/design/DESIGN-V2.md). Biglietti compatti, pillole piene, calendario mobile ibrido con scroll snap, messaggi in alto a destra con successi a 4 s, menu sull’avatar e toolbar admin compatta. Conservare regole applicative, query e action, CSP e dipendenze. Le esportazioni PNG e gli artboard disponibili sono ancora v1; la galleria dell’app resta distinta dal canvas. M15 non iniziato.
 
+- 2026-10-26: revisione di `1d044f6`, `47cfae5` e `c0ee267` (avatar e design v2) più report Lighthouse di `/calendar` del 2026-10-23 (mobile 70, desktop 98). **Da fare prima di iniziare M15.** Se un punto è già risolto, saltalo e scrivilo nel diario. Riferimenti di riga al commit `c0ee267`. Commit piccoli (`fix(avatar): ...`, `ci: ...`, `fix(a11y): ...`, `perf: ...`), `corepack pnpm ci:local` verde, push, `gh run watch <id> --exit-status` con i sei job verdi. Se qualcosa non va come descritto, fermati e chiedi.
+  - **R15 (media)** `src/routes/avatar/[login]/+server.ts` L7-16: la rotta controlla solo che l'utente sia loggato, quindi chiunque può ottenere la foto 42 di qualunque login presente nel DB (es. `/avatar/igilani`). Ismail ha autorizzato la rotta a condizione che ognuno veda solo la propria foto. Se `params.login !== locals.user.login` rispondi `404` (stesso `Cache-Control: private, no-store` degli altri 404), senza leggere il DB né chiamare il CDN. L'app usa `Avatar` solo per l'utente stesso (`+layout.svelte` L79, `profile/+page.svelte` L15), quindi nessuna pagina cambia. Test: utente A chiede `/avatar/<login di B>` → 404 e nessuna `fetch`; utente A chiede il proprio → comportamento attuale.
+  - **R16 (media)** `.github/workflows/ci.yml`: nessun job ha `timeout-minutes`. La run `39964427309` di `c0ee267` è stata cancellata dopo 6 h: l'e2e si è bloccato su `pnpm exec playwright install --with-deps chromium webkit` (L110), durante l'installazione apt, prima dei test. Il commit non è quindi verificato dalla CI remota. Aggiungi `timeout-minutes` a ogni job: 30 per e2e, 15 per gli altri. Dopo il push verifica che i sei job siano verdi, compreso il codice di `c0ee267`, e riporta l'id della run nel diario. Se l'installazione si blocca di nuovo, fermati e riporta: non cambiare il modo di installare i browser senza conferma.
+  - **Ponytail 30** `src/lib/components/Toast.svelte` L46-60: senza JavaScript il clic sulla × chiude il `<details>` ma la × resta visibile come un quadratino. Nascondi `.notice:not([open])` (o il suo contenitore) con una regola CSS. Test senza JS: dopo il clic sulla × il messaggio non è più visibile.
+  - **L1 (media, CLS)** Lighthouse mobile su `/calendar`: CLS 0,235, tutto su `.calendar`. Dopo `c0ee267` la barra dei giorni è già generata in SSR: rimisura. Se il CLS mobile resta ≥ 0,1, individua cosa cambia dopo l'idratazione (es. `showDay` all'apertura, attributi `role`/`tabindex` che cambiano con `ready`) e correggi senza nascondere giorni.
+  - **L2 (bassa, prestazioni)** CSS che bloccano il rendering: 6 file piccoli (0.css, 11.css, EventCard, Logo, ParticipantBadge, Dialog; 0,7–4,8 KB), stimati 1,15 s su mobile. Prova `kit.inlineStyleThreshold` (circa 5 KB) nella configurazione di SvelteKit. SvelteKit aggiunge l'hash degli stili inline che genera alla CSP: verifica con `design.test.ts` (nessuna violazione CSP, anche WebKit) e confronta FCP prima e dopo. Se la CSP si rompe o serve `unsafe-inline`, annulla e riporta.
+  - **L3 (media, contrasto)** `src/lib/components/WeekNav.svelte` L71: i chip "Non aperta" usano `opacity: var(--opacity-faint)`, e il testo ha un contrasto di 2,26:1 (serve 4,5:1). Niente opacità sul testo: usa `--color-muted` e un bordo tratteggiato per indicare la settimana non disponibile. Contrasto AA nei due temi.
+  - **L4 (media, nome accessibile)** `src/lib/components/WeekNav.svelte` L26: il link mostra "W01 Attiva" ma ha `aria-label` "Settimana 1" / "precedente" / "successiva", quindi chi usa i comandi vocali non lo attiva dicendo "W01". Togli `aria-label` dai link e metti il testo per screen reader in uno `<span class="sr-only">` dentro il link, così il nome contiene il testo visibile. Inoltre L8: la `nav` usa `m.calendar_events()` ("Eventi della settimana"), lo stesso nome della griglia del calendario. Nuova chiave con etichetta "Settimane". Aggiorna i test che usano questi nomi.
+  - **L5 (bassa, titoli)** `src/routes/calendar/+page.svelte` L233: i titoli dei giorni sono `h3`; su mobile si passa da `h1` a `h3`. Passali a `h2` e adegua il CSS. I test cercano i titoli per nome.
+  - **L6 (bassa, SEO)** `src/app.html`: aggiungi `<meta name="description">` con una frase breve in italiano.
+  - **Chiusura** Rifai Lighthouse mobile e desktop su `/calendar` (stack HTTPS su 8443) e riporta i punteggi nel diario. Obiettivi: CLS mobile < 0,1, nessun errore di contrasto, di nome accessibile o di ordine dei titoli. Rigenera la galleria solo se cambia l'aspetto. Nessun riferimento ad AI nei commit. M15 non iniziato.
+  - **Risposte di Ismail (2026-10-26)**: autorizzato EventCard con prop numerico del livello e svelte:element, h4 predefinito; h3 nel calendario e h2 nella landing, h4 in admin/display/dialog. Il nome del pulsante avatar deve contenere @login e iniziali visibili; testo sr-only nel pulsante, iniziali accessibili solo nell'header, immagine header con alt vuoto; profilo invariato. L2 da annullare: «provato, FCP invariato (mobile 3,62→3,71 s, desktop 0,864→0,853 s), annullato». Lighthouse 13.4.1 tramite npx, simulate, mobile e desktop su 8443, solo seed del DB di test, nessun cookie/token nei report o nel repository, JSON fuori repo; nessuna modifica a package.json/lockfile.
+
 ---
 
 ## Voci
@@ -2097,3 +2110,29 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Commit/push e verifica dei sei job CI. Poi attendere indicazioni di Ismail, senza iniziare M15.
+
+
+## 2026-10-26 — revisione avatar/design v2 e Lighthouse
+
+**Fatto**
+- R15: /avatar/[login] rifiuta con 404 un login diverso dall'utente corrente prima della lettura dell'immagine dal DB e prima del downloader. Unit con fetch finto, query/downloader mai chiamati; aggiunti controlli HTTP 404/no-store alla matrice utenti/admin. Commit locale dcb859e.
+- R16: timeout-minutes 30 per e2e, 15 per ciascuno degli altri cinque job. Installer Playwright e runner invariati. Confermata via GitHub la cancellazione della vecchia run 39964427309: c0ee267 non ha ancora una CI remota completa. Commit locale 33d40fa.
+- Ponytail 30 già risolto dalla regola .notice-wrapper:not(:has([open])). Riprodotta la chiusura reale senza JS: sia .notice sia summary non sono visibili. Rafforzato l'e2e con verifiche fisiche di visibilità; nessun CSS ridondante aggiunto.
+- L3/L4: settimane non aperte senza opacity, testo muted e bordo tratteggiato; nome visibile dei link conservato, descrizione sr-only e nav distinta «Settimane». L5: giorni h2 con CSS circoscritto al giorno. L6: meta description italiana.
+- L2: provato, FCP invariato (mobile 3,62→3,71 s, desktop 0,864→0,853 s), annullato. Ripristinato vite.config.ts senza inlineStyleThreshold, direttive CSP e dipendenze invariate.
+
+**Misure**
+- Autorizzato Lighthouse 13.4.1 tramite npx, throttling simulate, preset mobile predefinito e desktop. Solo seed dev_user del database baywatchers_test su HTTPS 8443; credenziali 42 disabilitate nel container di misura. Cookie/token non stampati né salvati nei report o nel repository; JSON sanitizzati fuori repository. package.json e lockfile invariati.
+- Prima delle modifiche UI: mobile P82/A95/BP100/SEO90, FCP/LCP 3623,69 ms, CLS 0,002747, TBT 0 ms; desktop P98/A96/BP100/SEO90, FCP/LCP 863,92 ms, CLS 0,007096, TBT 0 ms. L1 risulta già risolto dopo la barra SSR: nessuna modifica al comportamento dei giorni.
+- Prima prova L2 e correzioni indicate: mobile P81/A98/BP100/SEO100, FCP/LCP 3705,73 ms, CLS 0,002747; desktop P98/A98/BP100/SEO100, FCP/LCP 853,13 ms, CLS 0,007096; TBT 0 in entrambi. Nessun guadagno netto FCP mobile dimostrato; prova annullata su indicazione di Ismail.
+- Misura finale senza L2: mobile P82/A100/BP100/SEO100, FCP/LCP e Speed Index 3622,34 ms, CLS 0,002747; desktop P98/A100/BP100/SEO100, FCP/LCP e Speed Index 865,69 ms, CLS 0,007096. TBT 0 ms in entrambi. Nessun errore di contrasto, nome accessibile o ordine dei titoli. Contrasto delle settimane non aperte misurato nel browser: 6,08:1 chiaro, 7,91:1 scuro.
+- corepack pnpm ci:local exit 0: 224 unit, 277 integration, 141 e2e, totale 642; Chromium desktop/mobile, WebKit e prove senza JS verdi. Check zero errori e warning, lint/build verdi. Dopo il solo reset finale letter-spacing dei titoli, ripetuti check/lint/build e galleria: 3/3 verdi, 82 immagini rigenerate nei due temi; screenshot riletti. Nessuna nuova violazione CSP.
+
+**Decisioni autorizzate e applicate**
+- EventCard con headingLevel 2/3/4 tramite svelte:element: 4 predefinito, 3 nel calendario, 2 nella landing. Admin, display e dialog restano su 4. Nome del pulsante avatar ricavato dal contenuto con prefisso sr-only e iniziali accessibili solo nell'header; alt vuoto per la foto dell'header, profilo invariato. Test aggiornati per livelli, nome visibile e alt.
+
+**Domande / blocchi**
+- Nessuna domanda di implementazione aperta. Resta la verifica della CI remota; OAuth/foto 42 reali, Safari fisico e TV reale restano verifiche manuali separate.
+
+**Prossimo passo**
+- Push dei commit piccoli e sei job verdi con id nel diario. Se l'installer browser si blocca di nuovo, fermarsi e riportare senza cambiarlo. Stack normale ripristinato su 8080/8443: app/DB healthy, nginx -t verde, landing/health 200 con CSP HTML e nosniff, avatar anonimo 401/no-store/nosniff. Nessun volume eliminato né controllo HSTS. M15 non iniziato.
