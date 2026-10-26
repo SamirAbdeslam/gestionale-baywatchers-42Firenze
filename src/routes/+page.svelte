@@ -29,7 +29,6 @@
 	<div class="preview" aria-hidden="true">
 		<p class="mono">{m.landing_preview()}</p>
 		<EventCard
-			headingLevel={2}
 			event={{
 				kind: 'exam',
 				title: m.landing_exam(),
@@ -42,7 +41,6 @@
 			orientation="horizontal"
 		/>
 		<EventCard
-			headingLevel={2}
 			event={{
 				kind: 'icebreaker',
 				title: m.event_kind_icebreaker(),
@@ -55,7 +53,6 @@
 			orientation="horizontal"
 		/>
 		<EventCard
-			headingLevel={2}
 			event={{
 				kind: 'rush',
 				title: m.landing_rush(),

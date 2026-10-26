@@ -56,13 +56,14 @@
 	<div class="display-grid" data-days={data.days.length}>
 		{#each data.days as day (day.weekday)}
 			<section aria-labelledby={`day-${day.weekday}`}>
-				<h3 id={`day-${day.weekday}`}>
+				<h2 class="day-heading" id={`day-${day.weekday}`}>
 					{weekdays[day.weekday - 1]()}{#if day.date}
 						— {day.date}{/if}
-				</h3>
+				</h2>
 				{#each data.events.filter((event) => event.weekday === day.weekday) as event (event.id)}
 					<EventCard
 						event={{ ...event, registeredCount: event.maxSlots - event.freeSlots }}
+						headingLevel={3}
 						orientation="vertical"
 					>
 						<p class:full={event.state === 'full'} class="availability">
@@ -99,6 +100,10 @@
 	}
 	.display-heading h1 {
 		margin: 0;
+	}
+	.day-heading {
+		font-size: 1.17em;
+		letter-spacing: normal;
 	}
 	.clock {
 		font-size: var(--font-display);

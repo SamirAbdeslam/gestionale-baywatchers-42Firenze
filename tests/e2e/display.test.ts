@@ -64,13 +64,18 @@ for (const javaScriptEnabled of [true, false])
 						page.getByRole('heading', { name: 'Settimana 4', exact: true })
 					).toBeVisible();
 					const article = page.getByRole('article', { name: fixture.title, exact: true });
+					await expect(
+						article.getByRole('heading', { name: fixture.title, exact: true, level: 3 })
+					).toBeVisible();
 					await expect(article).toContainText('1 posti liberi');
 					await expect(article.locator('.seat.taken')).toHaveCount(2);
 					await expect(article.locator('.seat')).toHaveCount(3);
 					await expect(article).toContainText('₳ 200');
 					await expect(article).toContainText('09:00–11:00');
 					await expect(article).not.toContainText('5 Gen');
-					await expect(page.getByRole('heading', { name: /Lunedì/ })).toContainText('5 Gen');
+					await expect(page.getByRole('heading', { name: /Lunedì/, level: 2 })).toContainText(
+						'5 Gen'
+					);
 					await expect(article).toContainText(fixture.name + '_present');
 					expect(await page.content()).not.toContain(fixture.name + '_absent');
 					expect(await page.content()).not.toContain(fixture.name + '_full_absent');
