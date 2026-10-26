@@ -7,10 +7,13 @@
 	import Toast from '#lib/components/Toast.svelte';
 	import { asset, resolve } from '$app/paths';
 	import { m } from '#lib/paraglide/messages.js';
+	import { getLocale, locales } from '#lib/paraglide/runtime.js';
 	import '#lib/styles/base.css';
 	import type { LayoutProps } from './$types';
 	let { children, data }: LayoutProps = $props();
 	let userMenu = $state<HTMLElement>();
+	// Each language is named in itself, so the same labels serve every locale.
+	const languageNames = { it: 'Italiano', en: 'English', fr: 'Français' } as const;
 	// Invalidation clears page.form; keep action feedback until the next navigation.
 	let messages = $state(page.form?.messages ?? []);
 	$effect(() => {
@@ -68,6 +71,23 @@
 				{/if}
 			</nav>
 		{/if}
+		<button class="language" type="button" popovertarget="language-menu">
+			<span class="sr-only">{m.nav_language()}</span>
+			{getLocale().toUpperCase()}
+		</button>
+		<nav id="language-menu" class="language-menu" popover aria-label={m.nav_language()}>
+			{#each locales as locale (locale)}
+				<a
+					href="{resolve('/language/[locale]', { locale })}?to={encodeURIComponent(
+						page.url.pathname + page.url.search
+					)}"
+					data-sveltekit-reload
+					lang={locale}
+					hreflang={locale}
+					aria-current={locale === getLocale() ? 'true' : undefined}>{languageNames[locale]}</a
+				>
+			{/each}
+		</nav>
 		<ThemeSwitch />
 		{#if data.user}
 			<button class="identity" type="button" popovertarget="user-menu">
@@ -160,7 +180,8 @@
 	.main-navigation svg {
 		display: none;
 	}
-	.identity {
+	.identity,
+	.language {
 		display: flex;
 		align-items: center;
 		gap: var(--space-sm);
@@ -171,7 +192,8 @@
 		padding: 0;
 		min-height: var(--control-height-sm);
 	}
-	.user-menu {
+	.user-menu,
+	.language-menu {
 		position: fixed;
 		inset: calc(var(--brand-bar) + var(--header-height) + var(--space-sm)) var(--space-xl) auto auto;
 		margin: 0;
@@ -184,6 +206,7 @@
 		box-shadow: var(--menu-shadow);
 	}
 	.user-menu a,
+	.language-menu a,
 	.logout button {
 		min-height: var(--control-height-sm);
 		width: 100%;
@@ -230,7 +253,8 @@
 		}
 	}
 	@media (max-width: 767px) {
-		.user-menu {
+		.user-menu,
+		.language-menu {
 			top: calc(var(--brand-bar) + var(--header-mobile-height) + var(--space-sm));
 			right: var(--space-md);
 		}

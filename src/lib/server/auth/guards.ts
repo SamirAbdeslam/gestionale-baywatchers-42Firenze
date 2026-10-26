@@ -19,7 +19,7 @@ export function matchesPath(path: string, prefix: string) {
 export function isPublicPath(path: string) {
 	return (
 		path === '/' ||
-		['/display', '/auth', '/healthz', '/api/stream', '/_app'].some((prefix) =>
+		['/display', '/auth', '/healthz', '/language', '/api/stream', '/_app'].some((prefix) =>
 			matchesPath(path, prefix)
 		)
 	);

@@ -41,6 +41,7 @@ it.each([
 	'/display/sub',
 	'/auth/login',
 	'/healthz',
+	'/language/en',
 	'/api/stream',
 	'/_app/immutable/a.js'
 ])('recognizes public boundary %s', (path) => expect(isPublicPath(path)).toBe(true));
@@ -51,6 +52,7 @@ it.each([
 	'/display-admin',
 	'/authentication',
 	'/healthz-private',
+	'/languages',
 	'/api/streams',
 	'/_application'
 ])('denies unrelated path %s', (path) => expect(isPublicPath(path)).toBe(false));
