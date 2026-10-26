@@ -17,6 +17,8 @@
 		hour: '2-digit',
 		minute: '2-digit',
 		second: '2-digit',
+		// 24-hour clock in every language: "PM" would overflow the reserved clock width.
+		hourCycle: 'h23',
 		timeZone: 'Europe/Rome'
 	});
 	const reload = () => invalidate('app:display');
