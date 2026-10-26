@@ -19,3 +19,10 @@ test('landing is Italian and fits the viewport', async ({ page }) => {
 		true
 	);
 });
+
+test('robots.txt is served as plain text', async ({ request }) => {
+	const response = await request.get('/robots.txt');
+	expect(response.status()).toBe(200);
+	expect(response.headers()['content-type']).toMatch(/^text\/plain\b/);
+	expect(await response.text()).toBe('User-agent: *\nAllow: /\n');
+});
