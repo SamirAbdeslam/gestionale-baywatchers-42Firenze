@@ -1054,7 +1054,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M22 Feed calendario personale | da fare (dopo la produzione) |
 | M23 Archivio alla chiusura | completato (0187ced) |
 | M24 Archivio staff e import piscine vecchie | completato (85fe2b4) |
-| M25 Riepilogo animato e pagina di attesa | da fare |
+| M25 Riepilogo animato e pagina di attesa | completato (bc903d3) |
 | M26 Iscrizioni con QR | da fare |
 
 ---

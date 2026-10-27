@@ -2705,3 +2705,70 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Arresto dopo commit e push dei documenti e verifica della relativa CI. M25 e M26 non iniziati; M22 resta subordinato alla produzione.
+
+## 2026-10-27 — M25 — bloccato nell'ambiente
+
+**Fatto**
+- Letti le regole del piano, D8–D13, §21 e l'ultima sessione M24; verificati checkout inizialmente pulito, branch `v2.0.0`, versione `2.2.0` e remoto configurato.
+- Esaminati dominio piscina, archivio, calendario, iscrizioni, profilo e test esistenti per il riuso richiesto.
+- Iniziata una bozza del dominio `src/lib/server/domain/recap.ts` e dei loader `src/routes/recap/+page.server.ts` e `src/routes/recap/[poolId]/+page.server.ts`. Sono file incompleti, non verificati e non pronti per il commit: mancano componenti, collegamenti, traduzioni e test. Il loader parametrico è ancora una copia di quello corrente e deve essere completato.
+- Il comando di modifica che avrebbe aggiornato `poolStats`, iscrizioni, calendario e profilo non è stato eseguito: l'interprete richiesto non è disponibile. I file preesistenti di implementazione restano invariati. `busiestMonth` non è ancora stato sostituito.
+
+**Commit**
+- Nessun commit creato; nessun push.
+
+**Controlli**
+- Nessun test eseguito; `ci:local` non eseguito. Nessuna run CI avviata.
+- Nessuna verifica manuale del nuovo comportamento. M25 non completato; M26 non iniziato.
+
+**Decisioni prese dentro il perimetro del piano**
+- Arresto al primo errore di ambiente, senza tentare un interprete, strumento o metodo alternativo, come richiesto per questa esecuzione.
+- Branch e versione invariati; nessun branch, worktree, tag o modifica ai volumi.
+
+**Domande / blocchi**
+- Il comando di modifica è terminato con exit 127: `zsh: command not found: python`. Il blocco riguarda lo strumento scelto per modificare i file, non una dipendenza dell'applicazione. Prima di riprendere serve autorizzare un metodo alternativo oppure rendere disponibile il comando `python` nell'ambiente.
+- Il comando shell conteneva più operazioni: dopo il primo errore la shell ha continuato creando i tre file di bozza sopra elencati; anche il successivo comando `python` è fallito. Nessun tentativo di correzione o alternativa effettuato.
+- Da verificare alla ripresa: completamento integrale di M25, settimana più intensa con data iniziale esatta e null per CSV/date mancanti, riservatezza dei dati serializzati, test richiesti dal piano e intera sequenza `ci:local` → push → CI → documentazione.
+
+**Prossimo passo**
+- Riprendere soltanto M25 dopo la risoluzione esplicita del blocco. Le bozze e questo diario restano locali, senza commit o push perché non sono soddisfatti i controlli verdi richiesti.
+
+**Risoluzione autorizzata e ripresa**
+- Ismail ha chiarito che l'interprete disponibile è `python3` e ha autorizzato esplicitamente `python3` e `apply_patch`. Il nome di comando errato non costituisce un controllo di ambiente fallito ai fini della regola di arresto. Blocco risolto; M25 torna in corso. Ripresa limitata a M25, senza iniziare M26.
+
+## 2026-10-27 — M25 — completato
+
+**Fatto**
+- Ripreso soltanto M25 dopo il chiarimento autorizzato su `python3` e `apply_patch`; blocco precedente risolto. Branch `v2.0.0`, versione `2.2.0` invariata.
+- Riepilogo personale `/recap` per i dati correnti e `/recap/[poolId]` per gli archivi; senza piscina corrente, `/recap` apre l'ultimo archivio personale disponibile. Nel profilo, «Le tue piscine» elenca soltanto le piscine del login, senza duplicare quella corrente se già archiviata con la stessa data iniziale.
+- Componente `Recap` condiviso tra le due route e `/calendar`: schermate successive, pulsanti e frecce da tastiera, contatori con `svelte/motion`, ciambella SVG e barre settimanali animate. Con movimento ridotto i valori e i grafici sono statici; senza JavaScript tutte le schermate sono visibili una sotto l'altra. Le schermate prive di dati vengono omesse; le presenze compaiono soltanto da 80% in su, i badge soltanto quando ottenuti. Nessuna classifica o percentile.
+- Tutti i numeri derivano da `poolStats`. La settimana più intensa usa `event_date` e la data iniziale esatta, con quattro intervalli consecutivi di sette giorni e parità risolta a favore della settimana precedente. Le date sono confrontate come giorni UTC, senza alterare i conteggi al cambio dell'ora legale. Gli eventi fuori dalle settimane 1–4 non vengono assegnati a una settimana inventata. Data iniziale non esatta (`source = 'csv'`), date mancanti nei turni effettuati o assenza di turni: nessuna settimana più intensa; niente barre quando il valore è null. Eliminato `busiestMonth` da codice e test, verificandone tutti gli usi.
+- `/calendar` sceglie la vista con `poolPhase`: attesa con countdown verso mezzanotte di Roma e link all'ultima piscina precedente a cui si è partecipato, oppure messaggio buffo; nessuna piscina con ultimo riepilogo o messaggio; piscina finita con riepilogo dei dati di lavoro e griglia sotto; piscina attiva con calendario esistente. La griglia e i suoi eventi non sono serializzati nelle viste senza calendario. Il countdown si aggiorna ogni secondo, ricarica i dati alla scadenza e rimuove il timer alla navigazione; senza JavaScript rimane statico.
+- Il dominio delle iscrizioni rifiuta `register` prima dell'inizio con `error_pool_not_started`, senza iscrizioni, audit o notifiche. Il controllo usa la data di Roma nella transazione esistente; il bypass dello staff per l'aggiunta manuale resta quello previsto dal piano.
+- Il riepilogo studente contiene soltanto i propri turni e i totali anonimi della piscina, anche nei dati serializzati. Da `/admin/archive` lo staff apre lo stesso componente nella versione piscina intera: solo aggregati, nessun turno o nome individuale. L'opzione della vista intera è controllata dal dominio con `assertAdmin`.
+- Testi nuovi in italiano, inglese e francese, date e numeri con `Intl`. Riutilizzati query correnti, statistiche, guard, notifiche, messaggi e token del design esistenti. Nessuna dipendenza, migrazione o modifica della versione.
+- Dieci nuovi file necessari: dominio per selezione e accesso ai riepiloghi, due componenti specifici, quattro file delle due route e tre suite dedicate. Aggiornati i fixture del calendario, real-time e design affinché dichiarino una piscina attiva. Il vecchio caso della griglia senza data ora verifica la vista senza piscina e conserva il controllo del conflitto ICS; il profilo continua a verificare le date mancanti.
+
+**Commit**
+- `bc903d3` — `feat(recap): add personal pool recaps and waiting calendar`.
+- Chiusura documentale con `docs: record M25 completion and validation`.
+
+**Controlli**
+- `corepack pnpm ci:local`: exit 0 nel passaggio conclusivo; 300 unit, 331 integration, 189 e2e, totale 820, senza retry locali. Migrazioni, lint, check e build verdi; svelte-check senza errori o warning. `git diff --check` verde.
+- Unit: scelta della vista nelle quattro fasi; settimane da una data iniziale anche diversa dal lunedì, estremi dei quattro intervalli, attraversamento di mese e ora legale, parità, esclusione delle assenze, date mancanti, data iniziale non nota ed eventi fuori intervallo. Conservati i test precedenti delle statistiche.
+- Integration: rifiuto fino al secondo precedente la mezzanotte di Roma e iscrizione consentita all'inizio, senza scritture o notifiche nel caso rifiutato; elenco personale, assenza di duplicazioni, riepilogo live a fine piscina, ultimo archivio a date rimosse, attesa che esclude la piscina futura, CSV con settimane e orari non noti, guard e dati serializzati privi di nomi e titoli altrui.
+- E2e: sei nuovi casi Chromium desktop/mobile, con JavaScript, senza JavaScript e con movimento ridotto. Coprono countdown e avanzamento dell'orologio, messaggio vuoto, link all'ultimo riepilogo, tutte le fasi, blocco server delle iscrizioni anticipate, navigazione con pulsanti e frecce, schermate CSV saltate, link dal profilo e dall'archivio staff, accessi negati e input non validi, riservatezza, nessun overflow a 360 px e nessun errore JavaScript o console. Suite precedente e regressioni WebKit verdi.
+- Nei passaggi di sviluppo corretti riferimenti obsoleti a `busiestMonth` nei test, direttive di accessibilità, formattazione e link interni secondo `resolve()`. Il primo passaggio E2e ha rilevato quattro errori nei test della vista senza piscina: `.calendar` selezionava anche il `main` del layout; corretto in `div.calendar`. Il passaggio completo successivo è verde. Nessun test saltato o timeout modificato; nessun controllo fallito per Docker, rete, permessi o autenticazione.
+- CI [40510710825](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40510710825) su `bc903d3`: `gh run watch --exit-status` exit 0, sei job verdi (lint, unit, integration, legacy-import, e2e, docker). Log E2e verificato: 189 passati direttamente, nessun flaky o retry.
+- Il commit documentale modifica soltanto questo diario e la colonna Stato di M25 in §19. Il codice resta quello verificato localmente e nella run citata.
+
+**Decisioni prese dentro il perimetro del piano**
+- L'attesa esclude dal link storico la piscina corrente futura, anche se contiene già iscrizioni inserite dallo staff. Le statistiche settimanali riguardano i turni effettuati, come gli altri descrittori di `poolStats`; le assenze con data mancante non alterano il ritmo dei turni effettuati.
+- Branch e versione invariati; nessun branch nuovo, worktree o tag. Porte `5432` e `4173` usate soltanto per `ci:local`; stack su `8080` e `8443` invariato. Nessun volume cancellato.
+
+**Domande / blocchi**
+- Blocco iniziale risolto esplicitamente; nessun dubbio o blocco aperto per M25.
+- Da verificare a mano: resa e navigazione del riepilogo sui dispositivi reali, leggibilità nei temi utilizzati, rilettura dei testi inglesi/francesi e corrispondenza con i dati delle piscine reali, soprattutto per gli archivi CSV parziali. Verifiche automatiche solo su dati fittizi; nessuna verifica su un deploy di produzione.
+
+**Prossimo passo**
+- Arresto dopo commit e push dei documenti e verifica della relativa CI. M26 non iniziato; M22 resta subordinato alla produzione.
