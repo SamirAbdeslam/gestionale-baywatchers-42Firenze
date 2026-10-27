@@ -41,6 +41,7 @@
 	<fieldset>
 		<legend>{m.pool_step_reset()}</legend>
 		<p>{m.pool_preserved()}</p>
+		<p>{m.pool_archive_hint()}</p>
 		{#each options as option (option.name)}
 			<label
 				><input

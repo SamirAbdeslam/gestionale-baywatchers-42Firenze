@@ -25,6 +25,8 @@ for (const javaScriptEnabled of [true, false]) {
 			const page = await context.newPage();
 			const errors: string[] = [];
 			page.on('pageerror', (error) => errors.push(error.message));
+			const savedPools = await client`SELECT * FROM pools`;
+			const savedEntries = await client`SELECT * FROM pool_entries`;
 			const savedEvents = await client`SELECT * FROM events`;
 			const savedRegistrations = await client`SELECT * FROM registrations`;
 			const savedWhitelist = await client`SELECT * FROM whitelist`;
@@ -52,9 +54,24 @@ for (const javaScriptEnabled of [true, false]) {
 				const logsBefore = await client`SELECT * FROM action_logs ORDER BY id`;
 				await page.getByRole('checkbox', { name: 'Ho scaricato i dati', exact: true }).check();
 				await page.getByRole('button', { name: 'Rivedi le scelte', exact: true }).click();
-				await expect(page.getByRole('status')).toContainText('Nessuna voce selezionata');
+				await expect(
+					page.getByRole('dialog', { name: '3. Conferma la chiusura', exact: true })
+				).toBeVisible();
+				await expect(page.getByRole('dialog').getByRole('listitem')).toHaveCount(0);
 				expect(await client`SELECT * FROM events`).toEqual(savedEvents);
 				expect(await client`SELECT * FROM action_logs ORDER BY id`).toEqual(logsBefore);
+				await page
+					.getByRole('dialog')
+					.getByRole('button', { name: 'Chiudi piscina', exact: true })
+					.click();
+				await expect(page.getByRole('status')).toContainText('archivio salvato');
+				expect(
+					await client`SELECT * FROM pool_entries WHERE pool_id=(SELECT id FROM pools WHERE start_date='2026-10-19')`
+				).toHaveLength(savedRegistrations.length);
+				expect(await client`SELECT * FROM events`).toEqual(savedEvents);
+				expect(await client`SELECT * FROM registrations`).toEqual(savedRegistrations);
+				expect(await client`SELECT * FROM whitelist`).toEqual(savedWhitelist);
+				const logsAfterArchive = await client`SELECT * FROM action_logs ORDER BY id`;
 				await page.getByRole('checkbox', { name: 'Ho scaricato i dati', exact: true }).check();
 				await page.getByRole('checkbox', { name: 'Whitelist', exact: true }).check();
 				await page.getByRole('button', { name: 'Rivedi le scelte', exact: true }).click();
@@ -62,7 +79,7 @@ for (const javaScriptEnabled of [true, false]) {
 				await expect(dialog).toBeVisible();
 				await expect(dialog.getByRole('listitem')).toHaveText(['Whitelist']);
 				expect(await client`SELECT * FROM whitelist`).toEqual(savedWhitelist);
-				expect(await client`SELECT * FROM action_logs ORDER BY id`).toEqual(logsBefore);
+				expect(await client`SELECT * FROM action_logs ORDER BY id`).toEqual(logsAfterArchive);
 				await dialog.getByRole('button', { name: 'Annulla', exact: true }).click();
 				await expect(dialog).not.toBeVisible();
 				await page.goto('/admin/close-pool');
@@ -97,7 +114,11 @@ for (const javaScriptEnabled of [true, false]) {
 					savedTemplateEvents
 				);
 				const logs = await client`SELECT * FROM action_logs ORDER BY id`;
-				expect(logs.slice(0, -1)).toEqual(logsBefore);
+				expect(logs.slice(0, -1)).toEqual(logsAfterArchive);
+				expect(await client`SELECT * FROM pools WHERE start_date='2026-10-19'`).toHaveLength(1);
+				expect(
+					await client`SELECT * FROM pool_entries WHERE pool_id=(SELECT id FROM pools WHERE start_date='2026-10-19')`
+				).toHaveLength(savedRegistrations.length);
 				expect(logs.at(-1)?.action_type).toBe('CLOSE_POOL');
 				expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
 					true
@@ -106,6 +127,9 @@ for (const javaScriptEnabled of [true, false]) {
 			} finally {
 				await context.close();
 				await client.begin(async (tx) => {
+					await tx`DELETE FROM pools`;
+					if (savedPools.length) await tx`INSERT INTO pools ${tx(savedPools)}`;
+					if (savedEntries.length) await tx`INSERT INTO pool_entries ${tx(savedEntries)}`;
 					await tx`DELETE FROM events`;
 					if (savedEvents.length) await tx`INSERT INTO events ${tx(savedEvents)}`;
 					if (savedRegistrations.length)

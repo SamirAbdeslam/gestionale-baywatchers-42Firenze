@@ -190,3 +190,43 @@ export const actionLogs = pgTable(
 		check('logs_user_agent_length', sql`char_length(${t.userAgent}) <= 200`)
 	]
 );
+
+export const pools = pgTable(
+	'pools',
+	{
+		id: serial('id').primaryKey(),
+		startDate: date('start_date').notNull().unique(),
+		endDate: date('end_date'),
+		source: text('source', { enum: ['site', 'csv'] }).notNull(),
+		archivedAt: timestamp('archived_at', { withTimezone: true }).notNull()
+	},
+	(t) => [check('pools_source_valid', sql`${t.source} IN ('site', 'csv')`)]
+);
+
+export const poolEntries = pgTable(
+	'pool_entries',
+	{
+		id: serial('id').primaryKey(),
+		poolId: integer('pool_id')
+			.notNull()
+			.references(() => pools.id, { onDelete: 'cascade' }),
+		login: text('login').notNull(),
+		title: text('title').notNull(),
+		kind: eventKind('kind').notNull(),
+		eventDate: date('event_date'),
+		weekday: smallint('weekday'),
+		startTime: time('start_time'),
+		endTime: time('end_time'),
+		durationMinutes: integer('duration_minutes').notNull(),
+		compensation: integer('compensation').notNull(),
+		attended: boolean('attended').notNull(),
+		registeredAt: timestamp('registered_at', { withTimezone: true })
+	},
+	(t) => [
+		index('pool_entries_pool_login_idx').on(t.poolId, t.login),
+		check('pool_entries_login_lowercase', sql`${t.login} = lower(${t.login})`),
+		check('pool_entries_weekday_range', sql`${t.weekday} BETWEEN 1 AND 7`),
+		check('pool_entries_duration_nonnegative', sql`${t.durationMinutes} >= 0`),
+		check('pool_entries_compensation_nonnegative', sql`${t.compensation} >= 0`)
+	]
+);

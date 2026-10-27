@@ -15,7 +15,7 @@ export type AttendanceRow = {
 	compensation: number;
 };
 
-function durationMinutes(start: string, end: string) {
+export function durationMinutes(start: string, end: string) {
 	const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
 	return minutes(end) - minutes(start);
 }

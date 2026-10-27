@@ -322,10 +322,11 @@
 	"pool_preserved": "Les modèles et les journaux sont toujours conservés. Toutes les options sont facultatives.",
 	"pool_review": "Vérifier les choix",
 	"pool_step_confirm": "3. Confirmer la clôture",
-	"pool_confirm_hint": "Seuls les éléments indiqués seront réinitialisés. Confirmez pour continuer.",
-	"pool_closed": "Piscine clôturée. Les éléments sélectionnés ont été réinitialisés.",
+	"pool_confirm_hint": "L’archive sera enregistrée et seuls les éléments indiqués seront réinitialisés. Confirmez pour continuer.",
+	"pool_closed": "Piscine clôturée et archive enregistrée. Les éléments sélectionnés ont été réinitialisés.",
 	"pool_download_required": "Confirmez avoir téléchargé les données avant de continuer.",
-	"pool_nothing_selected": "Aucun élément sélectionné : aucune donnée n’a été modifiée.",
 	"display_ongoing": "En cours",
-	"display_next": "À venir"
+	"display_next": "À venir",
+	"pool_dates_required": "Définissez les dates de la piscine avant de la clôturer",
+	"pool_archive_hint": "L’archive de la piscine est toujours enregistrée avant le nettoyage. Sans option sélectionnée, seule l’archive est enregistrée."
 }

@@ -322,10 +322,11 @@
 	"pool_preserved": "I template e i log vengono sempre conservati. Nessuna opzione è obbligatoria.",
 	"pool_review": "Rivedi le scelte",
 	"pool_step_confirm": "3. Conferma la chiusura",
-	"pool_confirm_hint": "Verranno azzerate solo le voci elencate. Confermare per continuare.",
-	"pool_closed": "Piscina chiusa. Le voci selezionate sono state azzerate.",
+	"pool_confirm_hint": "L’archivio sarà salvato e verranno azzerate solo le voci elencate. Confermare per continuare.",
+	"pool_closed": "Piscina chiusa e archivio salvato. Le voci selezionate sono state azzerate.",
 	"pool_download_required": "Conferma di aver scaricato i dati prima di continuare.",
-	"pool_nothing_selected": "Nessuna voce selezionata: nessun dato è stato modificato.",
 	"display_ongoing": "In corso",
-	"display_next": "Prossimo"
+	"display_next": "Prossimo",
+	"pool_dates_required": "Imposta le date della piscina prima di chiuderla",
+	"pool_archive_hint": "L’archivio della piscina viene sempre salvato prima della pulizia. Senza opzioni selezionate viene salvato solo l’archivio."
 }
