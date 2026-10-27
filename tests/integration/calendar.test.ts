@@ -20,7 +20,7 @@ const truncate = () =>
 beforeEach(async () => {
 	vi.stubEnv('TZ', 'Europe/Rome');
 	await truncate();
-	await client`UPDATE settings SET pool_start=null,pool_end=null,active_week=3,display_week=1,max_events_per_user=0 WHERE id=1`;
+	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,active_week=3,display_week=1,max_events_per_user=0 WHERE id=1`;
 	[user, admin] = await database
 		.insert(schema.users)
 		.values([

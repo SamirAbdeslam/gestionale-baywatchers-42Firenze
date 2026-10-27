@@ -12,8 +12,8 @@ import { m } from '#lib/paraglide/messages.js';
 export function calendarView(phase: ReturnType<typeof poolPhase>) {
 	return {
 		countdown: phase === 'upcoming',
-		calendar: phase === 'active' || phase === 'finished',
-		recap: phase === 'none' || phase === 'finished'
+		calendar: phase === 'open',
+		recap: phase === 'none' || phase === 'closed'
 	};
 }
 
@@ -64,6 +64,10 @@ export async function getRecap(
 			if (last) return getRecap(database, actor, String(last.id));
 		}
 		entries = await currentPoolEntries(database, startDate);
+		if (config.poolClosedAt && startDate && !entries.length) {
+			const [archive] = await database.select().from(pools).where(eq(pools.startDate, startDate));
+			if (archive) return getRecap(database, actor, String(archive.id), whole);
+		}
 	}
 	if (!startDate || (!whole && !entries.some((row) => row.login === actor.login))) return null;
 	const stats = poolStats(entries, whole ? undefined : actor.login, exactStart);
@@ -86,7 +90,7 @@ export async function calendarPoolView(database: typeof db, actor: User | null, 
 		now: now.getTime(),
 		lastRecap: last?.id ?? null,
 		recapData:
-			phase === 'finished'
+			phase === 'closed'
 				? await getRecap(database, actor)
 				: phase === 'none' && last
 					? await getRecap(database, actor, last.id ? String(last.id) : undefined)

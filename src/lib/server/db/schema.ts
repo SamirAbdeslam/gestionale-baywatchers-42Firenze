@@ -52,6 +52,8 @@ export const settings = pgTable(
 		id: smallint('id').primaryKey().default(1),
 		poolStart: date('pool_start'),
 		poolEnd: date('pool_end'),
+		poolClosedAt: timestamp('pool_closed_at', { withTimezone: true }),
+		poolReopened: boolean('pool_reopened').notNull().default(false),
 		activeWeek: smallint('active_week').notNull().default(1),
 		displayWeek: smallint('display_week').notNull().default(1),
 		maxEventsPerUser: smallint('max_events_per_user').notNull().default(0),

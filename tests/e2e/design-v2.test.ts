@@ -34,7 +34,7 @@ for (const javaScriptEnabled of [true, false]) {
 				});
 				try {
 					await client`DELETE FROM events WHERE week=4`;
-					await client`UPDATE settings SET active_week=4,pool_start='2000-01-03',pool_end=null,max_events_per_user=0 WHERE id=1`;
+					await client`UPDATE settings SET active_week=4,pool_start='2000-01-03',pool_end='2099-12-31',max_events_per_user=0 WHERE id=1`;
 					const rows = Array.from({ length: 14 }, (_, i) => ({
 						title: `Compact ${i + 1} · Titolo di un turno lungo da leggere in due righe`,
 						kind: ['exam', 'icebreaker', 'rush', 'cluster', 'welcome', 'custom'][i % 6],

@@ -24,7 +24,7 @@ const truncate = () =>
 	client`TRUNCATE users,events,registrations,week_templates,template_events,whitelist,action_logs RESTART IDENTITY CASCADE`;
 beforeEach(async () => {
 	await truncate();
-	await client`UPDATE settings SET pool_start=null,pool_end=null,active_week=1,display_week=1,max_events_per_user=0 WHERE id=1`;
+	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,active_week=1,display_week=1,max_events_per_user=0 WHERE id=1`;
 	[user, admin] = await database
 		.insert(schema.users)
 		.values([
@@ -39,7 +39,7 @@ beforeEach(async () => {
 afterEach(() => stop());
 afterAll(async () => {
 	await truncate();
-	await client`UPDATE settings SET pool_start=null,pool_end=null,active_week=1,display_week=1,max_events_per_user=0 WHERE id=1`;
+	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,active_week=1,display_week=1,max_events_per_user=0 WHERE id=1`;
 	await client.end();
 });
 async function event(values: Partial<typeof schema.events.$inferInsert> = {}) {

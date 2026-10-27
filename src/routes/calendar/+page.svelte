@@ -105,6 +105,7 @@
 		mobile.addEventListener('change', resize);
 		const close = listenRealtime((event) => {
 			if (event.type === 'log_created') return;
+			if (event.type === 'pool_closed') activated = null;
 			if (event.type === 'week_activated' && data.poolView.calendar)
 				activated = { week: event.week };
 			void reload();

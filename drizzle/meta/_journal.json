@@ -29,6 +29,13 @@
 			"when": 1793100848867,
 			"tag": "0003_pale_cerebro",
 			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "7",
+			"when": 1793108479829,
+			"tag": "0004_naive_stingray",
+			"breakpoints": true
 		}
 	]
 }

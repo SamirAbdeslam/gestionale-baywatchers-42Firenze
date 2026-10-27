@@ -28,7 +28,7 @@ beforeEach(async () => {
 });
 afterAll(async () => {
 	await truncate();
-	await client`UPDATE settings SET pool_start=null,pool_end=null WHERE id=1`;
+	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null WHERE id=1`;
 	await client.end();
 });
 async function fixture() {

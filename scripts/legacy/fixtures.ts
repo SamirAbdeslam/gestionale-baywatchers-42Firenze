@@ -6,7 +6,8 @@ import type { LegacyRows } from './normalize.ts';
 import { ACTION_TYPES } from '../../src/lib/server/domain/audit.ts';
 // Pool closure and archive import did not exist in the legacy app.
 const legacyActionTypes = ACTION_TYPES.filter(
-	(action) => action !== 'CLOSE_POOL' && action !== 'IMPORT_POOL'
+	(action) =>
+		!['CLOSE_POOL', 'REOPEN_POOL', 'SAVE_POOL', 'CLEAN_POOL', 'IMPORT_POOL'].includes(action)
 );
 export const LEGACY_DAYS = [
 	'Lunedì',

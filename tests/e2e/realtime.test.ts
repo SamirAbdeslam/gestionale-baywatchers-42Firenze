@@ -31,7 +31,7 @@ async function setup(user: APIRequestContext, admin: APIRequestContext) {
 	const savedRegistrations =
 		await client`SELECT r.* FROM registrations r JOIN events e ON r.event_id=e.id WHERE e.week IN (1,2)`;
 	await client`DELETE FROM events WHERE week IN (1,2)`;
-	await client`UPDATE settings SET active_week=1,display_week=1,pool_start='2000-01-03',pool_end=null,max_events_per_user=0 WHERE id=1`;
+	await client`UPDATE settings SET active_week=1,display_week=1,pool_start='2000-01-03',pool_end='2099-12-31',max_events_per_user=0 WHERE id=1`;
 	await client`INSERT INTO whitelist(login) VALUES (${name})`;
 	const [event] =
 		await client`INSERT INTO events(title,week,weekday,event_date,start_time,end_time,max_slots) VALUES (${name},1,1,'2099-01-05','09:00','10:00',2) RETURNING id`;

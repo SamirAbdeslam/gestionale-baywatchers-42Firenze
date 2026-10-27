@@ -1,3 +1,4 @@
+import { poolPhase } from './pool.ts';
 import { error } from '@sveltejs/kit';
 import { and, count, eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -6,12 +7,13 @@ import { users, events, registrations, settings, whitelist } from '../db/schema.
 import { assertAdmin, assertUser, lockAdmin, loginPattern } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
-import { concreteDate, digits, isPassed, romeDateTime } from './dates.ts';
+import { concreteDate, digits, isPassed } from './dates.ts';
 import { publish } from '../realtime/bus.ts';
 import { m } from '#lib/paraglide/messages.js';
 
 type ErrorKey =
 	| 'error_pool_not_started'
+	| 'pool_closed'
 	| 'error_event_not_found'
 	| 'error_registration_not_found'
 	| 'error_not_whitelisted'
@@ -101,6 +103,13 @@ async function changeRegistration(
 				? [await lockAdmin(tx, actor)]
 				: await tx.select().from(users).where(eq(users.id, actor.id)).for('update');
 			if (!user) error(401, m.error_unauthorized());
+			const [config] = await tx.select().from(settings).where(eq(settings.id, 1)).for('update');
+			if (!config) throw new Error('Settings row is missing');
+			if (!admin && user.role !== 'admin') {
+				const phase = poolPhase(config, await tx.select().from(events), now);
+				if (phase === 'closed') return failure('pool_closed');
+				if (phase === 'upcoming') return failure('error_pool_not_started');
+			}
 			const [event] = await tx.select().from(events).where(eq(events.id, parsed.id)).for('update');
 			if (!event) return failure('error_event_not_found', 404);
 			const login = parsed.login ?? user.login;
@@ -125,8 +134,7 @@ async function changeRegistration(
 					.where(eq(whitelist.login, login));
 				if (!allowed) return failure('error_not_whitelisted', 403);
 				const { config, isPassed: ended } = await passed(tx, event, now);
-				if (config.poolStart && romeDateTime(now).slice(0, 10) < config.poolStart)
-					return failure('error_pool_not_started');
+
 				if (ended) return failure('error_event_passed');
 				if (config.maxEventsPerUser > 0) {
 					const total = await countWeeklyRegistrations(tx, login, event.week);

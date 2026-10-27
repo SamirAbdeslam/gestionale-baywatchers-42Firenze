@@ -1,38 +1,161 @@
+import { isHttpError } from '@sveltejs/kit';
 import { count, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
-import type { db, Database } from '../db/index.ts';
+import type { db, Database, Transaction } from '../db/index.ts';
 import { events, registrations, settings, whitelist, pools, poolEntries } from '../db/schema.ts';
 import { assertAdmin, lockAdmin } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
-import { audit, type RequestInfo } from './audit.ts';
+import { audit, SYSTEM_ACTOR, type RequestInfo } from './audit.ts';
 import { deletionSnapshot } from './events.ts';
 import { publish } from '../realtime/bus.ts';
 import { concreteDate, romeDateTime } from './dates.ts';
 import { durationMinutes } from './reports.ts';
 import { EVENT_KINDS } from '#lib/kinds.ts';
 
+const confirmationSchema = z.strictObject({ confirm: z.literal('yes') });
 const checkbox = z.literal('yes').optional();
-const closureSchema = z.strictObject({
-	downloaded: checkbox,
+const cleanupSchema = confirmationSchema.extend({
 	events: checkbox,
 	whitelist: checkbox,
 	weeks: checkbox,
-	dates: checkbox
+	dates: checkbox,
+	save: z.enum(['yes', 'no'])
 });
 export type PoolNotice = {
-	type: 'success' | 'warning';
-	key: 'pool_closed' | 'pool_download_required' | 'pool_dates_required';
+	type: 'success' | 'warning' | 'error';
+	key:
+		| 'pool_closed'
+		| 'pool_reopened'
+		| 'pool_saved'
+		| 'pool_cleaned'
+		| 'pool_dates_required'
+		| 'pool_dates_locked'
+		| 'pool_cleanup_failed'
+		| 'pool_cleanup_closed'
+		| 'pool_cleanup_empty';
 	params: Record<string, never>;
 };
+const notice = (key: PoolNotice['key'], ok = true) => ({
+	ok,
+	messages: [{ type: ok ? 'success' : 'error', key, params: {} }] satisfies PoolNotice[]
+});
+type PoolConfig = Pick<typeof settings.$inferSelect, 'poolStart' | 'poolEnd'> &
+	Partial<Pick<typeof settings.$inferSelect, 'poolClosedAt' | 'poolReopened'>>;
+type PoolEvent = { eventDate: string | null; week: number; weekday: number };
 
-export function preparePoolClosure(actor: User | null, input: unknown) {
-	assertAdmin(actor);
-	const choices = closureSchema.parse(input);
-	const key = !choices.downloaded ? 'pool_download_required' : null;
-	const messages: PoolNotice[] = key ? [{ type: 'warning', key, params: {} }] : [];
-	return { choices: key ? null : choices, messages };
+export function poolPhase(
+	config: PoolConfig,
+	rows: PoolEvent[],
+	now: Date
+): 'none' | 'upcoming' | 'open' | 'closed' {
+	if (!config.poolStart || !config.poolEnd) return 'none';
+	if (config.poolClosedAt) return 'closed';
+	const today = romeDateTime(now).slice(0, 10);
+	if (today < config.poolStart) return 'upcoming';
+	if (
+		!config.poolReopened &&
+		today > config.poolEnd &&
+		!rows.some((row) => {
+			const date = concreteDate(row, config.poolStart);
+			return date !== null && date > config.poolEnd!;
+		})
+	)
+		return 'closed';
+	return 'open';
 }
 
+// The settings lock serializes closure, saving and cleanup with registration changes.
+async function lockedSettings(tx: Transaction) {
+	const [config] = await tx.select().from(settings).where(eq(settings.id, 1)).for('update');
+	if (!config) throw new Error('Settings row is missing');
+	return config;
+}
+async function saveArchive(tx: Transaction, config: typeof settings.$inferSelect, now: Date) {
+	if (!config.poolStart || !config.poolEnd) throw new Error('Pool dates are missing');
+	const entries = await currentPoolEntries(tx, config.poolStart);
+	const [existing] = await tx.select().from(pools).where(eq(pools.startDate, config.poolStart));
+	// An empty working set must never erase an archive left by an earlier cleanup.
+	if (entries.length || !existing) {
+		const [archive] = await tx
+			.insert(pools)
+			.values({
+				startDate: config.poolStart,
+				endDate: config.poolEnd,
+				source: 'site',
+				archivedAt: now
+			})
+			.onConflictDoUpdate({
+				target: pools.startDate,
+				set: {
+					endDate: config.poolEnd,
+					source: 'site',
+					archivedAt: now
+				}
+			})
+			.returning();
+		await tx.delete(poolEntries).where(eq(poolEntries.poolId, archive.id));
+		if (entries.length)
+			await tx
+				.insert(poolEntries)
+				.values(entries.map((entry) => ({ ...entry, poolId: archive.id })));
+	}
+	const [archive] = await tx.select().from(pools).where(eq(pools.startDate, config.poolStart));
+	if (!archive) throw new Error('Archive verification failed');
+	const [{ n }] = await tx
+		.select({ n: count() })
+		.from(poolEntries)
+		.where(eq(poolEntries.poolId, archive.id));
+	if ((entries.length || !existing) && n !== entries.length)
+		throw new Error('Archive count verification failed');
+	return { archiveId: archive.id, entries: n };
+}
+
+async function writeClosure(
+	tx: Transaction,
+	config: typeof settings.$inferSelect,
+	actor: Pick<User, 'id' | 'login'> | typeof SYSTEM_ACTOR,
+	info: RequestInfo,
+	now: Date
+) {
+	const archive = await saveArchive(tx, config, now);
+	await tx
+		.update(settings)
+		.set({ poolClosedAt: now, poolReopened: false, updatedAt: now })
+		.where(eq(settings.id, 1));
+	return audit(tx, {
+		...info,
+		actor,
+		actionType: 'CLOSE_POOL',
+		description: 'Chiusura della piscina.',
+		resourceType: 'pool',
+		resourceId: String(archive.archiveId),
+		newValue: archive
+	});
+}
+function publishClosure(logId: number) {
+	publish({ type: 'log_created', id: logId });
+	publish({ type: 'pool_closed' });
+}
+export async function autoClosePool(database: typeof db, now: Date) {
+	const [current] = await database.select().from(settings).where(eq(settings.id, 1));
+	if (
+		!current ||
+		!current.poolStart ||
+		!current.poolEnd ||
+		current.poolClosedAt ||
+		current.poolReopened ||
+		romeDateTime(now).slice(0, 10) <= current.poolEnd
+	)
+		return;
+	const logId = await database.transaction(async (tx) => {
+		const config = await lockedSettings(tx);
+		if (config.poolClosedAt || config.poolReopened) return null;
+		const rows = await tx.select().from(events).orderBy(events.id).for('update');
+		if (poolPhase(config, rows, now) !== 'closed') return null;
+		return writeClosure(tx, config, SYSTEM_ACTOR, { ipAddress: '', userAgent: null }, now);
+	});
+	if (logId !== null) publishClosure(logId);
+}
 export async function closePool(
 	database: typeof db,
 	actor: User | null,
@@ -41,121 +164,164 @@ export async function closePool(
 	now: Date
 ) {
 	assertAdmin(actor);
-	const { choices, messages } = preparePoolClosure(actor, input);
-	if (!choices) return { ok: false, messages };
+	confirmationSchema.parse(input);
 	const result = await database.transaction(async (tx) => {
 		const user = await lockAdmin(tx, actor);
-		const [before] = await tx.select().from(settings).where(eq(settings.id, 1)).for('update');
-		if (!before) throw new Error('Settings row is missing');
-
-		if (!before.poolStart) return null;
-		const snapshot = await deletionSnapshot(tx, undefined);
-		const entries = await currentPoolEntries(tx, before.poolStart);
-		const [archive] = await tx
-			.insert(pools)
-			.values({
-				startDate: before.poolStart,
-				endDate: before.poolEnd,
-				source: 'site',
-				archivedAt: now
-			})
-			.onConflictDoUpdate({
-				target: pools.startDate,
-				set: {
-					endDate: before.poolEnd,
-					source: entries.length ? 'site' : undefined,
-					archivedAt: now
-				}
-			})
-			.returning();
-		if (entries.length) {
-			await tx.delete(poolEntries).where(eq(poolEntries.poolId, archive.id));
-			await tx
-				.insert(poolEntries)
-				.values(entries.map((entry) => ({ ...entry, poolId: archive.id })));
-		}
-		const [{ n: archivedEntries }] = await tx
-			.select({ n: count() })
-			.from(poolEntries)
-			.where(eq(poolEntries.poolId, archive.id));
-		const removedEvents = choices.events ? snapshot : undefined;
-		const removedWhitelist = choices.whitelist
-			? await tx.select().from(whitelist).orderBy(whitelist.id).for('update')
-			: undefined;
-		const oldSettings = {
-			...(choices.weeks ? { activeWeek: before.activeWeek, displayWeek: before.displayWeek } : {}),
-			...(choices.dates ? { poolStart: before.poolStart, poolEnd: before.poolEnd } : {})
-		};
-		if (removedEvents?.length)
-			await tx.delete(events).where(
-				inArray(
-					events.id,
-					removedEvents.map((row) => row.id)
-				)
-			);
-		if (removedWhitelist?.length)
-			await tx.delete(whitelist).where(
-				inArray(
-					whitelist.id,
-					removedWhitelist.map((row) => row.id)
-				)
-			);
-		if (choices.weeks || choices.dates)
-			await tx
-				.update(settings)
-				.set({
-					...(choices.weeks ? { activeWeek: 1, displayWeek: 1 } : {}),
-					...(choices.dates ? { poolStart: null, poolEnd: null } : {}),
-					updatedAt: now
-				})
-				.where(eq(settings.id, 1));
-		const logId = await audit(tx, {
+		const config = await lockedSettings(tx);
+		if (!config.poolStart || !config.poolEnd) return null;
+		if (config.poolClosedAt) return { logId: null };
+		await tx.select().from(events).orderBy(events.id).for('update');
+		return { logId: await writeClosure(tx, config, user, info, now) };
+	});
+	if (!result) return notice('pool_dates_required', false);
+	if (result.logId !== null) publishClosure(result.logId);
+	return notice('pool_closed');
+}
+export async function reopenPool(
+	database: typeof db,
+	actor: User | null,
+	input: unknown,
+	info: RequestInfo,
+	now: Date
+) {
+	assertAdmin(actor);
+	confirmationSchema.parse(input);
+	const logId = await database.transaction(async (tx) => {
+		const user = await lockAdmin(tx, actor);
+		const config = await lockedSettings(tx);
+		if (!config.poolStart || !config.poolEnd || !config.poolClosedAt) return null;
+		await tx
+			.update(settings)
+			.set({ poolClosedAt: null, poolReopened: true, updatedAt: now })
+			.where(eq(settings.id, 1));
+		return audit(tx, {
 			...info,
 			actor: user,
-			actionType: 'CLOSE_POOL',
-			description: 'Chiusura della piscina.',
-			resourceType: 'pool',
-			resourceId: String(archive.id),
-			newValue: { archiveId: archive.id, entries: archivedEntries },
-			oldValue: {
-				...(removedEvents ? { events: removedEvents } : {}),
-				...(removedWhitelist ? { whitelist: removedWhitelist } : {}),
-				...(choices.weeks || choices.dates ? { settings: oldSettings } : {})
-			}
+			actionType: 'REOPEN_POOL',
+			description: 'Riapertura della piscina.',
+			resourceType: 'pool'
 		});
-		return { logId };
 	});
-	if (!result)
-		return {
-			ok: false,
-			messages: [{ type: 'warning', key: 'pool_dates_required', params: {} }] satisfies PoolNotice[]
-		};
-	publish({ type: 'log_created', id: result.logId });
-	publish({ type: 'event_changed', eventId: null, week: null, action: 'bulk_delete' });
-	return {
-		ok: true,
-		messages: [{ type: 'success', key: 'pool_closed', params: {} }] satisfies PoolNotice[]
-	};
+	if (logId === null) return notice('pool_dates_required', false);
+	publish({ type: 'log_created', id: logId });
+	publish({ type: 'event_changed', eventId: null, week: null, action: 'update' });
+	return notice('pool_reopened');
 }
-
-export function poolPhase(
-	config: { poolStart: string | null; poolEnd: string | null },
-	rows: { eventDate: string | null; week: number; weekday: number }[],
+export async function savePool(
+	database: typeof db,
+	actor: User | null,
+	input: unknown,
+	info: RequestInfo,
 	now: Date
-): 'none' | 'upcoming' | 'active' | 'finished' {
-	if (!config.poolStart) return 'none';
-	const today = romeDateTime(now).slice(0, 10);
-	if (today < config.poolStart) return 'upcoming';
-	if (
-		config.poolEnd &&
-		today > config.poolEnd &&
-		!rows.some((row) => {
-			const date = concreteDate(row, config.poolStart);
-			return date !== null && date > config.poolEnd!;
-		})
-	)
-		return 'finished';
-	return 'active';
+) {
+	assertAdmin(actor);
+	z.strictObject({}).parse(input);
+	const logId = await database.transaction(async (tx) => {
+		const user = await lockAdmin(tx, actor);
+		const config = await lockedSettings(tx);
+		if (!config.poolStart || !config.poolEnd) return null;
+		await tx.select().from(events).orderBy(events.id).for('update');
+		const archive = await saveArchive(tx, config, now);
+		return audit(tx, {
+			...info,
+			actor: user,
+			actionType: 'SAVE_POOL',
+			description: 'Salvataggio archivio piscina.',
+			resourceType: 'pool',
+			resourceId: String(archive.archiveId),
+			newValue: archive
+		});
+	});
+	if (logId === null) return notice('pool_dates_required', false);
+	publish({ type: 'log_created', id: logId });
+	return notice('pool_saved');
+}
+export async function cleanPool(
+	database: typeof db,
+	actor: User | null,
+	input: unknown,
+	info: RequestInfo,
+	now: Date
+) {
+	assertAdmin(actor);
+	const choices = cleanupSchema.parse(input);
+	if (!choices.events && !choices.whitelist && !choices.weeks && !choices.dates)
+		return notice('pool_cleanup_empty', false);
+	let result;
+	try {
+		result = await database.transaction(async (tx) => {
+			const user = await lockAdmin(tx, actor);
+			const before = await lockedSettings(tx);
+			if (!before.poolClosedAt || !before.poolStart || !before.poolEnd) return null;
+			const snapshot = await deletionSnapshot(tx, undefined);
+			if (choices.save === 'yes') await saveArchive(tx, before, now);
+			const [archive] = await tx.select().from(pools).where(eq(pools.startDate, before.poolStart));
+			if (!archive) throw new Error('Archive verification failed');
+			const removedEvents = choices.events ? snapshot : undefined;
+			const removedWhitelist = choices.whitelist
+				? await tx.select().from(whitelist).orderBy(whitelist.id).for('update')
+				: undefined;
+			const oldSettings = {
+				...(choices.weeks
+					? { activeWeek: before.activeWeek, displayWeek: before.displayWeek }
+					: {}),
+				...(choices.dates
+					? {
+							poolStart: before.poolStart,
+							poolEnd: before.poolEnd,
+							poolClosedAt: before.poolClosedAt,
+							poolReopened: before.poolReopened
+						}
+					: {})
+			};
+			if (removedEvents?.length)
+				await tx.delete(events).where(
+					inArray(
+						events.id,
+						removedEvents.map((row) => row.id)
+					)
+				);
+			if (removedWhitelist?.length)
+				await tx.delete(whitelist).where(
+					inArray(
+						whitelist.id,
+						removedWhitelist.map((row) => row.id)
+					)
+				);
+			if (choices.weeks || choices.dates)
+				await tx
+					.update(settings)
+					.set({
+						...(choices.weeks ? { activeWeek: 1, displayWeek: 1 } : {}),
+						...(choices.dates
+							? { poolStart: null, poolEnd: null, poolClosedAt: null, poolReopened: false }
+							: {}),
+						updatedAt: now
+					})
+					.where(eq(settings.id, 1));
+			return audit(tx, {
+				...info,
+				actor: user,
+				actionType: 'CLEAN_POOL',
+				description: 'Pulizia della piscina.',
+				resourceType: 'pool',
+				resourceId: String(archive.id),
+				oldValue: {
+					...(removedEvents ? { events: removedEvents } : {}),
+					...(removedWhitelist ? { whitelist: removedWhitelist } : {}),
+					...(choices.weeks || choices.dates ? { settings: oldSettings } : {})
+				}
+			});
+		});
+	} catch (cause) {
+		// Authorization errors retain their status; operational failures never permit partial cleanup.
+		if (isHttpError(cause)) throw cause;
+		return notice('pool_cleanup_failed', false);
+	}
+	if (result === null) return notice('pool_cleanup_closed', false);
+	publish({ type: 'log_created', id: result });
+	publish({ type: 'event_changed', eventId: null, week: null, action: 'bulk_delete' });
+	return notice('pool_cleaned');
 }
 
 export type PoolEntry = Omit<typeof poolEntries.$inferSelect, 'id' | 'poolId'>;

@@ -44,7 +44,7 @@ test(
 			await showSettings(page);
 			await page.getByLabel('Inizio pool', { exact: true }).fill('2026-12-30');
 			await showSettings(page);
-			await page.getByLabel('Fine pool', { exact: true }).fill('');
+			await page.getByLabel('Fine pool', { exact: true }).fill('2027-01-26');
 			await page.getByRole('button', { name: 'Salva date pool', exact: true }).click();
 			await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
 			expect((await client`SELECT pool_end::text FROM settings WHERE id=1`)[0].pool_end).toBe(
@@ -172,7 +172,7 @@ test(
 			await showSettings(page);
 			await page.getByLabel('Inizio pool', { exact: true }).fill('2026-10-20');
 			await showSettings(page);
-			await page.getByLabel('Fine pool', { exact: true }).fill('');
+			await page.getByLabel('Fine pool', { exact: true }).fill('2026-11-16');
 			await page.getByRole('button', { name: 'Salva date pool', exact: true }).click();
 			await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
 			await showSettings(page);

@@ -62,7 +62,7 @@ beforeEach(async () => {
 afterEach(() => unsubscribe());
 afterAll(async () => {
 	await client`TRUNCATE pools, users, events, registrations, week_templates, whitelist, action_logs RESTART IDENTITY CASCADE`;
-	await client`UPDATE settings SET pool_start=null,pool_end=null,active_week=1,display_week=1 WHERE id=1`;
+	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,active_week=1,display_week=1 WHERE id=1`;
 	await client.end();
 });
 
@@ -215,7 +215,7 @@ it('lists years and pools and uses the same totals for current and archived pool
 		participants: [{ login: 'student', taken: 1, completed: 1 }]
 	});
 	const currentTotals = page.totals;
-	await closePool(database, actor, { downloaded: 'yes' }, info, now);
+	await closePool(database, actor, { confirm: 'yes' }, info, now);
 	await importPool(database, actor, input, info, now);
 	page = await getArchive(database, actor, {});
 	expect(page.years).toEqual(['2026', '2025']);
@@ -233,15 +233,15 @@ it('lists years and pools and uses the same totals for current and archived pool
 	await expect(
 		getArchive(database, actor, { year: '2025', pool: 'current' })
 	).rejects.toMatchObject({ status: 400 });
-	await client`UPDATE settings SET pool_start=null,pool_end=null WHERE id=1`;
+	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null WHERE id=1`;
 	expect((await getArchive(database, actor, {})).years).toEqual(['2026', '2025']);
 });
 
 it('shows finished only when no event extends beyond the end date', async () => {
 	await client`UPDATE settings SET pool_end='2026-10-20' WHERE id=1`;
-	expect(await getPoolPhase(database, actor, now)).toBe('finished');
+	expect(await getPoolPhase(database, actor, now)).toBe('closed');
 	await client`UPDATE events SET event_date='2026-10-28' WHERE id=1`;
-	expect(await getPoolPhase(database, actor, now)).toBe('active');
+	expect(await getPoolPhase(database, actor, now)).toBe('open');
 });
 
 it('validates malformed form actions as translated 400 errors', async () => {

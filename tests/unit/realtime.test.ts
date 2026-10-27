@@ -64,6 +64,10 @@ it.each([null, 'user', 'admin'] as const)(
 		expect(await decode(reader)).toBe(
 			'data: {"type":"event_changed","eventId":12,"week":2,"action":"update"}\n\n'
 		);
+		publish({ type: 'pool_closed', participantLogin: 'PRIVATE_LOGIN' } as Parameters<
+			typeof publish
+		>[0]);
+		expect(await decode(reader)).toBe('data: {"type":"pool_closed"}\n\n');
 		publish({ type: 'log_created', id: 42 });
 		publish({ type: 'week_activated', week: 3 });
 		if (role === 'admin')
@@ -199,4 +203,22 @@ it('reloads on a reopened stream but not on its first successful open', () => {
 	source.onopen!();
 	expect(reload).toHaveBeenCalledTimes(2);
 	close();
+});
+
+it('notifies the layout of closure through the existing page stream', () => {
+	vi.stubGlobal('EventSource', FakeSource);
+	const target = new EventTarget();
+	vi.stubGlobal('window', target);
+	const closed = vi.fn();
+	target.addEventListener('pool_closed', closed);
+	const handler = vi.fn();
+	const close = listenRealtime(handler, () => {});
+	const source = FakeSource.instances.at(-1)!;
+	source.onmessage!(
+		new MessageEvent('message', { data: '{"type":"pool_closed","login":"private"}' })
+	);
+	expect(handler).toHaveBeenCalledExactlyOnceWith({ type: 'pool_closed' });
+	expect(closed).toHaveBeenCalledTimes(1);
+	close();
+	expect(source.closed).toBe(true);
 });

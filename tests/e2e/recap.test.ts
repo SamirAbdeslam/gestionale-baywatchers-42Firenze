@@ -180,8 +180,8 @@ for (const options of [
 					await expect(
 						recap.getByRole('heading', { name: 'La tua piscina gennaio 2001', exact: true })
 					).toBeVisible();
-					await expect(page.locator('div.calendar')).toBeVisible();
-					await client`UPDATE settings SET pool_end=null WHERE id=1`;
+					await expect(page.locator('div.calendar')).toHaveCount(0);
+					await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start='2000-01-03',pool_end='2099-12-31' WHERE id=1`;
 					await page.goto('/calendar');
 					await expect(recap).toHaveCount(0);
 					await expect(page.locator('div.calendar')).toBeVisible();
@@ -204,11 +204,12 @@ for (const options of [
 					if (eventId) await client`DELETE FROM events WHERE id=${eventId}`;
 					for (const row of savedEvents)
 						await client`UPDATE events SET event_date=${row.event_date} WHERE id=${row.id}`;
+					await client`DELETE FROM pools WHERE start_date='2001-01-01'`;
 					for (const id of [poolId, csvId]) if (id) await client`DELETE FROM pools WHERE id=${id}`;
 					await client`DELETE FROM whitelist WHERE login=${login}`;
 					await client`DELETE FROM action_logs WHERE actor_login=${login}`;
 					await client`DELETE FROM users WHERE login=${login}`;
-					await client`UPDATE settings SET ${client(config, 'pool_start', 'pool_end')} WHERE id=1`;
+					await client`UPDATE settings SET ${client(config, 'pool_start', 'pool_end', 'pool_closed_at', 'pool_reopened')} WHERE id=1`;
 				}
 			}
 		);

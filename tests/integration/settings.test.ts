@@ -24,7 +24,7 @@ const info = { ipAddress: '127.0.0.1', userAgent: 'settings test' },
 let actor: User, messages: RealtimeEvent[], unsubscribe: () => void;
 beforeEach(async () => {
 	await client`TRUNCATE users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
-	await client`UPDATE settings SET pool_start=null,pool_end=null,active_week=1,display_week=3,max_events_per_user=0,updated_at='2026-01-01T00:00:00Z' WHERE id=1`;
+	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,active_week=1,display_week=3,max_events_per_user=0,updated_at='2026-01-01T00:00:00Z' WHERE id=1`;
 	const [row] = await database
 		.insert(schema.users)
 		.values({ intraId: 42, login: 'settings_admin', role: 'admin' })
@@ -36,12 +36,12 @@ beforeEach(async () => {
 afterEach(() => unsubscribe());
 afterAll(async () => {
 	await client`TRUNCATE users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
-	await client`UPDATE settings SET pool_start=null,pool_end=null,active_week=1,display_week=1,max_events_per_user=0 WHERE id=1`;
+	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,active_week=1,display_week=1,max_events_per_user=0 WHERE id=1`;
 	await client.end();
 });
 it('reads the active week by default and computes all seven dates without Monday alignment', async () => {
 	expect((await getAdminSettings(database, actor, {})).dayDates).toEqual(Array(7).fill(null));
-	await setPoolDates(database, actor, { start: '2026-12-30', end: '' }, info, now);
+	await setPoolDates(database, actor, { start: '2026-12-30', end: '2027-01-26' }, info, now);
 	const result = await getAdminSettings(database, actor, { week: '4' });
 	expect(result.week).toBe(4);
 	expect(result.settings.poolEnd).toBe('2027-01-26');
@@ -85,8 +85,8 @@ it('updates only the requested fields, audits every action once and publishes af
 	]);
 	expect(logs.map((log) => [log.old_value, log.new_value])).toEqual([
 		[
-			{ poolStart: null, poolEnd: null },
-			{ poolStart: '2026-10-20', poolEnd: '2026-11-30' }
+			{ poolStart: null, poolEnd: null, poolClosedAt: null, poolReopened: false },
+			{ poolStart: '2026-10-20', poolEnd: '2026-11-30', poolClosedAt: null, poolReopened: false }
 		],
 		[{ activeWeek: 1 }, { activeWeek: 4 }],
 		[{ maxEventsPerUser: 0 }, { maxEventsPerUser: 2 }],
@@ -136,7 +136,7 @@ it('retains independent concurrent changes and supports the maximum stored limit
 	await Promise.all([
 		setActiveWeek(database, actor, { week: 2 }, info, now),
 		setMaxEvents(database, actor, { maxEvents: 32767 }, info, now),
-		setPoolDates(database, actor, { start: '2024-02-28' }, info, now),
+		setPoolDates(database, actor, { start: '2024-02-28', end: '2024-03-26' }, info, now),
 		resetDisplayWeek(database, actor, info, now)
 	]);
 	expect((await getAdminSettings(database, actor, {})).settings).toMatchObject({
@@ -150,7 +150,7 @@ it('retains independent concurrent changes and supports the maximum stored limit
 });
 it.each([
 	[setMaxEvents, { maxEvents: 3 }],
-	[setPoolDates, { start: '2026-10-19' }]
+	[setPoolDates, { start: '2026-10-19', end: '2026-11-15' }]
 ])('rolls back settings and emits no event if audit fails (%s)', async (mutate, input) => {
 	const before = await client`SELECT * FROM settings`;
 	await client`ALTER TABLE action_logs ADD CONSTRAINT test_reject_setting CHECK (action_type <> 'UPDATE_SETTING')`;
@@ -198,16 +198,64 @@ it.each(['1999-12-31', '2101-01-01', '9999-12-31'])(
 		expect(messages).toHaveLength(0);
 	}
 );
-it('accepts boundary years and rejects a computed end outside the range', async () => {
-	await setPoolDates(database, actor, { start: '2000-01-01' }, info, now);
-	await setPoolDates(database, actor, { start: '2100-12-04' }, info, now);
+it('accepts boundary years and rejects an explicit end outside the range', async () => {
+	await setPoolDates(database, actor, { start: '2000-01-01', end: '2100-12-31' }, info, now);
 	expect((await getAdminSettings(database, actor, {})).settings.poolEnd).toBe('2100-12-31');
 	const before = await client`SELECT * FROM settings`;
-	const priorMessages = [...messages];
-	await expect(setPoolDates(database, actor, { start: '2100-12-05' }, info, now)).rejects.toThrow();
+	await expect(
+		setPoolDates(database, actor, { start: '2100-12-05', end: '2101-01-01' }, info, now)
+	).rejects.toThrow();
 	expect(await client`SELECT * FROM settings`).toEqual(before);
-	expect(messages).toEqual(priorMessages);
-	expect(await client`SELECT * FROM action_logs`).toHaveLength(2);
+});
+it.each([{ start: '2026-10-19' }, { start: '2026-10-19', end: '' }, { end: '2026-11-15' }])(
+	'requires both pool dates (%j)',
+	async (input) => {
+		const before = await client`SELECT * FROM settings`;
+		await expect(setPoolDates(database, actor, input, info, now)).rejects.toThrow();
+		expect(await client`SELECT * FROM settings`).toEqual(before);
+		expect(messages).toEqual([]);
+	}
+);
+it.each([true, false])(
+	'preserves closed/reopened state when only the end changes (%s)',
+	async (closed) => {
+		await client`UPDATE settings SET pool_start='2026-10-19',pool_end='2026-11-15',pool_closed_at=${closed ? now.toISOString() : null},pool_reopened=${!closed} WHERE id=1`;
+		await setPoolDates(database, actor, { start: '2026-10-19', end: '2026-12-01' }, info, now);
+		const [row] = await database.select().from(schema.settings);
+		expect(row).toMatchObject({
+			poolEnd: '2026-12-01',
+			poolClosedAt: closed ? now : null,
+			poolReopened: !closed
+		});
+	}
+);
+it('rejects a changed start while closed without writes, audit or publication', async () => {
+	await client`UPDATE settings SET pool_start='2026-10-19',pool_end='2026-11-15',pool_closed_at=${now.toISOString()} WHERE id=1`;
+	const before = await client`SELECT * FROM settings`;
+	expect(
+		await setPoolDates(database, actor, { start: '2026-10-20', end: '2026-12-01' }, info, now)
+	).toMatchObject({ ok: false, messages: [{ key: 'pool_dates_locked' }] });
+	expect(await client`SELECT * FROM settings`).toEqual(before);
+	expect(await client`SELECT * FROM action_logs`).toEqual([]);
+	expect(messages).toEqual([]);
+});
+it('starts from none with clean lifecycle fields even after incomplete legacy dates', async () => {
+	await client`UPDATE settings SET pool_closed_at=${now.toISOString()},pool_reopened=true WHERE id=1`;
+	await setPoolDates(database, actor, { start: '2026-10-19', end: '2026-11-15' }, info, now);
+	expect((await database.select().from(schema.settings))[0]).toMatchObject({
+		poolClosedAt: null,
+		poolReopened: false
+	});
+});
+it('allows changing the start while open or upcoming and preserves the reopen override', async () => {
+	await client`UPDATE settings SET pool_start='2026-10-19',pool_end='2026-11-15',pool_reopened=true WHERE id=1`;
+	expect(
+		await setPoolDates(database, actor, { start: '2026-10-20', end: '2026-12-01' }, info, now)
+	).toMatchObject({ ok: true });
+	expect((await database.select().from(schema.settings))[0]).toMatchObject({
+		poolStart: '2026-10-20',
+		poolReopened: true
+	});
 });
 it('records the actual previous value for concurrent changes to the same setting', async () => {
 	await Promise.all([2, 3].map((week) => setActiveWeek(database, actor, { week }, info, now)));

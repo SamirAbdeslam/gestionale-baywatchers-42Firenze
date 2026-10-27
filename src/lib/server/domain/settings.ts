@@ -1,18 +1,13 @@
+import { poolPhase } from './pool.ts';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { db } from '../db/index.ts';
-import { settings } from '../db/schema.ts';
+import { settings, events } from '../db/schema.ts';
 import { assertAdmin, lockAdmin } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { publish } from '../realtime/bus.ts';
-import {
-	computeWeekDayDates,
-	digits,
-	isoDate,
-	setPoolDates as poolDates,
-	weekNumber
-} from './dates.ts';
+import { computeWeekDayDates, digits, isoDate, weekNumber } from './dates.ts';
 
 const week = digits(5).pipe(weekNumber);
 const querySchema = z.object({ week: week.optional() });
@@ -22,8 +17,8 @@ const maxEventsSchema = z.strictObject({
 });
 const poolDate = isoDate.refine((date) => date >= '2000-01-01' && date <= '2100-12-31');
 const poolDatesSchema = z
-	.strictObject({ start: poolDate, end: z.union([poolDate, z.literal('')]).optional() })
-	.refine(({ start, end }) => !end || end >= start, { message: 'error_pool_end_before_start' });
+	.strictObject({ start: poolDate, end: poolDate })
+	.refine(({ start, end }) => end >= start, { message: 'error_pool_end_before_start' });
 
 export async function getAdminSettings(database: typeof db, actor: User | null, query: unknown) {
 	assertAdmin(actor);
@@ -124,20 +119,44 @@ export async function setPoolDates(
 ) {
 	assertAdmin(actor);
 	const { start, end } = poolDatesSchema.parse(input);
-	const dates = poolDates(start, end || undefined);
-	poolDate.parse(dates.poolEnd);
-	await saveSettings(
-		database,
-		actor,
-		dates,
-		{
+	const logId = await database.transaction(async (tx) => {
+		const user = await lockAdmin(tx, actor);
+		const [before] = await tx.select().from(settings).where(eq(settings.id, 1)).for('update');
+		if (!before) throw new Error('Settings row is missing');
+		const phase = poolPhase(before, await tx.select().from(events), now);
+		if (phase === 'closed' && start !== before.poolStart) return null;
+		const changes = {
+			poolStart: start,
+			poolEnd: end,
+			...(phase === 'none' ? { poolClosedAt: null, poolReopened: false } : {})
+		};
+		await tx
+			.update(settings)
+			.set({ ...changes, updatedAt: now })
+			.where(eq(settings.id, 1));
+		return audit(tx, {
+			...info,
+			actor: user,
 			actionType: 'UPDATE_SETTING',
-			description: `Date pool impostate. Inizio: ${dates.poolStart}, Fine: ${dates.poolEnd}`
-		},
-		info,
-		now
-	);
+			description: `Date pool impostate. Inizio: ${start}, Fine: ${end}`,
+			resourceType: 'setting',
+			oldValue: Object.fromEntries(
+				Object.keys(changes).map((key) => [key, before[key as keyof typeof before]])
+			),
+			newValue: changes
+		});
+	});
+	if (logId === null)
+		return {
+			ok: false,
+			messages: [{ type: 'error' as const, key: 'pool_dates_locked' as const, params: {} }]
+		};
+	publish({ type: 'log_created', id: logId });
 	publish({ type: 'event_changed', eventId: null, week: null, action: 'update' });
+	return {
+		ok: true,
+		messages: [{ type: 'success' as const, key: 'admin_settings_saved' as const, params: {} }]
+	};
 }
 export async function resetDisplayWeek(
 	database: typeof db,

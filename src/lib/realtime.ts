@@ -10,6 +10,7 @@ export const realtimeEventSchema = z.discriminatedUnion('type', [
 		action: z.enum(['create', 'update', 'delete', 'bulk_delete'])
 	}),
 	z.object({ type: z.literal('week_activated'), week }),
+	z.object({ type: z.literal('pool_closed') }),
 	z.object({ type: z.literal('log_created'), id })
 ]);
 export type RealtimeEvent = z.infer<typeof realtimeEventSchema>;
@@ -34,7 +35,11 @@ export function listenRealtime(
 			return;
 		}
 		const parsed = realtimeEventSchema.safeParse(data);
-		if (parsed.success) onEvent(parsed.data);
+		if (parsed.success) {
+			onEvent(parsed.data);
+			// The layout uses the page's existing stream for the global closure dialog.
+			if (parsed.data.type === 'pool_closed') window.dispatchEvent(new Event('pool_closed'));
+		}
 	};
 	return () => source.close();
 }

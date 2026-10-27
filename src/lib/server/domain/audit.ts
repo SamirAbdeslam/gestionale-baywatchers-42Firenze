@@ -25,6 +25,9 @@ export const ACTION_TYPES = [
 	'WHITELIST_ADD',
 	'WHITELIST_REMOVE',
 	'CLOSE_POOL',
+	'REOPEN_POOL',
+	'SAVE_POOL',
+	'CLEAN_POOL',
 	'IMPORT_POOL',
 	'LOGIN'
 ] as const;
@@ -32,7 +35,7 @@ export type RequestInfo = { ipAddress: string; userAgent: string | null };
 export async function audit(
 	tx: Transaction,
 	input: RequestInfo & {
-		actor: Pick<User, 'id' | 'login'>;
+		actor: Pick<User, 'id' | 'login'> | typeof SYSTEM_ACTOR;
 		actionType: (typeof ACTION_TYPES)[number];
 		description: string;
 		resourceType?: string;
@@ -58,3 +61,6 @@ export async function audit(
 		.returning({ id: actionLogs.id });
 	return row.id;
 }
+
+// This actor is constructed only by server code, never from request fields.
+export const SYSTEM_ACTOR = Object.freeze({ id: null, login: 'SYSTEM' } as const);

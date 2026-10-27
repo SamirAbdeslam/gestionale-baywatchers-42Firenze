@@ -30,7 +30,7 @@ async function setup(request: APIRequestContext, admin = false, dates = true) {
 	const savedRegistrations =
 		await client`SELECT r.* FROM registrations r JOIN events e ON r.event_id=e.id WHERE e.week=2`;
 	await client`DELETE FROM events WHERE week=2`;
-	await client`UPDATE settings SET active_week=2,max_events_per_user=0,pool_start='2000-01-03',pool_end=null WHERE id=1`;
+	await client`UPDATE settings SET active_week=2,max_events_per_user=0,pool_start='2000-01-03',pool_end='2099-12-31' WHERE id=1`;
 	await client`INSERT INTO whitelist(login) VALUES (${name})`;
 	const [event] =
 		await client`INSERT INTO events(title,week,weekday,event_date,start_time,end_time,max_slots,compensation) VALUES (${'<img src=x onerror=alert(1)> ' + name},2,1,${dates ? '2099-01-05' : null},'09:00','11:00',3,200) RETURNING id,title`;
@@ -330,7 +330,9 @@ for (const javaScriptEnabled of [true, false]) {
 						headers: { origin }
 					});
 					expect(rejected.status()).toBe(400);
-					await page.goto('/calendar?week=1');
+					// Use in-app navigation so pending realtime invalidations share the router.
+					await page.locator('.weeks').getByRole('link', { name: /W01/ }).click();
+					await expect(page).toHaveURL('/calendar?week=1');
 					await expect(page.locator('[data-counter-value]')).toContainText('0 di 1 turni');
 					await expect(
 						page.getByRole('region', { name: 'Il tuo prossimo turno', exact: true })

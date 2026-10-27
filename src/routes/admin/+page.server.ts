@@ -1,3 +1,4 @@
+import { closePool, reopenPool, savePool, cleanPool } from '#lib/server/domain/pool.ts';
 import { error } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
@@ -57,6 +58,10 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 	}
 };
 export const actions: Actions = {
+	closePool: (event) => formAction(event, closePool),
+	reopenPool: (event) => formAction(event, reopenPool),
+	savePool: (event) => formAction(event, savePool),
+	cleanPool: (event) => formAction(event, cleanPool),
 	duplicateEvent: (event) =>
 		formAction(event, duplicateEvent, {
 			success: 'admin_event_created',
@@ -65,7 +70,6 @@ export const actions: Actions = {
 	saveWeekAsTemplate: (event) => formAction(event, saveWeekAsTemplate),
 	setPoolDates: (event) =>
 		formAction(event, setPoolDates, {
-			success: 'admin_settings_saved',
 			notFound: 'error_event_not_found'
 		}),
 	setActiveWeek: (event) =>

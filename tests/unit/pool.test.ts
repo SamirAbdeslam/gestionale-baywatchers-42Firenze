@@ -6,22 +6,22 @@ const event = { eventDate: null, week: 1, weekday: 1 };
 it.each([
 	[null, null, '2026-10-19T10:00:00Z', 'none'],
 	[null, '2026-11-15', '2026-10-19T10:00:00Z', 'none'],
-	['2026-10-19', null, '2026-12-01T10:00:00Z', 'active'],
+	['2026-10-19', null, '2026-12-01T10:00:00Z', 'none'],
 	['2026-10-19', '2026-11-15', '2026-10-18T21:59:59.999Z', 'upcoming'],
-	['2026-10-19', '2026-11-15', '2026-10-18T22:00:00Z', 'active'],
-	['2026-10-19', '2026-11-15', '2026-11-15T22:59:59.999Z', 'active'],
-	['2026-10-19', '2026-11-15', '2026-11-15T23:00:00Z', 'finished']
+	['2026-10-19', '2026-11-15', '2026-10-18T22:00:00Z', 'open'],
+	['2026-10-19', '2026-11-15', '2026-11-15T22:59:59.999Z', 'open'],
+	['2026-10-19', '2026-11-15', '2026-11-15T23:00:00Z', 'closed']
 ] as const)('calculates phase for %s / %s at %s', (poolStart, poolEnd, now, phase) => {
 	expect(poolPhase({ poolStart, poolEnd }, [event], new Date(now))).toBe(phase);
 });
 it('keeps a pool active for absolute or derived event dates beyond its end', () => {
 	const now = new Date('2026-11-16T10:00:00Z');
-	expect(poolPhase(config, [], now)).toBe('finished');
-	expect(poolPhase(config, [{ ...event, eventDate: '2026-11-16' }], now)).toBe('active');
+	expect(poolPhase(config, [], now)).toBe('closed');
+	expect(poolPhase(config, [{ ...event, eventDate: '2026-11-16' }], now)).toBe('open');
 	expect(poolPhase({ ...config, poolEnd: '2026-10-20' }, [{ ...event, week: 4 }], now)).toBe(
-		'active'
+		'open'
 	);
-	expect(poolPhase(config, [{ ...event, eventDate: config.poolEnd }], now)).toBe('finished');
+	expect(poolPhase(config, [{ ...event, eventDate: config.poolEnd }], now)).toBe('closed');
 });
 it.each([
 	'2026-03-29T00:59:59Z',
@@ -30,7 +30,17 @@ it.each([
 	'2026-10-25T01:00:00Z'
 ])('uses Rome calendar dates across DST at %s', (instant) => {
 	const day = instant.slice(0, 10);
-	expect(poolPhase({ poolStart: day, poolEnd: day }, [], new Date(instant))).toBe('active');
+	expect(poolPhase({ poolStart: day, poolEnd: day }, [], new Date(instant))).toBe('open');
+});
+
+it('manual closure wins before the start, and reopening suppresses automatic closure after the end', () => {
+	const now = new Date('2026-12-01T12:00:00Z');
+	expect(poolPhase({ ...config, poolClosedAt: now }, [], new Date('2026-10-01T12:00:00Z'))).toBe(
+		'closed'
+	);
+	expect(poolPhase({ ...config, poolReopened: true }, [], now)).toBe('open');
+	expect(poolPhase({ ...config, poolClosedAt: now, poolReopened: true }, [], now)).toBe('closed');
+	expect(poolPhase({ ...config, poolEnd: null, poolClosedAt: now }, [], now)).toBe('none');
 });
 
 const entry = (changes: Partial<PoolEntry> = {}): PoolEntry => ({

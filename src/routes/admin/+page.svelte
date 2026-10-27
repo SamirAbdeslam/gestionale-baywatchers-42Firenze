@@ -33,11 +33,72 @@
 <svelte:head><title>{m.nav_admin()} — {m.app_name()}</title></svelte:head>
 <h1 class="sr-only">{m.nav_admin()}</h1>
 <p><a href={resolve('/admin/archive')}>{m.archive_title()}</a></p>
-{#if data.phase === 'finished'}
-	<p role="status">
-		{m.archive_finished()} <a href={resolve('/admin/close-pool')}>{m.pool_close()}</a>
-	</p>
-{/if}
+<section class="pool-panel" aria-labelledby="pool-panel-title">
+	<h2 id="pool-panel-title">{m.pool_title()}</h2>
+	{#if data.phase === 'closed'}<p role="status">{m.archive_finished()}</p>{/if}
+	<div class="inline">
+		{#if data.phase === 'none'}
+			<button type="button" disabled>{m.pool_close()}</button>
+		{:else}
+			<Dialog
+				label={data.phase === 'closed' ? m.pool_reopen() : m.pool_close()}
+				title={data.phase === 'closed' ? m.pool_reopen() : m.pool_close()}
+			>
+				<form
+					method="POST"
+					action={data.phase === 'closed' ? '?/reopenPool' : '?/closePool'}
+					use:enhance
+				>
+					<label
+						><input
+							type="checkbox"
+							name="confirm"
+							value="yes"
+							required
+						/>{m.pool_confirm_action()}</label
+					>
+					<button type="submit">{data.phase === 'closed' ? m.pool_reopen() : m.pool_close()}</button
+					>
+				</form>
+			</Dialog>
+		{/if}
+		<form method="POST" action="?/savePool" use:enhance>
+			<button type="submit" disabled={data.phase === 'none'}>{m.pool_save()}</button>
+		</form>
+		{#if data.phase !== 'closed'}
+			<button type="button" disabled>{m.pool_cleanup()}</button>
+		{:else}
+			<Dialog label={m.pool_cleanup()} title={m.pool_cleanup()}>
+				<form method="POST" action="?/cleanPool" use:enhance>
+					<p>{m.pool_preserved()}</p>
+					{#each [{ name: 'events', label: m.pool_reset_events }, { name: 'whitelist', label: m.pool_reset_whitelist }, { name: 'weeks', label: m.pool_reset_weeks }, { name: 'dates', label: m.pool_reset_dates }] as option (option.name)}
+						<p>
+							<label><input type="checkbox" name={option.name} value="yes" />{option.label()}</label
+							>
+						</p>
+					{/each}
+					<p>{m.pool_cleanup_question()}</p>
+					<label
+						><input
+							type="checkbox"
+							name="confirm"
+							value="yes"
+							required
+						/>{m.pool_confirm_action()}</label
+					>
+					<p>
+						<button class="danger" type="submit" name="save" value="yes"
+							>{m.pool_save_delete()}</button
+						>
+					</p>
+					<button class="secondary" type="submit" name="save" value="no"
+						>{m.pool_delete_without_save()}</button
+					>
+				</form>
+			</Dialog>
+		{/if}
+	</div>
+</section>
 <details class="settings-panel">
 	<summary>{m.admin_settings()} · W0{data.settings.activeWeek}</summary>
 	<div class="settings-grid">
@@ -60,6 +121,7 @@
 							type="date"
 							name="end"
 							value={data.settings.poolEnd ?? ''}
+							required
 						/>
 					</div>
 				</div>
@@ -196,7 +258,6 @@
 		</form>
 	</Dialog>
 	<div class="danger-actions">
-		<a class="button danger" href={resolve('/admin/close-pool')}>{m.pool_close()}</a>
 		<Dialog label={m.admin_delete_week()} title={m.admin_confirm_delete_week()}>
 			{@render confirmDelete('deleteWeekEvents', { week: data.week })}
 		</Dialog>
@@ -466,6 +527,13 @@
 </div>
 
 <style>
+	.pool-panel {
+		margin-block: var(--space-lg);
+		padding: var(--space-md);
+		border: var(--border-width) solid var(--color-border);
+		border-radius: var(--radius-panel);
+		background: var(--color-surface);
+	}
 	/* settings */
 	.settings-panel {
 		margin-bottom: var(--space-md);

@@ -18,6 +18,7 @@ vi.mock('$app/manifest', () => ({
 vi.mock('#lib/server/env.ts', () => ({
 	readEnv: () => ({ AUTH_DEV_LOGIN: state.dev, ORIGIN: 'http://localhost:4173' })
 }));
+vi.mock('#lib/server/domain/pool.ts', () => ({ autoClosePool: vi.fn() }));
 vi.mock('#lib/server/db/index.ts', () => ({ db: {} }));
 vi.mock('#lib/server/auth/session.ts', () => ({
 	validateSession: async () =>

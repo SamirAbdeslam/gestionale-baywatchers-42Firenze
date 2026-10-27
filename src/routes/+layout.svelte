@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { onNavigate } from '$app/navigation';
+	import { goto, onNavigate } from '$app/navigation';
+	import Dialog from '#lib/components/Dialog.svelte';
+	import { onMount } from 'svelte';
 	import Logo from '#lib/components/Logo.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import ThemeSwitch from '#lib/components/ThemeSwitch.svelte';
@@ -11,6 +13,16 @@
 	import '#lib/styles/base.css';
 	import type { LayoutProps } from './$types';
 	let { children, data }: LayoutProps = $props();
+	let poolEnded = $state(0);
+	onMount(() => {
+		const closed = () => {
+			if (data.user?.role !== 'user' || page.route.id === '/display') return;
+			poolEnded += 1;
+			if (page.route.id !== '/calendar') void goto(resolve('/calendar'));
+		};
+		window.addEventListener('pool_closed', closed);
+		return () => window.removeEventListener('pool_closed', closed);
+	});
 	let userMenu = $state<HTMLElement>();
 	// Each language is named in itself, so the same labels serve every locale.
 	const languageNames = { it: 'Italiano', en: 'English', fr: 'Français' } as const;
@@ -25,6 +37,13 @@
 	});
 </script>
 
+{#if poolEnded && data.user?.role === 'user'}
+	{#key poolEnded}
+		<Dialog label={m.pool_closed()} title={m.pool_closed()} closeLabel={m.dialog_ok()} open
+			><p>{m.pool_closed()}</p></Dialog
+		>
+	{/key}
+{/if}
 <svelte:head><link rel="icon" href={asset('badge.png')} /></svelte:head>
 {#if page.route.id !== '/display'}
 	<a class="skip-link" href="#main">{m.app_skip_to_content()}</a>

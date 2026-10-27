@@ -11,7 +11,7 @@ const database = drizzle(client, { schema });
 let user: User, admin: User;
 beforeEach(async () => {
 	await client`TRUNCATE users,events,registrations,pools,action_logs RESTART IDENTITY CASCADE`;
-	await client`UPDATE settings SET pool_start=null,pool_end=null WHERE id=1`;
+	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null WHERE id=1`;
 	[user, admin] = await database
 		.insert(schema.users)
 		.values([
@@ -22,7 +22,7 @@ beforeEach(async () => {
 });
 afterAll(async () => {
 	await client`TRUNCATE users,events,registrations,pools,action_logs CASCADE`;
-	await client`UPDATE settings SET pool_start=null,pool_end=null WHERE id=1`;
+	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null WHERE id=1`;
 	await client.end();
 });
 async function archive(source: 'site' | 'csv' = 'site', startDate = '2026-05-04') {
@@ -92,8 +92,8 @@ it('uses live data when finished, latest personal archive when unset, and avoids
 	expect(await personalPools(database, user)).toHaveLength(1);
 	const finished = await calendarPoolView(database, user, new Date('2026-06-01T12:00:00Z'));
 	expect(finished).toMatchObject({
-		phase: 'finished',
-		calendar: true,
+		phase: 'closed',
+		calendar: false,
 		recap: true,
 		recapData: { stats: { hours: 2, firstShift: { title: 'Live corrected' } } }
 	});
@@ -102,11 +102,20 @@ it('uses live data when finished, latest personal archive when unset, and avoids
 	// The prior archive is the wait link even when the new pool already has registrations.
 	expect(upcoming.lastRecap).toBe(pool.id);
 	expect(upcoming).toMatchObject({ phase: 'upcoming', calendar: false, countdown: true });
-	await client`UPDATE settings SET pool_start=null,pool_end=null WHERE id=1`;
+	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null WHERE id=1`;
 	const none = await calendarPoolView(database, user, new Date());
 	expect(none).toMatchObject({
 		phase: 'none',
 		calendar: false,
 		recapData: { startDate: pool.startDate }
 	});
+});
+
+it('keeps the closed recap available from the archive after events have been cleaned', async () => {
+	const pool = await archive();
+	await client`UPDATE settings SET pool_start='2026-05-04',pool_end='2026-05-31',pool_closed_at='2026-06-01T12:00:00Z' WHERE id=1`;
+	const view = await calendarPoolView(database, user, new Date('2026-06-01T12:00:00Z'));
+	expect(view).toMatchObject({ phase: 'closed', calendar: false, recap: true });
+	expect(view.recapData).toEqual(await getRecap(database, user, String(pool.id)));
+	expect(JSON.stringify(view)).not.toContain('secret_other');
 });

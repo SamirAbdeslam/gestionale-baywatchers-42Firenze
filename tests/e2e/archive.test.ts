@@ -129,31 +129,23 @@ for (const javaScriptEnabled of [true, false]) {
 					expect(
 						await client`SELECT * FROM action_logs WHERE action_type='IMPORT_POOL' AND resource_id=${String(pool.id)}`
 					).toHaveLength(1);
-					await client`UPDATE settings SET pool_start='2000-01-03',pool_end='2000-12-31' WHERE id=1`;
+					await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start='2000-01-03',pool_end='2000-12-31' WHERE id=1`;
 					await client`UPDATE events SET event_date=null`;
 					await page.goto('/admin');
-					await expect(page.getByRole('status')).toContainText(
-						'La piscina è finita. Quando hai completato le presenze, chiudila.'
-					);
-					await page
-						.getByRole('status')
-						.getByRole('link', { name: 'Chiudi piscina', exact: true })
-						.click();
-					await expect(page).toHaveURL('/admin/close-pool');
+					await expect(page.getByRole('status')).toContainText('La piscina è finita');
 					await page.goto('/admin');
 					await page.getByRole('link', { name: 'Archivio piscine', exact: true }).click();
 					await page.getByLabel('Anno', { exact: true }).selectOption('2000');
 					await page.getByRole('button', { name: 'Mostra l’anno', exact: true }).click();
-					await expect(
-						page.getByRole('heading', { name: /gennaio 2000 — Piscina corrente/ })
-					).toBeVisible();
+					await expect(page.getByRole('heading', { name: /gennaio 2000/ })).toBeVisible();
 					expect(errors).toEqual([]);
 				} finally {
+					await client`DELETE FROM pools WHERE start_date='2000-01-03'`;
 					if (importedId !== undefined) {
 						await client`DELETE FROM pools WHERE id=${importedId}`;
 						await client`DELETE FROM action_logs WHERE action_type='IMPORT_POOL' AND resource_id=${String(importedId)}`;
 					}
-					await client`UPDATE settings SET ${client(config, 'pool_start', 'pool_end')} WHERE id=1`;
+					await client`UPDATE settings SET ${client(config, 'pool_start', 'pool_end', 'pool_closed_at', 'pool_reopened')} WHERE id=1`;
 					for (const event of events)
 						await client`UPDATE events SET event_date=${event.event_date} WHERE id=${event.id}`;
 				}

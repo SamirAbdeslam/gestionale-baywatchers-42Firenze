@@ -6,15 +6,13 @@ export const adminRoutes = [
 		implementedActions: ['preview', 'importCsv']
 	},
 	{
-		id: '/admin/close-pool',
-		url: '/admin/close-pool',
-		actions: ['closePool'],
-		implementedActions: ['closePool']
-	},
-	{
 		id: '/admin',
 		url: '/admin',
 		implementedActions: [
+			'closePool',
+			'reopenPool',
+			'savePool',
+			'cleanPool',
 			'setPoolDates',
 			'setActiveWeek',
 			'setMaxEvents',
@@ -32,6 +30,10 @@ export const adminRoutes = [
 			'setAttendance'
 		],
 		actions: [
+			'closePool',
+			'reopenPool',
+			'savePool',
+			'cleanPool',
 			'setPoolDates',
 			'setActiveWeek',
 			'setMaxEvents',
