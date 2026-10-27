@@ -2549,3 +2549,36 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Arresto dopo commit e push dei documenti. M21 resta da fare e non è stato iniziato.
+
+## 2026-10-27 — M21 — completato
+
+**Fatto**
+- Letto il piano, compresi §1, §3 e §20 per intero, e l'ultima sessione M20. Confermati checkout pulito, branch `v2.0.0`, versione `2.1.0` e allineamento con il remoto.
+- `displayStates` in `domain/display.ts`: sugli eventi della sola settimana visualizzata, con data concreta, assegna `ongoing` dall'inizio fino alla fine inclusi e `next` al primo evento non ancora iniziato, ordinato per data concreta, inizio e id. Gli eventi senza data mantengono gli stati precedenti; tutti gli eventi sovrapposti in corso sono evidenziati.
+- Estratto il confronto con data e ora di Roma già usato da `isPassed` in `romeDateTime`, senza cambiare il comportamento di quest'ultimo. Riutilizzati calcolo delle date, lettura degli eventi, `EventCard` e token dei temi esistenti.
+- Etichette «In corso» e «Prossimo» sul display, con pillole e colori dei token di design. Restano visibili anche posti liberi o capienza piena e i soli login dei presenti. Testi aggiunti in italiano, inglese e francese.
+- Riutilizzato senza modifiche il timer già presente: `invalidate('app:display')` ogni 60 secondi, oltre al real-time, con cleanup di timer e sottoscrizione. Nessuna dipendenza, migrazione o nuovo file.
+
+**Commit**
+- `b604143` — `feat(display): highlight ongoing and next events`.
+- Chiusura del diario e dello stato M21 con `docs: record M21 completion and validation`.
+
+**Controlli**
+- `corepack pnpm ci:local`: exit 0; 251 unit, 309 integration, 179 e2e, totale 739, senza retry locali. Lint, check e build verdi; svelte-check senza errori o warning. `git diff --check` verde.
+- Unit: prima, inizio esatto, durante, fine esatta, dopo un millisecondo, data null con e senza posti, nessun evento, eventi sovrapposti, selezione univoca del prossimo per data/orario/id, cambi primaverile e autunnale dell'ora in Europe/Rome. Aggiornato il test integration sulla fine esatta: ora `ongoing`, poi `passed`.
+- E2e: quattro nuovi casi desktop/mobile, con e senza JavaScript, verificano «In corso», un solo «Prossimo» e la conservazione delle informazioni sui posti, anche per l'evento prossimo pieno. Suite preesistente su layout, temi, autorizzazione, token e real-time verde.
+- Prima del risultato verde, il nuovo test unit sul salto primaverile ha rilevato che anticipare il confronto di un millisecondo attraversava il cambio d'ora: sostituito con il confronto diretto dell'ora locale condiviso con `isPassed`. Nessuna configurazione o timeout di test modificato.
+- CI [40474506793](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40474506793) su `b604143`: `gh run watch --exit-status` exit 0; sei job verdi (lint, unit, integration, legacy-import, e2e, docker).
+- E2e CI: 178 passati direttamente e uno passato al primo retry, `tests/e2e/calendar.test.ts:294` su WebKit con JavaScript. Il primo tentativo ha segnalato a riga 337 una navigazione verso `week=1` interrotta da una verso `week=2`. Test preesistente non modificato; causa non determinata, nessuna attribuzione a M21. I nuovi casi display sono passati direttamente.
+- Il commit documentale modifica soltanto questa voce e la colonna Stato di M21 in §19; il codice resta quello verificato localmente e nella run citata.
+
+**Decisioni prese dentro il perimetro del piano**
+- Fine esatta inclusa in «In corso», coerentemente con §8.2: passato solo strettamente dopo la fine. Parità del prossimo risolta per id, coerentemente con l'ordinamento esistente.
+- Branch e versione invariati; nessun branch nuovo, worktree o tag. Porte `5432` e `4173` usate per `ci:local`; stack su `8080` e `8443` invariato. Nessun volume cancellato.
+
+**Domande / blocchi**
+- Nessun blocco aperto per M21. Segnalata l'intermittenza WebKit del calendario, passata al retry in CI.
+- Da verificare a mano: leggibilità delle etichette e passaggio degli stati sul TV reale, aggiornamento dopo 60 secondi senza notifiche SSE, rilettura dei nuovi testi inglesi/francesi. Nessuna verifica su un deploy di produzione.
+
+**Prossimo passo**
+- Arresto dopo commit e push dei documenti. M22 non iniziato: resta subordinato alla messa in produzione con dominio e certificato validi.
