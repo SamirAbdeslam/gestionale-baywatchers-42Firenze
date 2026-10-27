@@ -2848,5 +2848,7 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 - Nessun blocco. Scelte nel piano: il download `current` con piscina senza date esporta comunque (solo intestazione, file `piscina_current.csv`) per rispettare la matrice e2e; il link nel pannello è nascosto in fase `none`. Limite import 1 MB e 20000 righe.
 - Da verificare a mano: apertura del CSV scaricato in un foglio di calcolo, import di un archivio reale esportato e testi inglesi/francesi.
 
+- Fix dalla review (`496811f`): l'import toglie l'apice che `writeCsv` antepone a login e titoli che iniziano con `= + - @` (round trip identico); `week_activations` si aggiorna solo se la settimana attiva cambia, così riattivare la stessa settimana conserva il primo orario. Test aggiunti; `ci:local` verde (288 unit, 351 integration, 193 e2e); CI [40528935186](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40528935186) verde.
+
 **Prossimo passo**
 - Arresto dopo i documenti. M29 e M26 non iniziati.
