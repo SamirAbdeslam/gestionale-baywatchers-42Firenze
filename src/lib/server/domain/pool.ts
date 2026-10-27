@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { count, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import type { db, Database } from '../db/index.ts';
 import { events, registrations, settings, whitelist, pools, poolEntries } from '../db/schema.ts';
@@ -63,16 +63,21 @@ export async function closePool(
 				target: pools.startDate,
 				set: {
 					endDate: before.poolEnd,
-					source: 'site',
+					source: entries.length ? 'site' : undefined,
 					archivedAt: now
 				}
 			})
 			.returning();
-		await tx.delete(poolEntries).where(eq(poolEntries.poolId, archive.id));
-		if (entries.length)
+		if (entries.length) {
+			await tx.delete(poolEntries).where(eq(poolEntries.poolId, archive.id));
 			await tx
 				.insert(poolEntries)
 				.values(entries.map((entry) => ({ ...entry, poolId: archive.id })));
+		}
+		const [{ n: archivedEntries }] = await tx
+			.select({ n: count() })
+			.from(poolEntries)
+			.where(eq(poolEntries.poolId, archive.id));
 		const removedEvents = choices.events ? snapshot : undefined;
 		const removedWhitelist = choices.whitelist
 			? await tx.select().from(whitelist).orderBy(whitelist.id).for('update')
@@ -111,7 +116,7 @@ export async function closePool(
 			description: 'Chiusura della piscina.',
 			resourceType: 'pool',
 			resourceId: String(archive.id),
-			newValue: { archiveId: archive.id, entries: entries.length },
+			newValue: { archiveId: archive.id, entries: archivedEntries },
 			oldValue: {
 				...(removedEvents ? { events: removedEvents } : {}),
 				...(removedWhitelist ? { whitelist: removedWhitelist } : {}),

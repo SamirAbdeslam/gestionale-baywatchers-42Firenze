@@ -266,6 +266,30 @@ it('replaces the archive with corrected attendance, added and removed registrati
 	expect(before.entries).toHaveLength(3);
 });
 
+it('preserves archived entries when closing again after deleting events', async () => {
+	await closePool(database, actor, { downloaded: 'yes', events: 'yes' }, info, now);
+	const before = await snapshot();
+	expect(before.events).toEqual([]);
+	expect(before.registrations).toEqual([]);
+	expect(before.entries).toHaveLength(3);
+	expect(before.settings[0].pool_start).toBe('2026-10-19');
+	const later = new Date('2026-10-28T10:00:00Z');
+	expect(
+		await closePool(database, actor, { downloaded: 'yes', whitelist: 'yes' }, info, later)
+	).toMatchObject({ ok: true });
+	const after = await snapshot();
+	expect(after.entries).toEqual(before.entries);
+	expect(after.pools).toHaveLength(1);
+	expect(after.pools[0].id).toBe(before.pools[0].id);
+	expect(new Date(after.pools[0].archived_at)).toEqual(later);
+	expect(after.whitelist).toEqual([]);
+	expect(after.logs).toHaveLength(before.logs.length + 1);
+	expect(after.logs.at(-1)?.new_value).toEqual({
+		archiveId: Number(before.pools[0].id),
+		entries: before.entries.length
+	});
+});
+
 it('rolls back archive replacement as well as cleanup if writing entries fails', async () => {
 	await closePool(database, actor, { downloaded: 'yes' }, info, now);
 	const before = await snapshot();
