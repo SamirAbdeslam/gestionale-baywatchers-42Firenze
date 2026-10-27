@@ -2621,7 +2621,7 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 **Fatto**
 - Ripreso soltanto M23 dopo la risoluzione autorizzata del blocco: eliminata dal piano la copertura dei posti, modello di §21.1 invariato. La correzione di §21.2 è inclusa nel commit documentale, insieme allo stato e al diario.
 - Versione `2.2.0` con commit dedicato. Migrazione Drizzle `0003_pale_cerebro`: tabelle `pools` e `pool_entries`, data iniziale unica, FK con cancellazione in cascata, indice piscina/login e vincoli sui valori archiviati. Le tabelle di lavoro restano invariate.
-- `closePool` salva sempre prima della pulizia, nella stessa transazione già esistente: lock admin, impostazioni e snapshot degli eventi; archivio delle iscrizioni con date concrete, durata, compenso, presenze e data di iscrizione. La stessa data iniziale aggiorna la riga della piscina e sostituisce tutte le relative iscrizioni archiviate, mantenendo l'id dell'archivio.
+- `closePool` salva sempre prima della pulizia, nella stessa transazione già esistente: lock admin, impostazioni e snapshot degli eventi; archivio delle iscrizioni con date concrete, durata, compenso, presenze e data di iscrizione. La stessa data iniziale aggiorna la riga della piscina e, se ci sono iscrizioni correnti, sostituisce le relative righe archiviate mantenendo l'id dell'archivio. Senza iscrizioni correnti conserva tutte le righe già archiviate (correzione della review sotto).
 - La chiusura senza opzioni salva soltanto l'archivio. Download obbligatorio; senza `pool_start`, avviso `pool_dates_required` e nessuna scrittura. Audit `CLOSE_POOL` con id archivio e numero di righe in `new_value`, oltre agli snapshot precedenti delle parti azzerate. Notifiche solo dopo il commit: `log_created` ed `event_changed`, mai `week_activated`.
 - `poolPhase` pura con date di Roma e verifica degli eventi oltre la fine. `poolStats` pura condivisa tra archivio e piscina corrente; query `currentPoolEntries` nella stessa forma delle righe archiviate. Riutilizzati calcolo delle date, orologio di Roma e durata dei report, senza nuove dipendenze.
 - Aggiornata la pagina di chiusura esistente con l'indicazione del salvataggio dell'archivio e testi in italiano, inglese e francese. Nessuna pagina nuova; M24 e moduli successivi non iniziati.
@@ -2654,3 +2654,15 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Arresto dopo commit e push dei documenti e verifica della relativa CI. M24 non iniziato; M22 resta subordinato alla produzione.
+
+
+**Review M23 — conservazione dell'archivio alla richiusura**
+- Corretto il caso segnalato da Ismail: dopo una chiusura che cancella gli eventi ma conserva le date, una seconda chiusura senza iscrizioni correnti conserva integralmente le righe dell'archivio. La sostituzione resta attiva quando esistono iscrizioni da archiviare; la creazione di un primo archivio vuoto resta consentita.
+- Con input vuoto si aggiornano soltanto fine piscina e data di archiviazione, conservando anche la sorgente dell'archivio esistente. Il log `CLOSE_POOL` conta le righe effettivamente presenti nell'archivio nella stessa transazione, comprese quelle conservate.
+- Nuovo test integration: prima chiusura con cancellazione degli eventi e date conservate, seconda chiusura per svuotare la whitelist; confronto esatto delle righe archiviate, stesso id della piscina, timestamp aggiornato e numero corretto nel secondo log. Restano verdi i casi di sostituzione con correzione delle presenze, primo archivio vuoto e rollback.
+- `b21486c` — `docs(plan): hide the calendar before the pool starts`: modifica di Ismail a D13 e §21.4 committata separatamente, così com'era nel working tree. Il comportamento previsto per M25 non è stato implementato in questa review.
+- `677f5a4` — `fix(pool): keep archived entries when a closure has nothing to archive`: modifica limitata a `domain/pool.ts` e al test integration esistente. Nessuna nuova stringa visibile all'utente, dipendenza, migrazione o modifica della versione `2.2.0`.
+- `corepack pnpm ci:local`: exit 0 al primo passaggio; 273 unit, 314 integration, 179 e2e, totale 766, senza retry locali. Migrazione, lint, check e build verdi; svelte-check senza errori o warning. `git diff --check` verde.
+- CI [40501515962](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40501515962) su `677f5a4`: `gh run watch --exit-status` exit 0; sei job verdi e tutti i 179 e2e passati senza flaky o retry.
+- Nessun dubbio o blocco aperto per la review. Da verificare a mano la richiusura dopo la cancellazione degli eventi su una copia dei dati reali; nessuna verifica su un deploy di produzione. M24 non iniziato.
+- Chiusura documentale con `docs: record M23 archive preservation review`; aggiornato soltanto questo diario, codice invariato rispetto ai controlli citati. Arresto dopo commit/push e verifica della relativa CI.
