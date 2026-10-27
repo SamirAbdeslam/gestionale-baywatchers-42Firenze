@@ -2666,3 +2666,42 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 - CI [40501515962](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40501515962) su `677f5a4`: `gh run watch --exit-status` exit 0; sei job verdi e tutti i 179 e2e passati senza flaky o retry.
 - Nessun dubbio o blocco aperto per la review. Da verificare a mano la richiusura dopo la cancellazione degli eventi su una copia dei dati reali; nessuna verifica su un deploy di produzione. M24 non iniziato.
 - Chiusura documentale con `docs: record M23 archive preservation review`; aggiornato soltanto questo diario, codice invariato rispetto ai controlli citati. Arresto dopo commit/push e verifica della relativa CI.
+
+
+## 2026-10-27 — M24 — completato
+
+**Fatto**
+- Letti il piano, incluse §1, D8–D13 e §21 per intero, e l'ultima sessione con la review M23. Confermati checkout pulito, branch `v2.0.0`, versione `2.2.0` e allineamento con il remoto.
+- Nuova pagina `/admin/archive`, raggiungibile da `/admin`, riservata allo staff: selettori anno e piscina, nome con `Intl` nella lingua corrente, piscina corrente mostrata soltanto quando non esiste già un archivio con la stessa data iniziale. Totali, barre e ciambella SVG per tipo e tabella alfabetica dei partecipanti derivano tutti da `poolStats`, riusando `currentPoolEntries` per i dati correnti.
+- Avviso in `/admin` quando `poolPhase` restituisce `finished`, con link funzionante a «Chiudi piscina». La query considera tutti gli eventi, anche quelli delle settimane diverse da quella visualizzata. Nessuna chiusura o pulizia automatica.
+- Import del CSV dettagliato con file e mese/anno, anteprima di righe lette, voci importabili, scarti con motivo e totali; conferma esplicita prima della scrittura. L'anteprima non modifica il database. Alla conferma si rilegge e valida il CSV originale, senza fidarsi di righe o totali inviati dal client.
+- Parser in `domain/archive.ts`, riusando il lettore CSV esistente: UTF-8, BOM e fallback latin-1, quoting e titoli multilinea, titoli con parentesi bilanciate, date e giorni coerenti, durate e compensi, assenze e date mancanti. `inferKind` assegna il tipo; orari e data di iscrizione restano null. Scarti sempre visibili nell'anteprima, senza indovinare le parti ambigue.
+- Import in una sola transazione con `lockAdmin`, unicità della data iniziale, `source = 'csv'` e un log `IMPORT_POOL` con id archivio e numero di iscrizioni. Duplicato: errore senza sovrascritture né log. File senza voci importabili: avviso senza archivio vuoto. Inserimenti in blocchi di 1000 nella stessa transazione per rispettare il limite dei parametri SQL anche nei file densi. Pubblicazione di `log_created` solo dopo il commit; tabelle della piscina corrente invariate.
+- Testi nuovi in italiano, inglese e francese. Estesi `Toast` per i nuovi messaggi e il tipo di ritorno di `formAction` per conservare i dati dell'anteprima, senza modificarne il comportamento. I fixture legacy escludono `IMPORT_POOL`, conservando i 21 tipi storici, come già avveniva per `CLOSE_POOL`.
+- Sei nuovi file necessari al modulo: dominio archivio, due file della route e tre suite dedicate a parser, transazioni e flusso browser. Nessuna dipendenza, migrazione o modifica della versione.
+
+**Commit**
+- `85fe2b4` — `feat(archive): browse pools and import historical CSV reports`.
+- Chiusura documentale con `docs: record M24 completion and validation`.
+
+**Controlli**
+- `corepack pnpm ci:local`: exit 0 nel passaggio conclusivo; 294 unit, 327 integration, 183 e2e, totale 804, senza retry locali. Migrazione, lint, check e build verdi; svelte-check senza errori o warning. `git diff --check` verde.
+- Unit: 21 nuovi casi sul parser, inclusi voci valide, `NON PARTECIPATO`, compenso zero, ore decimali, parentesi bilanciate o ambigue, separatori nei titoli, date e giorni non validi, informazioni parziali, BOM, latin-1, quoting, righe vuote, limiti e round-trip con il vero `detailedCsv`.
+- Integration: 13 nuovi casi su anteprima senza scritture, valori importati e audit, duplicati contro sorgenti `csv` e `site`, import concorrenti, rollback su errore di righe o audit, autorizzazione e revoca del ruolo, conferma e input malformati, file senza voci leggibili, archivio e piscina corrente senza duplicazioni, avviso di fine e import di 6000 voci sotto il limite di upload.
+- E2e: quattro nuovi casi Chromium desktop/mobile, con e senza JavaScript, su anteprima senza scritture, scarti e XSS, conferma, totali per partecipante, selettori, grafici, duplicato senza nuove righe o log, avviso e navigazione alla chiusura, piscina corrente. Nessun overflow a 360 px o errore JavaScript. Matrice di autorizzazione estesa alla pagina e alle due action; gli snapshot comprendono anche `pools` e `pool_entries`. Suite preesistente, inclusa WebKit, verde.
+- Prima del risultato conclusivo sono stati corretti soltanto problemi dei nuovi test E2e: formattazione, selettore «Piscina» che corrispondeva anche alla sezione e confronto del link relativo generato senza JavaScript. Il test ora seleziona il menu per ruolo e verifica il link navigando alla pagina di chiusura. Nessun test saltato, retry locale o timeout modificato; nessun errore di ambiente.
+- CI [40506405897](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40506405897) su `85fe2b4`: `gh run watch --exit-status` exit 0; sei job verdi (lint, unit, integration, legacy-import, e2e, docker). Tutti i 183 e2e passati direttamente, senza flaky o retry.
+- Il commit documentale modifica soltanto questa voce e la colonna Stato di M24 in §19. Il codice resta quello verificato localmente e nella run citata.
+
+**Decisioni prese dentro il perimetro del piano**
+- Il mese/anno selezionato identifica la piscina importata con il primo giorno del mese. La data finale resta null: l'ultimo turno non dimostra la fine della piscina. Le durate in ore del CSV, arrotondate dall'export a due decimali, vengono ricondotte ai minuti interi più vicini; le date mancanti restano null e il giorno della settimana noto viene conservato.
+- Per le assenze il CSV non conserva il compenso originale: si salva 0, coerentemente con i report. Nessun orario o timestamp di iscrizione viene ricostruito. Questi limiti sono esplicitati nel testo del form in tutte le lingue.
+- Se un frammento non permette di distinguere con certezza un separatore tra voci da un « | » nel titolo, viene scartata e segnalata l'intera riga del partecipante. Per una voce ben delimitata ma con titolo, data o numeri non validi si scarta soltanto quella voce. Nessuna deduplicazione arbitraria di turni: il CSV non conserva l'id dell'evento.
+- Branch e versione invariati; nessun branch nuovo, worktree o tag. Porte `5432` e `4173` usate soltanto nei test di `ci:local`; stack su `8080` e `8443` invariato. Nessun volume cancellato.
+
+**Domande / blocchi**
+- Nessun dubbio o blocco aperto per M24.
+- Da verificare a mano: rilettura dei testi inglesi/francesi, leggibilità dei grafici nei temi utilizzati dallo staff e confronto dell'anteprima con i CSV reali delle piscine passate, prestando attenzione agli scarti. I test usano dati fittizi; nessuna verifica su un deploy di produzione o import di dati reali.
+
+**Prossimo passo**
+- Arresto dopo commit e push dei documenti e verifica della relativa CI. M25 e M26 non iniziati; M22 resta subordinato alla produzione.
