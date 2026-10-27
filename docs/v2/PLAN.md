@@ -1052,7 +1052,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M20 Chiusura della piscina | completato (00dced4) |
 | M21 Display: evento in corso e prossimo | completato (b604143) |
 | M22 Feed calendario personale | da fare (dopo la produzione) |
-| M23 Archivio alla chiusura | da fare |
+| M23 Archivio alla chiusura | completato (0187ced) |
 | M24 Archivio staff e import piscine vecchie | da fare |
 | M25 Riepilogo animato e pagina di attesa | da fare |
 | M26 Iscrizioni con QR | da fare |
@@ -1182,7 +1182,7 @@ Valgono le regole di §1 e di §20 (stesso branch, un modulo alla volta in ordin
   - integration: archivio scritto, sostituito alla seconda chiusura, rollback se una parte fallisce.
 - Nessuna pagina nuova in questo modulo.
 
-**Statistiche di `poolStats`** (per un login, più i totali della piscina): turni presi e fatti, ore, ₳, turni per tipo (conteggio e %), giorno della settimana più frequente, fascia oraria più frequente (mattina < 12:00, pomeriggio < 18:00, sera; null se gli orari mancano), settimana o mese più intenso, primo e ultimo turno, presenze su turni presi, contributo in % delle ore totali della piscina, badge descrittivi (`early_bird` maggioranza dei turni prima delle 12, `all_rounder` 3 o più tipi, `always_there` 100% presenze con almeno 3 turni). Totali della piscina: turni, ore, ₳, partecipanti unici, % presenze, copertura dei posti per tipo (solo piscina corrente o archivio `site`).
+**Statistiche di `poolStats`** (per un login, più i totali della piscina): turni presi e fatti, ore, ₳, turni per tipo (conteggio e %), giorno della settimana più frequente, fascia oraria più frequente (mattina < 12:00, pomeriggio < 18:00, sera; null se gli orari mancano), settimana o mese più intenso, primo e ultimo turno, presenze su turni presi, contributo in % delle ore totali della piscina, badge descrittivi (`early_bird` maggioranza dei turni prima delle 12, `all_rounder` 3 o più tipi, `always_there` 100% presenze con almeno 3 turni). Totali della piscina: turni, ore, ₳, partecipanti unici, % presenze, turni per tipo. Niente copertura dei posti: l'archivio non conserva capienze né eventi senza iscritti.
 
 ### 21.3 M24 — Archivio per lo staff e import delle piscine vecchie (1,5 g)
 

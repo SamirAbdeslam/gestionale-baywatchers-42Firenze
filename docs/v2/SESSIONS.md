@@ -2582,3 +2582,75 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Arresto dopo commit e push dei documenti. M22 non iniziato: resta subordinato alla messa in produzione con dominio e certificato validi.
+
+
+## 2026-10-27 — M23 — blocco risolto, ripresa
+
+**Fatto**
+- Letto `PLAN.md` per intero e l'ultima sessione M21; verificati branch `v2.0.0`, versione `2.1.0` e working tree inizialmente modificato soltanto nel piano.
+- Committato `PLAN.md` così com'era, comprese §21 e D8–D13, senza alterarne il contenuto.
+- Esaminati `domain/pool.ts` e `domain/reports.ts` per verificare il riuso richiesto e i dati disponibili.
+- Arresto prima di modificare codice, schema o versione, per l'incoerenza descritta sotto. M24 e moduli successivi non iniziati.
+
+**Commit**
+- `626d287` — `docs(plan): add 2.2.0 pool archive, recap and QR enrollment`.
+
+**Controlli**
+- `git diff --check` verde prima del commit del piano.
+- `ci:local` non eseguito: modulo fermato alla lettura della specifica, nessun test eseguito e nessun numero di test da riportare.
+- Nessun push e nessuna run CI avviata per questa sessione: manca il requisito di modulo completato e controlli locali verdi.
+
+**Decisioni prese dentro il perimetro del piano**
+- Nessuna scelta sostitutiva sul modello dati o sulle statistiche. Versione rimasta `2.1.0`.
+- Modificata soltanto la colonna Stato di M23 in §19, oltre a questa voce. Nessun branch, worktree, tag o modifica ai volumi.
+
+**Domande / blocchi**
+- §21.2 richiede che la funzione pura `poolStats(entries, login?)` restituisca la copertura dei posti per tipo anche per un archivio `site`. Tuttavia, §21.1 conserva una riga `pool_entries` per iscrizione, senza capienza (`max_slots`), identificatore dell'evento o righe per gli eventi privi di iscrizioni; neppure `pools` contiene questi dati. Dopo la cancellazione degli eventi non è possibile ricostruire il denominatore della copertura. Una singola iscrizione può appartenere a un evento da 1 oppure da 10 posti, producendo le stesse righe archiviate ma coperture diverse; anche i posti degli eventi senza iscritti andrebbero persi.
+- Serve una decisione sul modello: quali dati aggiungere all'archivio per conservare le capienze di tutti gli eventi, inclusi quelli senza iscritti, e come passarli a `poolStats`; oppure una revisione esplicita del requisito di copertura. Il piano non è stato corretto autonomamente (§1.1 e §1.2).
+- Verifiche manuali del flusso rinviate: nessuna nuova funzionalità implementata o validata.
+
+**Prossimo passo**
+- Chiarire e aggiornare la specifica della copertura, poi riprendere soltanto M23. Il commit del piano resta locale; diario e stato di blocco restano nel working tree.
+
+**Risoluzione autorizzata e ripresa**
+- Ismail ha eliminato da §21.2 la copertura dei posti: i totali includono turni, ore, ₳, partecipanti unici, percentuale di presenze e turni per tipo. Il modello di §21.1 resta invariato. Il blocco sopra è risolto; M23 torna in corso. La correzione del piano sarà committata con i documenti al termine del modulo.
+
+
+## 2026-10-27 — M23 — completato
+
+**Fatto**
+- Ripreso soltanto M23 dopo la risoluzione autorizzata del blocco: eliminata dal piano la copertura dei posti, modello di §21.1 invariato. La correzione di §21.2 è inclusa nel commit documentale, insieme allo stato e al diario.
+- Versione `2.2.0` con commit dedicato. Migrazione Drizzle `0003_pale_cerebro`: tabelle `pools` e `pool_entries`, data iniziale unica, FK con cancellazione in cascata, indice piscina/login e vincoli sui valori archiviati. Le tabelle di lavoro restano invariate.
+- `closePool` salva sempre prima della pulizia, nella stessa transazione già esistente: lock admin, impostazioni e snapshot degli eventi; archivio delle iscrizioni con date concrete, durata, compenso, presenze e data di iscrizione. La stessa data iniziale aggiorna la riga della piscina e sostituisce tutte le relative iscrizioni archiviate, mantenendo l'id dell'archivio.
+- La chiusura senza opzioni salva soltanto l'archivio. Download obbligatorio; senza `pool_start`, avviso `pool_dates_required` e nessuna scrittura. Audit `CLOSE_POOL` con id archivio e numero di righe in `new_value`, oltre agli snapshot precedenti delle parti azzerate. Notifiche solo dopo il commit: `log_created` ed `event_changed`, mai `week_activated`.
+- `poolPhase` pura con date di Roma e verifica degli eventi oltre la fine. `poolStats` pura condivisa tra archivio e piscina corrente; query `currentPoolEntries` nella stessa forma delle righe archiviate. Riutilizzati calcolo delle date, orologio di Roma e durata dei report, senza nuove dipendenze.
+- Aggiornata la pagina di chiusura esistente con l'indicazione del salvataggio dell'archivio e testi in italiano, inglese e francese. Nessuna pagina nuova; M24 e moduli successivi non iniziati.
+- Nuovi file necessari: migrazione e relativi metadati generati da Drizzle, più la suite unit dedicata a fase e statistiche. Estese le suite integration ed e2e già esistenti.
+
+**Commit**
+- `626d287` — `docs(plan): add 2.2.0 pool archive, recap and QR enrollment` (creato prima del blocco, pubblicato con M23).
+- `c342f9c` — `chore: bump version to 2.2.0`.
+- `0187ced` — `feat(pool): archive closures and calculate pool statistics`.
+- Chiusura documentale con `docs: record M23 completion and resolve archive plan blocker`.
+
+**Controlli**
+- `corepack pnpm ci:local`: exit 0; 273 unit, 313 integration, 179 e2e, totale 765, senza retry locali. Migrazione, lint, check e build verdi; svelte-check senza errori o warning. `git diff --check` verde.
+- Unit: date null, prima dell'inizio, primo/ultimo giorno, mezzanotte di Roma dopo la fine, eventi assoluti e derivati oltre la fine e passaggi primaverile/autunnale dell'ora legale. Statistiche su righe vuote, login inesistente, sole assenze, dati parziali, somma dei minuti prima dell'arrotondamento, denominatore dell'intera piscina, fasce alle 12 e alle 18, ordine dei turni, parità, mese più intenso e soglie dei tre badge.
+- Integration: archivio prima della cancellazione con metadata e date concrete; sostituzione dopo correzioni delle presenze, aggiunta e rimozione di iscrizioni; archivio vuoto e cascata. Conservati i controlli di pulizia selettiva, download, autorizzazione, revoca del ruolo e preview senza scritture. Rollback dell'archivio, delle cancellazioni e del log in caso di errore su righe archiviate, whitelist, impostazioni o audit; nessuna notifica prima del commit o dopo un rollback. Nessun `week_activated` alla chiusura.
+- E2e desktop/mobile, con e senza JavaScript: download, revisione senza scritture, salvataggio senza pulizia, annullamento e chiusura completa con archivio conservato e unico per data iniziale. Template e log precedenti conservati, nessun overflow a 360 px o errore JavaScript. Matrice di autorizzazione e controlli precedenti su layout, CSP, temi e traduzioni verdi.
+- Prima di `ci:local`, corretto un errore TypeScript del nuovo caso parametrizzato senza selezioni: l'array vuoto veniva inferito come `never[]`. Correzione limitata al tipo del fixture; nessun test saltato o timeout modificato. `ci:local` successivamente verde al primo passaggio completo.
+- CI [40498130463](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40498130463) su `0187ced`: `gh run watch --exit-status` exit 0, sei job verdi (lint, unit, integration, legacy-import, e2e, docker).
+- E2e CI: 178 passati direttamente e un test preesistente passato al secondo retry, `tests/e2e/profile.test.ts:223`, fallback avatar prima dell'idratazione su WebKit. I due tentativi iniziali hanno superato 30 secondi, con errore finale su `page.goto('/')` nel cleanup a riga 271. Test e timeout invariati; causa non determinata, nessuna attribuzione a M23. Tutti i casi di chiusura sono passati direttamente.
+- Il commit documentale modifica soltanto questo diario, lo stato M23 in §19 e la correzione di §21.2 autorizzata da Ismail. Codice invariato rispetto alla run citata.
+
+**Decisioni prese dentro il perimetro del piano**
+- Ore, compensi, tipi e descrittori si basano sui turni effettuati, coerentemente con i report esistenti; le assenze contano nei turni presi e nel denominatore delle presenze. I partecipanti unici includono anche chi ha soltanto assenze. Il contributo usa i minuti, prima dell'arrotondamento delle ore.
+- Per il periodo più intenso scelta l'opzione mensile prevista dal piano, per numero di turni effettuati. In caso di parità: giorno/mese più precoce e fascia mattina, pomeriggio, sera. Nessuna data o fascia inventata quando manca; il badge mattutino richiede una maggioranza dimostrabile sull'insieme dei turni effettuati.
+- Branch `v2.0.0`, nessun nuovo branch, worktree o tag. Porte `5432` e `4173` usate per `ci:local`; configurazione dello stack su `8080` e `8443` invariata. Nessun volume cancellato.
+
+**Domande / blocchi**
+- Blocco della copertura risolto esplicitamente da Ismail; nessun dubbio o blocco aperto per M23. Resta segnalata l'intermittenza WebKit preesistente sul fallback avatar, passata al secondo retry in CI.
+- Da verificare a mano: rilettura dei testi inglesi/francesi e flusso di chiusura senza pulizia, correzione delle presenze e successiva chiusura con pulizia su una copia dei dati reali. Verifiche automatiche solo con dati fittizi; nessuna verifica su un deploy di produzione. La consultazione dell'archivio dalla UI arriva in M24.
+
+**Prossimo passo**
+- Arresto dopo commit e push dei documenti e verifica della relativa CI. M24 non iniziato; M22 resta subordinato alla produzione.
