@@ -2827,3 +2827,26 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Arresto dopo commit e push dei soli documenti. M28 non iniziato: formato CSV standard e relativo download restano in §22.3; riepilogo definitivo in M29 e QR in M26. Nessun branch nuovo, worktree, tag o push forzato; nessun volume cancellato.
+
+## 2026-10-27 — M28 — completato
+
+**Fatto**
+- Migrazione `0005`: `pool_entries` con `week` (1–4), `max_slots`, `event_ref`, `week_activated_at` (nullable) e nuova tabella `week_activations`. `setActiveWeek` fa upsert dell'attivazione nella stessa transazione; la pulizia con "settimane a 1" svuota la tabella.
+- `currentPoolEntries` e `saveArchive` riempiono i nuovi campi (settimana e capienza dall'evento, `event_ref` = id evento, attivazione dalla settimana). `poolStats` usa `week` per la settimana più intensa quando tutte le presenze lo hanno, altrimenti le date come prima.
+- CSV standard: intestazione fissa in inglese (colonne di `pool_entries` senza `id` e `pool_id`), date ISO, orari `HH:MM`, `true`/`false`, vuoto per i null, scritto con `writeCsv`. Download da `/admin/archive/[pool].csv` (`current` o id archivio), con link nel pannello Piscina e in `/admin/archive`.
+- Import in `/admin/archive` solo nel formato standard: form con data di inizio e di fine, anteprima (righe lette, righe saltate con colonna e motivo, totali) e conferma; intestazione sbagliata rifiutata con avviso dedicato; `start_date` duplicata rifiutata; `source = 'csv'`, log `IMPORT_POOL`. Eliminati parser del `detailed.csv`, test e testi dell'import M24 (l'export `detailed.csv` dei partecipanti resta). Testi in it/en/fr; rotta aggiunta alla matrice e2e.
+
+**Commit**
+- `84d524f` — `feat(archive): add full archive columns and standard CSV export/import`.
+
+**Controlli**
+- `corepack pnpm ci:local`: exit 0; 287 unit, 351 integration, 193 e2e, totale 831 test. Lint, check e build verdi.
+- Test: round trip export→import, intestazione sbagliata, righe non valide saltate con motivo, duplicato, upsert e pulizia di `week_activations`, nuovi campi salvati alla chiusura, e2e con e senza JavaScript (anteprima, import, download, duplicato).
+- Push su `v2.0.0`; CI [40524528681](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40524528681) su `84d524f`: verde.
+
+**Domande / blocchi**
+- Nessun blocco. Scelte nel piano: il download `current` con piscina senza date esporta comunque (solo intestazione, file `piscina_current.csv`) per rispettare la matrice e2e; il link nel pannello è nascosto in fase `none`. Limite import 1 MB e 20000 righe.
+- Da verificare a mano: apertura del CSV scaricato in un foglio di calcolo, import di un archivio reale esportato e testi inglesi/francesi.
+
+**Prossimo passo**
+- Arresto dopo i documenti. M29 e M26 non iniziati.
