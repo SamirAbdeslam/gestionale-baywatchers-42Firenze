@@ -2485,3 +2485,34 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Arresto dopo commit/push dei documenti e verifica della relativa CI. M19 resta da fare e non è stato iniziato.
+
+
+## 2026-10-27 — M19 — completato
+
+**Fatto**
+- Action `duplicateEvent` su `/admin`: copia titolo, descrizione, tipo, orari, posti e compenso nella settimana e nel giorno scelti; data assoluta null e nessuna iscrizione copiata. Riutilizzati inserimento e log `CREATE_EVENT`, con descrizione «Duplicato dall'evento ID x», nella stessa transazione.
+- Pulsante «Duplica» nella scheda admin con dialog nativo e settimana/giorno inizialmente uguali a quelli dell'evento.
+- Action `saveWeekAsTemplate` e dialog sulla settimana admin: nome, descrizione e settimana target, con default alla settimana selezionata. Riutilizzati inserimento, validazione e log `CREATE_TEMPLATE`; mantenuti tipi e campi degli eventi, limite 1–200 eventi, nessuna data assoluta o iscrizione. Settimana vuota: avviso e nessuna scrittura.
+- Nuovi testi in italiano, inglese e francese; entrambe le action aggiunte alla matrice di autorizzazione. Nessuna dipendenza, migrazione o nuovo file.
+- Sessione del 26 ottobre interrotta dopo il push di `ab9b5ee`. Ripresa limitata alla chiusura documentale, autorizzata da Ismail; stato M19 aggiornato in §19. Review pulita, nessuna correzione richiesta.
+
+**Commit**
+- `ab9b5ee` — `feat(admin): duplicate events and save weeks as templates`.
+- Chiusura del diario e dello stato M19 con `docs: record M19 completion and validation`.
+
+**Controlli**
+- `corepack pnpm ci:local` prima del push di `ab9b5ee`: exit 0; 238 unit, 293 integration, 171 e2e, totale 702, senza retry locali. Lint, check e build verdi; svelte-check senza errori o warning.
+- Integration: copia dei campi anche per preset modificati, nessuna iscrizione copiata, data null, destinazioni validate, 404 su id inesistente, accesso solo admin, log e notifiche dopo commit, rollback se il log fallisce. Salvataggio della sola settimana scelta, target di default, settimana vuota, limite di 200 eventi e applicazione del template senza date assolute o iscrizioni.
+- E2e desktop/mobile/WebKit con e senza JavaScript: duplicazione, valori iniziali del dialog, salvataggio della settimana, presenza del template nell'elenco, applicazione e avviso sulla settimana vuota. Controlli di layout e matrice di autorizzazione verdi.
+- Corretto prima del risultato locale verde un nuovo fixture integration con descrizione minuscola inserita direttamente nel DB, incoerente con la normalizzazione già applicata dalla creazione dei template.
+- CI [40360013319](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40360013319) su `ab9b5ee`: completata con successo, come verificato e comunicato da Ismail alla ripresa del 27 ottobre.
+- In questa ripresa `ci:local` non rilanciato su istruzione esplicita di Ismail: commit di sola documentazione, codice invariato e Docker attualmente non disponibile. Verificati branch, checkout pulito prima delle modifiche e diff limitato ai due documenti; `git diff --check` verde.
+
+**Decisioni prese dentro il perimetro del piano**
+- Riutilizzati transazioni, log, form e dialog esistenti. Nessun branch, worktree o tag aggiunto. Nessuna modifica alla configurazione dello stack o ai volumi.
+
+**Domande / blocchi**
+- Nessun blocco aperto per M19. Da verificare a mano: uso dei due dialog con dati reali su telefono e desktop e rilettura dei nuovi testi inglesi e francesi. Nessuna verifica su un deploy di produzione.
+
+**Prossimo passo**
+- Arresto dopo commit e push dei documenti. M20 non iniziato.
