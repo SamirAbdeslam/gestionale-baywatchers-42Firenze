@@ -24,6 +24,7 @@ export const ACTION_TYPES = [
 	'IMPORT_TEMPLATES',
 	'WHITELIST_ADD',
 	'WHITELIST_REMOVE',
+	'CLOSE_POOL',
 	'LOGIN'
 ] as const;
 export type RequestInfo = { ipAddress: string; userAgent: string | null };

@@ -190,6 +190,7 @@
 		</form>
 	</Dialog>
 	<div class="danger-actions">
+		<a class="button danger" href={resolve('/admin/close-pool')}>{m.pool_close()}</a>
 		<Dialog label={m.admin_delete_week()} title={m.admin_confirm_delete_week()}>
 			{@render confirmDelete('deleteWeekEvents', { week: data.week })}
 		</Dialog>

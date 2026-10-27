@@ -310,5 +310,20 @@
 	"calendar_weekly_shifts": "{count} of {limit} shifts this week",
 	"admin_duplicate_event": "Duplicate",
 	"admin_save_week_template": "Save week as template",
-	"template_week_empty": "The week is empty: no template created."
+	"template_week_empty": "The week is empty: no template created.",
+	"pool_close": "Close pool",
+	"pool_step_download": "1. Save the data",
+	"pool_downloaded": "I have downloaded the data",
+	"pool_step_reset": "2. What to reset",
+	"pool_reset_events": "All events and their registrations",
+	"pool_reset_whitelist": "Whitelist",
+	"pool_reset_weeks": "Active and display weeks to 1",
+	"pool_reset_dates": "Pool dates",
+	"pool_preserved": "Templates and logs are always kept. All options are optional.",
+	"pool_review": "Review choices",
+	"pool_step_confirm": "3. Confirm pool closure",
+	"pool_confirm_hint": "Only the listed items will be reset. Confirm to continue.",
+	"pool_closed": "Pool closed. The selected items have been reset.",
+	"pool_download_required": "Confirm that you have downloaded the data before continuing.",
+	"pool_nothing_selected": "No items selected: no data has been changed."
 }

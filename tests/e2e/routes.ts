@@ -1,5 +1,11 @@
 export const adminRoutes = [
 	{
+		id: '/admin/close-pool',
+		url: '/admin/close-pool',
+		actions: ['closePool'],
+		implementedActions: ['closePool']
+	},
+	{
 		id: '/admin',
 		url: '/admin',
 		implementedActions: [

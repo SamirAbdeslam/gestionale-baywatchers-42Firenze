@@ -1,5 +1,6 @@
 <script module lang="ts">
 	import { formatNumber } from '#lib/format.ts';
+	import type { PoolNotice } from '#lib/server/domain/pool.ts';
 	import type { TemplateNotice } from '#lib/server/domain/templates.ts';
 	import type { WhitelistNotice } from '#lib/server/domain/whitelist.ts';
 	import type { RegistrationNotice } from '#lib/server/domain/registrations.ts';
@@ -20,7 +21,8 @@
 			| 'error_template_not_found';
 		params: Record<string, never>;
 	};
-	export type Notice = BasicNotice | RegistrationNotice | WhitelistNotice | TemplateNotice;
+	export type Notice =
+		BasicNotice | RegistrationNotice | WhitelistNotice | TemplateNotice | PoolNotice;
 	// Each notice carries the parameters required by its translation key.
 	const m = translations as Record<Notice['key'], (params: Notice['params']) => string>;
 </script>

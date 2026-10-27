@@ -310,5 +310,20 @@
 	"calendar_weekly_shifts": "{count} di {limit} turni questa settimana",
 	"admin_duplicate_event": "Duplica",
 	"admin_save_week_template": "Salva settimana come template",
-	"template_week_empty": "La settimana è vuota: nessun template creato."
+	"template_week_empty": "La settimana è vuota: nessun template creato.",
+	"pool_close": "Chiudi piscina",
+	"pool_step_download": "1. Salva i dati",
+	"pool_downloaded": "Ho scaricato i dati",
+	"pool_step_reset": "2. Cosa azzerare",
+	"pool_reset_events": "Tutti gli eventi e le relative iscrizioni",
+	"pool_reset_whitelist": "Whitelist",
+	"pool_reset_weeks": "Settimane attiva e display a 1",
+	"pool_reset_dates": "Date del pool",
+	"pool_preserved": "I template e i log vengono sempre conservati. Nessuna opzione è obbligatoria.",
+	"pool_review": "Rivedi le scelte",
+	"pool_step_confirm": "3. Conferma la chiusura",
+	"pool_confirm_hint": "Verranno azzerate solo le voci elencate. Confermare per continuare.",
+	"pool_closed": "Piscina chiusa. Le voci selezionate sono state azzerate.",
+	"pool_download_required": "Conferma di aver scaricato i dati prima di continuare.",
+	"pool_nothing_selected": "Nessuna voce selezionata: nessun dato è stato modificato."
 }

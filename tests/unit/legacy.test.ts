@@ -46,6 +46,7 @@ it('generates deterministic faithful SQLite fixtures and refuses overwrites', ()
 		expect(rows.users.filter((r) => r.is_admin)).toHaveLength(3);
 		expect(rows.action_logs).toHaveLength(500);
 		expect(new Set(rows.action_logs.map((r) => r.action_type)).size).toBe(21);
+		expect(rows.action_logs.some((row) => row.action_type === 'CLOSE_POOL')).toBe(false);
 		expect(rows.baywatcher_whitelist).toHaveLength(40);
 		for (let week = 1; week <= 4; week++) {
 			const events = rows.events.filter((r) => r.week === week);

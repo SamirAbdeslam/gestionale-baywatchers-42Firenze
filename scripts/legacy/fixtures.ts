@@ -4,6 +4,8 @@ import { addDays } from '../../src/lib/server/domain/dates.ts';
 import type { LegacyRows } from './normalize.ts';
 
 import { ACTION_TYPES } from '../../src/lib/server/domain/audit.ts';
+// Pool closure did not exist in the legacy app.
+const legacyActionTypes = ACTION_TYPES.filter((action) => action !== 'CLOSE_POOL');
 export const LEGACY_DAYS = [
 	'Lunedì',
 	'Martedì',
@@ -109,7 +111,7 @@ export function makeRows(seed = 42, poolStart = '2026-10-12'): LegacyRows {
 			timestamp: `2026-10-${String(1 + (i % 10)).padStart(2, '0')} 10:20:30.123456`,
 			user_id: users[i % 60].intra_id,
 			username: users[i % 60].login,
-			action_type: ACTION_TYPES[i % ACTION_TYPES.length],
+			action_type: legacyActionTypes[i % legacyActionTypes.length],
 			action_description: `Operazione di sviluppo ${i + 1}`,
 			ip_address: '127.0.0.1',
 			user_agent: 'Fixture browser',

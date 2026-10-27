@@ -310,5 +310,20 @@
 	"calendar_weekly_shifts": "{count} créneaux sur {limit} cette semaine",
 	"admin_duplicate_event": "Dupliquer",
 	"admin_save_week_template": "Enregistrer la semaine comme modèle",
-	"template_week_empty": "La semaine est vide : aucun modèle créé."
+	"template_week_empty": "La semaine est vide : aucun modèle créé.",
+	"pool_close": "Clôturer la piscine",
+	"pool_step_download": "1. Sauvegarder les données",
+	"pool_downloaded": "J’ai téléchargé les données",
+	"pool_step_reset": "2. Éléments à réinitialiser",
+	"pool_reset_events": "Tous les événements et leurs inscriptions",
+	"pool_reset_whitelist": "Liste blanche",
+	"pool_reset_weeks": "Semaines active et affichée à 1",
+	"pool_reset_dates": "Dates de la piscine",
+	"pool_preserved": "Les modèles et les journaux sont toujours conservés. Toutes les options sont facultatives.",
+	"pool_review": "Vérifier les choix",
+	"pool_step_confirm": "3. Confirmer la clôture",
+	"pool_confirm_hint": "Seuls les éléments indiqués seront réinitialisés. Confirmez pour continuer.",
+	"pool_closed": "Piscine clôturée. Les éléments sélectionnés ont été réinitialisés.",
+	"pool_download_required": "Confirmez avoir téléchargé les données avant de continuer.",
+	"pool_nothing_selected": "Aucun élément sélectionné : aucune donnée n’a été modifiée."
 }
