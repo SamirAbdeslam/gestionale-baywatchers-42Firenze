@@ -2,7 +2,15 @@ import { isHttpError } from '@sveltejs/kit';
 import { count, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import type { db, Database, Transaction } from '../db/index.ts';
-import { events, registrations, settings, whitelist, pools, poolEntries } from '../db/schema.ts';
+import {
+	events,
+	registrations,
+	settings,
+	whitelist,
+	pools,
+	poolEntries,
+	weekActivations
+} from '../db/schema.ts';
 import { assertAdmin, lockAdmin } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, SYSTEM_ACTOR, type RequestInfo } from './audit.ts';
@@ -299,6 +307,7 @@ export async function cleanPool(
 						updatedAt: now
 					})
 					.where(eq(settings.id, 1));
+			if (choices.weeks) await tx.delete(weekActivations);
 			return audit(tx, {
 				...info,
 				actor: user,
@@ -336,6 +345,9 @@ export async function currentPoolEntries(
 		.from(events)
 		.innerJoin(registrations, eq(events.id, registrations.eventId))
 		.orderBy(events.id, registrations.participantLogin);
+	const activations = new Map(
+		(await database.select().from(weekActivations)).map((row) => [row.week, row.activatedAt])
+	);
 	return rows.map(({ event, registration }) => ({
 		login: registration.participantLogin,
 		title: event.title,
@@ -347,7 +359,11 @@ export async function currentPoolEntries(
 		durationMinutes: durationMinutes(event.startTime, event.endTime),
 		compensation: event.compensation,
 		attended: registration.attended,
-		registeredAt: registration.registeredAt
+		registeredAt: registration.registeredAt,
+		week: event.week,
+		maxSlots: event.maxSlots,
+		eventRef: event.id,
+		weekActivatedAt: activations.get(event.week) ?? null
 	}));
 }
 
@@ -410,14 +426,18 @@ export function poolStats(
 		badges.push('early_bird');
 	if (personal.byKind.filter((kind) => kind.count > 0).length >= 3) badges.push('all_rounder');
 	if (personal.taken >= 3 && personal.completed === personal.taken) badges.push('always_there');
+	// The stored week is exact; dates measured from the pool start are the fallback for old archives.
+	const weekOf = (row: PoolEntry, index: number) =>
+		attended.every((entry) => entry.week !== null)
+			? row.week === index + 1
+			: Math.floor((Date.parse(row.eventDate!) - Date.parse(poolStart!)) / 86400000 / 7) === index;
 	const weekCounts =
-		poolStart && attended.length && attended.every((row) => row.eventDate !== null)
+		attended.length &&
+		(attended.every((row) => row.week !== null) ||
+			(poolStart && attended.every((row) => row.eventDate !== null)))
 			? Array.from({ length: 4 }, (_, index) => ({
 					week: index + 1,
-					count: attended.filter((row) => {
-						const day = (Date.parse(row.eventDate!) - Date.parse(poolStart)) / 86400000;
-						return Math.floor(day / 7) === index;
-					}).length
+					count: attended.filter((row) => weekOf(row, index)).length
 				}))
 			: null;
 	return {

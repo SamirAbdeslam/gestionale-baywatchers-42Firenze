@@ -65,6 +65,13 @@
 		<form method="POST" action="?/savePool" use:enhance>
 			<button type="submit" disabled={data.phase === 'none'}>{m.pool_save()}</button>
 		</form>
+		{#if data.phase !== 'none'}
+			<a
+				class="button secondary"
+				href={resolve('/admin/archive/[pool].csv', { pool: 'current' })}
+				download>{m.pool_download_csv()}</a
+			>
+		{/if}
 		{#if data.phase !== 'closed'}
 			<button type="button" disabled>{m.pool_cleanup()}</button>
 		{:else}

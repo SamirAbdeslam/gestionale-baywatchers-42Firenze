@@ -2,7 +2,7 @@ import { poolPhase } from './pool.ts';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { db } from '../db/index.ts';
-import { settings, events } from '../db/schema.ts';
+import { settings, events, weekActivations } from '../db/schema.ts';
 import { assertAdmin, lockAdmin } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
@@ -55,6 +55,12 @@ async function saveSettings(
 			.update(settings)
 			.set({ ...changes, updatedAt: now })
 			.where(eq(settings.id, 1));
+		// The archive records when each week was opened to registrations.
+		if (changes.activeWeek !== undefined)
+			await tx
+				.insert(weekActivations)
+				.values({ week: changes.activeWeek, activatedAt: now })
+				.onConflictDoUpdate({ target: weekActivations.week, set: { activatedAt: now } });
 		return audit(tx, {
 			...info,
 			actor,

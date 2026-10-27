@@ -222,13 +222,23 @@ export const poolEntries = pgTable(
 		durationMinutes: integer('duration_minutes').notNull(),
 		compensation: integer('compensation').notNull(),
 		attended: boolean('attended').notNull(),
-		registeredAt: timestamp('registered_at', { withTimezone: true })
+		registeredAt: timestamp('registered_at', { withTimezone: true }),
+		week: smallint('week'),
+		maxSlots: integer('max_slots'),
+		eventRef: integer('event_ref'),
+		weekActivatedAt: timestamp('week_activated_at', { withTimezone: true })
 	},
 	(t) => [
 		index('pool_entries_pool_login_idx').on(t.poolId, t.login),
 		check('pool_entries_login_lowercase', sql`${t.login} = lower(${t.login})`),
 		check('pool_entries_weekday_range', sql`${t.weekday} BETWEEN 1 AND 7`),
+		check('pool_entries_week_range', sql`${t.week} BETWEEN 1 AND 4`),
 		check('pool_entries_duration_nonnegative', sql`${t.durationMinutes} >= 0`),
 		check('pool_entries_compensation_nonnegative', sql`${t.compensation} >= 0`)
 	]
 );
+
+export const weekActivations = pgTable('week_activations', {
+	week: smallint('week').primaryKey(),
+	activatedAt: timestamp('activated_at', { withTimezone: true }).notNull()
+});

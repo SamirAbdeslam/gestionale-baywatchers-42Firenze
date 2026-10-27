@@ -23,7 +23,7 @@ const info = { ipAddress: '127.0.0.1', userAgent: 'settings test' },
 	now = new Date('2026-10-19T10:00:00Z');
 let actor: User, messages: RealtimeEvent[], unsubscribe: () => void;
 beforeEach(async () => {
-	await client`TRUNCATE users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
+	await client`TRUNCATE week_activations, users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
 	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,active_week=1,display_week=3,max_events_per_user=0,updated_at='2026-01-01T00:00:00Z' WHERE id=1`;
 	const [row] = await database
 		.insert(schema.users)
@@ -35,7 +35,7 @@ beforeEach(async () => {
 });
 afterEach(() => unsubscribe());
 afterAll(async () => {
-	await client`TRUNCATE users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
+	await client`TRUNCATE week_activations, users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
 	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,active_week=1,display_week=1,max_events_per_user=0 WHERE id=1`;
 	await client.end();
 });
@@ -277,3 +277,15 @@ it.each(['0x2', '1e0', ' 2 ', '2.0', '000002'])(
 		expect(messages).toHaveLength(0);
 	}
 );
+
+it('upserts the activation time of the activated week', async () => {
+	await setActiveWeek(database, actor, { week: 2 }, info, now);
+	const later = new Date('2026-10-20T10:00:00Z');
+	await setActiveWeek(database, actor, { week: 2 }, info, later);
+	await setActiveWeek(database, actor, { week: 3 }, info, now);
+	const rows = await client`SELECT week, activated_at FROM week_activations ORDER BY week`;
+	expect(rows.map((row) => [row.week, new Date(row.activated_at)])).toEqual([
+		[2, later],
+		[3, now]
+	]);
+});

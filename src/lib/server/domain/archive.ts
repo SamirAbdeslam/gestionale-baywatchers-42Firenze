@@ -5,29 +5,101 @@ import type { db } from '../db/index.ts';
 import type { User } from '../auth/session.ts';
 import { assertAdmin, lockAdmin, loginPattern } from '../auth/guards.ts';
 import { pools, poolEntries, settings, events } from '../db/schema.ts';
-import { readCsv } from './csv.ts';
+import { readCsv, writeCsv } from './csv.ts';
 import { isoDate, digits } from './dates.ts';
-import { inferKind } from '#lib/kinds.ts';
+import { EVENT_KINDS } from '#lib/kinds.ts';
 import { poolStats, currentPoolEntries, poolPhase, type PoolEntry } from './pool.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { publish } from '../realtime/bus.ts';
 import { m } from '#lib/paraglide/messages.js';
 
 const limit = 1024 * 1024;
-const monthSchema = z
-	.string()
-	.regex(/^\d{4}-(0[1-9]|1[0-2])$/)
-	.transform((month) => `${month}-01`)
-	.pipe(isoDate.refine((date) => !date.startsWith('0000')));
-const days = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
-const detail = /^(.*) \(([^,()]+), (\d+(?:\.\d{1,2})?)h, (\d+₳|NON PARTECIPATO)\)$/s;
+const poolDate = isoDate.refine((date) => date >= '2000-01-01' && date <= '2100-12-31');
 export type ArchiveNotice = {
 	type: 'success' | 'error' | 'warning';
-	key: 'archive_imported' | 'archive_duplicate' | 'archive_import_empty';
+	key: 'archive_imported' | 'archive_duplicate' | 'archive_import_empty' | 'archive_bad_header';
 	params: Record<string, never>;
 };
 
-export function parseDetailedCsv(bytes: Uint8Array) {
+// Fixed standard format: pool_entries columns in schema order, without id and pool_id.
+export const ARCHIVE_COLUMNS = [
+	'login',
+	'title',
+	'kind',
+	'event_date',
+	'weekday',
+	'start_time',
+	'end_time',
+	'duration_minutes',
+	'compensation',
+	'attended',
+	'registered_at',
+	'week',
+	'max_slots',
+	'event_ref',
+	'week_activated_at'
+] as const;
+
+export function archiveCsv(entries: readonly PoolEntry[]) {
+	const time = (value: string | null) => value?.slice(0, 5) ?? null;
+	return writeCsv([
+		[...ARCHIVE_COLUMNS],
+		...entries.map((entry) => [
+			entry.login,
+			entry.title,
+			entry.kind,
+			entry.eventDate,
+			entry.weekday,
+			time(entry.startTime),
+			time(entry.endTime),
+			entry.durationMinutes,
+			entry.compensation,
+			String(entry.attended),
+			entry.registeredAt?.toISOString() ?? null,
+			entry.week,
+			entry.maxSlots,
+			entry.eventRef,
+			entry.weekActivatedAt?.toISOString() ?? null
+		])
+	]);
+}
+
+const optional = <T extends z.ZodType>(schema: T) =>
+	z
+		.literal('')
+		.transform(() => null)
+		.or(schema);
+const count = (min: number, max: number) =>
+	z
+		.string()
+		.regex(/^\d{1,10}$/)
+		.transform(Number)
+		.pipe(z.number().int().min(min).max(max));
+const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+const instant = z
+	.string()
+	.regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/)
+	.transform((value) => new Date(value))
+	.refine((date) => !Number.isNaN(date.getTime()));
+const rowSchemas = {
+	login: z.string().regex(loginPattern),
+	title: z.string().min(1).max(120),
+	kind: z.enum(EVENT_KINDS),
+	event_date: optional(isoDate.refine((date) => !date.startsWith('0000'))),
+	weekday: optional(count(1, 7)),
+	start_time: optional(clock),
+	end_time: optional(clock),
+	duration_minutes: count(0, 2147483647),
+	compensation: count(0, 2147483647),
+	attended: z.enum(['true', 'false']).transform((value) => value === 'true'),
+	registered_at: optional(instant),
+	week: optional(count(1, 4)),
+	max_slots: optional(count(1, 2147483647)),
+	event_ref: optional(count(0, 2147483647)),
+	week_activated_at: optional(instant)
+} satisfies Record<(typeof ARCHIVE_COLUMNS)[number], z.ZodType>;
+
+export function parseArchiveCsv(bytes: Uint8Array) {
 	z.number().positive().max(limit).parse(bytes.byteLength);
 	let text: string;
 	try {
@@ -36,82 +108,60 @@ export function parseDetailedCsv(bytes: Uint8Array) {
 		text = Buffer.from(bytes).toString('latin1');
 	}
 	const [header, ...rows] = readCsv(text.replace(/^\uFEFF/, ''), ',');
-	z.literal('Nome Partecipante,Eventi Partecipati,Numero Eventi,Totale Ore,Totale Altarian').parse(
-		header?.cells.join(',')
-	);
-	z.number().max(2000).parse(rows.length);
+	z.literal(ARCHIVE_COLUMNS.join(',')).parse(header?.cells.join(','));
+	z.number().max(20000).parse(rows.length);
 	const entries: PoolEntry[] = [];
 	const skipped: {
 		line: number;
 		value: string;
-		reason: 'archive_skip_row' | 'archive_skip_ambiguous' | 'archive_skip_entry';
+		reason: 'archive_skip_columns' | 'archive_skip_invalid';
+		column: string;
 	}[] = [];
 	for (const row of rows) {
 		if (row.cells.every((cell) => !cell.trim())) continue;
-		const [login, list] = row.cells;
-		if (row.cells.length !== 5 || !loginPattern.test(login)) {
-			skipped.push({ line: row.line, value: row.cells.join(', '), reason: 'archive_skip_row' });
+		const value = row.cells.join(',');
+		if (row.cells.length !== ARCHIVE_COLUMNS.length) {
+			skipped.push({ line: row.line, value, reason: 'archive_skip_columns', column: '' });
 			continue;
 		}
-		if (!list.trim()) continue;
-		const parts = list.split(' | ');
-		// An incomplete fragment may be a title containing the list delimiter: reject the whole row.
-		if (parts.some((part) => !detail.test(part))) {
-			skipped.push({ line: row.line, value: list, reason: 'archive_skip_ambiguous' });
+		const parsed: Record<string, unknown> = {};
+		const invalid = ARCHIVE_COLUMNS.find((column, i) => {
+			const result = rowSchemas[column].safeParse(row.cells[i]);
+			if (result.success) parsed[column] = result.data;
+			return !result.success;
+		});
+		// A time range must be ordered and a weekday must match its date, like the events it came from.
+		const date = parsed.event_date as string | null;
+		const wrong =
+			invalid ??
+			(parsed.start_time && parsed.end_time && parsed.end_time! <= parsed.start_time!
+				? 'end_time'
+				: date &&
+					  parsed.weekday &&
+					  (new Date(`${date}T12:00:00Z`).getUTCDay() || 7) !== parsed.weekday
+					? 'weekday'
+					: undefined);
+		if (wrong) {
+			skipped.push({ line: row.line, value, reason: 'archive_skip_invalid', column: wrong });
 			continue;
 		}
-		for (const part of parts) {
-			const [, title, dayDate, hours, payment] = detail.exec(part)!;
-			const dateMatch =
-				/^(Lunedì|Martedì|Mercoledì|Giovedì|Venerdì|Sabato|Domenica) (\d{2})\/(\d{2})\/(\d{4})$/.exec(
-					dayDate
-				);
-			const dayOnly = days.indexOf(dayDate.trim());
-			const eventDate = dateMatch ? `${dateMatch[4]}-${dateMatch[3]}-${dateMatch[2]}` : null;
-			const weekday = dateMatch ? days.indexOf(dateMatch[1]) + 1 : dayOnly + 1;
-			let depth = 0;
-			let balanced = true;
-			for (const char of title) {
-				if (char === '(') depth++;
-				if (char === ')' && --depth < 0) balanced = false;
-			}
-			const minutes = Math.round(Number(hours) * 60);
-			const compensation = payment === 'NON PARTECIPATO' ? 0 : Number(payment.slice(0, -1));
-			const validDate =
-				eventDate === null ||
-				(!eventDate.startsWith('0000') &&
-					isoDate.safeParse(eventDate).success &&
-					(new Date(`${eventDate}T12:00:00Z`).getUTCDay() || 7) === weekday);
-			if (
-				!title.trim() ||
-				title.includes(' | ') ||
-				!balanced ||
-				depth !== 0 ||
-				/\d+(?:\.\d+)?h,/.test(title) ||
-				weekday === 0 ||
-				!validDate ||
-				!Number.isSafeInteger(minutes) ||
-				minutes > 2147483647 ||
-				!Number.isSafeInteger(compensation) ||
-				compensation > 2147483647
-			) {
-				skipped.push({ line: row.line, value: part, reason: 'archive_skip_entry' });
-				continue;
-			}
-			entries.push({
-				login,
-				title,
-				kind: inferKind(title),
-				eventDate,
-				weekday,
-				durationMinutes: minutes,
-				compensation,
-				attended: payment !== 'NON PARTECIPATO',
-				startTime: null,
-				endTime: null,
-				registeredAt: null
-			});
-		}
+		entries.push({
+			login: parsed.login as string,
+			title: parsed.title as string,
+			kind: parsed.kind as PoolEntry['kind'],
+			eventDate: date,
+			weekday: parsed.weekday as number | null,
+			startTime: parsed.start_time as string | null,
+			endTime: parsed.end_time as string | null,
+			durationMinutes: parsed.duration_minutes as number,
+			compensation: parsed.compensation as number,
+			attended: parsed.attended as boolean,
+			registeredAt: parsed.registered_at as Date | null,
+			week: parsed.week as number | null,
+			maxSlots: parsed.max_slots as number | null,
+			eventRef: parsed.event_ref as number | null,
+			weekActivatedAt: parsed.week_activated_at as Date | null
+		});
 	}
 	return {
 		entries,
@@ -187,24 +237,45 @@ export async function getPoolPhase(database: typeof db, actor: User | null, now:
 	);
 }
 
+const badHeader = {
+	ok: false,
+	preview: null,
+	csv: null,
+	start: null,
+	end: null,
+	status: 400 as const,
+	messages: [{ type: 'error', key: 'archive_bad_header', params: {} }] satisfies ArchiveNotice[]
+};
+
 export async function previewPoolImport(_database: typeof db, actor: User | null, input: unknown) {
 	assertAdmin(actor);
-	const { file, month } = z
+	const { file, start, end } = z
 		.object({
-			month: monthSchema,
+			start: poolDate,
+			end: poolDate,
 			file: z
 				.instanceof(File)
 				.refine((file) => /\.csv$/i.test(file.name) && file.size > 0 && file.size <= limit)
 		})
+		.refine(({ start, end }) => end >= start, { message: 'error_pool_end_before_start' })
 		.parse(input);
 	const bytes = new Uint8Array(await file.arrayBuffer());
-	const { entries, ...preview } = parseDetailedCsv(bytes);
+	let parsed;
+	try {
+		parsed = parseArchiveCsv(bytes);
+	} catch (cause) {
+		if (cause instanceof z.ZodError && cause.issues.some((issue) => issue.code === 'invalid_value'))
+			return badHeader;
+		throw cause;
+	}
+	const { entries, ...preview } = parsed;
 	return {
 		ok: true,
 		messages: [],
 		preview: { ...preview, ...summary(entries), count: entries.length },
 		csv: Buffer.from(bytes).toString('base64'),
-		month: month.slice(0, 7)
+		start,
+		end
 	};
 }
 
@@ -216,9 +287,10 @@ export async function importPool(
 	now: Date
 ) {
 	assertAdmin(actor);
-	const { csv, month } = z
+	const { csv, start, end } = z
 		.object({
-			month: monthSchema,
+			start: poolDate,
+			end: poolDate,
 			confirmed: z.literal('yes'),
 			csv: z
 				.string()
@@ -226,9 +298,10 @@ export async function importPool(
 				.max(Math.ceil(limit / 3) * 4)
 				.regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/)
 		})
+		.refine(({ start, end }) => end >= start, { message: 'error_pool_end_before_start' })
 		.parse(input);
 	// Reparse the original bytes on confirmation; never trust client-supplied totals or entries.
-	const { entries } = parseDetailedCsv(Buffer.from(csv, 'base64'));
+	const { entries } = parseArchiveCsv(Buffer.from(csv, 'base64'));
 	if (!entries.length)
 		return {
 			ok: false,
@@ -240,7 +313,7 @@ export async function importPool(
 		const user = await lockAdmin(tx, actor);
 		const [pool] = await tx
 			.insert(pools)
-			.values({ startDate: month, endDate: null, source: 'csv', archivedAt: now })
+			.values({ startDate: start, endDate: end, source: 'csv', archivedAt: now })
 			.onConflictDoNothing({ target: pools.startDate })
 			.returning();
 		if (!pool) return null;
@@ -272,5 +345,38 @@ export async function importPool(
 	return {
 		ok: true,
 		messages: [{ type: 'success', key: 'archive_imported', params: {} }] satisfies ArchiveNotice[]
+	};
+}
+
+// "current" exports the working tables; a number exports that archived pool.
+export async function exportArchive(database: typeof db, actor: User | null, input: unknown) {
+	assertAdmin(actor);
+	const { pool } = z
+		.object({
+			pool: z.union([
+				z.literal('current'),
+				digits(10).pipe(z.number().int().positive().max(2147483647))
+			])
+		})
+		.parse(input);
+	if (pool === 'current') {
+		const [config] = await database.select().from(settings).where(eq(settings.id, 1));
+		if (!config) throw new Error('Settings row is missing');
+		return {
+			startDate: config.poolStart ?? 'current',
+			csv: archiveCsv(await currentPoolEntries(database, config.poolStart))
+		};
+	}
+	const [archive] = await database.select().from(pools).where(eq(pools.id, pool));
+	if (!archive) error(404, m.error_invalid_input());
+	return {
+		startDate: archive.startDate,
+		csv: archiveCsv(
+			await database
+				.select()
+				.from(poolEntries)
+				.where(eq(poolEntries.poolId, pool))
+				.orderBy(poolEntries.id)
+		)
 	};
 }

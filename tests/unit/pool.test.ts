@@ -55,6 +55,10 @@ const entry = (changes: Partial<PoolEntry> = {}): PoolEntry => ({
 	compensation: 200,
 	attended: true,
 	registeredAt: new Date('2026-10-01T10:00:00Z'),
+	week: null,
+	maxSlots: null,
+	eventRef: null,
+	weekActivatedAt: null,
 	...changes
 });
 it('returns finite zero totals and absent descriptive values for no entries or unknown login', () => {
@@ -239,4 +243,19 @@ it('omits weekly statistics without an exact start or complete attended dates', 
 		poolStats([entry(), entry({ eventDate: null, attended: false })], 'alpha', '2026-10-19')
 			.busiestWeek
 	).toBe(1);
+});
+
+it('uses the stored week for the busiest week when every attended entry has one', () => {
+	const rows = [
+		entry({ week: 3, eventDate: '2026-10-19' }),
+		entry({ week: 3, eventDate: '2026-10-20' }),
+		entry({ week: 2, eventDate: '2026-10-21' })
+	];
+	// Dates alone would point to week 1; the stored week wins and does not need a pool start.
+	expect(poolStats(rows, 'alpha').busiestWeek).toBe(3);
+	expect(poolStats(rows, 'alpha', '2026-10-19').weekCounts?.map((w) => w.count)).toEqual([
+		0, 1, 2, 0
+	]);
+	// A mixed archive falls back to dates.
+	expect(poolStats([...rows, entry({ week: null })], 'alpha', '2026-10-19').busiestWeek).toBe(1);
 });

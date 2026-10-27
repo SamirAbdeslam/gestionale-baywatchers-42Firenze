@@ -20,12 +20,8 @@
 		welcome: m.event_kind_welcome,
 		custom: m.event_kind_custom
 	};
-	const skipReasons = {
-		archive_skip_row: m.archive_skip_row,
-		archive_skip_ambiguous: m.archive_skip_ambiguous,
-		archive_skip_entry: m.archive_skip_entry
-	};
-	const preview = $derived(form && 'preview' in form ? form.preview : null);
+	const imported = $derived(form && 'csv' in form && form.csv ? form : null);
+	const preview = $derived(imported?.preview ?? null);
 </script>
 
 <svelte:head><title>{m.archive_title()} — {m.app_name()}</title></svelte:head>
@@ -57,6 +53,13 @@
 			{monthName(data.selected.startDate)}{data.selected.current ? ` — ${m.archive_current()}` : ''}
 		</h2>
 		<p>
+			<a
+				class="button secondary"
+				href={resolve('/admin/archive/[pool].csv', { pool: data.selected.key })}
+				download>{m.archive_download_csv()}</a
+			>
+		</p>
+		<p>
 			{#if data.selected.current}<a href="{resolve('/recap')}?view=pool">{m.recap_together()}</a>
 			{:else}<a href="{resolve('/recap/[poolId]', { poolId: data.selected.key })}?view=pool"
 					>{m.recap_together()}</a
@@ -70,15 +73,17 @@
 	<h2 id="import-title">{m.archive_import_title()}</h2>
 	<p>{m.archive_import_help()}</p>
 	<form method="POST" action="?/preview" enctype="multipart/form-data" use:enhance>
-		<label for="import-month">{m.archive_start_month()}</label>
-		<input id="import-month" name="month" type="month" required />
+		<label for="import-start">{m.archive_start_date()}</label>
+		<input id="import-start" name="start" type="date" required />
+		<label for="import-end">{m.archive_end_date()}</label>
+		<input id="import-end" name="end" type="date" required />
 		<label for="archive-file">{m.template_file()}</label>
 		<input id="archive-file" name="file" type="file" accept=".csv" required />
 		<button type="submit">{m.archive_preview()}</button>
 	</form>
-	{#if preview && form && 'csv' in form}
+	{#if preview && imported}
 		<section aria-labelledby="preview-title">
-			<h3 id="preview-title">{m.archive_preview()} — {monthName(`${form.month}-01`)}</h3>
+			<h3 id="preview-title">{m.archive_preview()} — {monthName(imported.start ?? '')}</h3>
 			<p>
 				{m.archive_read({
 					rows: formatNumber(preview.rowsRead),
@@ -90,9 +95,10 @@
 				<ul class="skipped">
 					{#each preview.skipped as row, i (i)}
 						<li>
-							{m.archive_skipped_line({ line: formatNumber(row.line) })}: {skipReasons[
-								row.reason
-							]()} <q>{row.value}</q>
+							{m.archive_skipped_line({ line: formatNumber(row.line) })}: {row.reason ===
+							'archive_skip_columns'
+								? m.archive_skip_columns()
+								: m.archive_skip_invalid({ column: row.column })} <q>{row.value}</q>
 						</li>
 					{/each}
 				</ul>
@@ -100,8 +106,9 @@
 			{@render statistics(preview.totals, preview.participants)}
 			{#if preview.count}
 				<form method="POST" action="?/importCsv" use:enhance>
-					<input type="hidden" name="csv" value={form.csv} />
-					<input type="hidden" name="month" value={form.month} />
+					<input type="hidden" name="csv" value={imported.csv} />
+					<input type="hidden" name="start" value={imported.start} />
+					<input type="hidden" name="end" value={imported.end} />
 					<label
 						><input type="checkbox" name="confirmed" value="yes" required />
 						{m.archive_confirm_check()}</label

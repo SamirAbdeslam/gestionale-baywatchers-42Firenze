@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import postgres from 'postgres';
 import { expect, test } from '@playwright/test';
 import { writeCsv } from '../../src/lib/server/domain/csv.ts';
+import { ARCHIVE_COLUMNS } from '../../src/lib/server/domain/archive.ts';
 
 const databaseUrl =
 	process.env.DATABASE_URL ?? 'postgres://bay:bay@localhost:5432/baywatchers_test';
@@ -11,17 +12,16 @@ test.beforeAll(() => {
 	client = postgres(databaseUrl, { onnotice: () => {} });
 });
 test.afterAll(() => client.end());
+const row = (login: string, over: Record<number, string | number> = {}) =>
+	[login, 'Exam', 'exam', '2005-05-02', 1, '09:00', '10:30', 90, 200, 'true', '', 1, 4, '', ''].map(
+		(cell, i) => over[i] ?? cell
+	);
 const csv = writeCsv([
-	['Nome Partecipante', 'Eventi Partecipati', 'Numero Eventi', 'Totale Ore', 'Totale Altarian'],
-	[
-		'archive_student',
-		'Esami (turno 1) (Lunedì 02/05/2005, 1.5h, 200₳) | Rush (Martedì 03/05/2005, 1h, NON PARTECIPATO)',
-		1,
-		1.5,
-		200
-	],
-	['archive_other', 'Cluster (Mercoledì 04/05/2005, 2h, 100₳)', 1, 2, 100],
-	['skipped', '<img src=x onerror=alert(1)> | Ambiguo (Lunedì 02/05/2005, 1h, 0₳)', 1, 1, 0]
+	[...ARCHIVE_COLUMNS],
+	row('archive_student'),
+	row('archive_student', { 1: 'Rush', 2: 'rush', 3: '2005-05-03', 4: 2, 7: 60, 8: 0, 9: 'false' }),
+	row('archive_other', { 1: 'Cluster', 2: 'cluster', 3: '2005-05-04', 4: 3, 7: 120, 8: 100 }),
+	row('<img src=x onerror=alert(1)>')
 ]);
 
 for (const javaScriptEnabled of [true, false]) {
@@ -54,11 +54,12 @@ for (const javaScriptEnabled of [true, false]) {
 					const logsBefore =
 						await client`SELECT * FROM action_logs WHERE action_type='IMPORT_POOL' ORDER BY id`;
 					const preview = async () => {
-						await page.getByLabel('Mese e anno di inizio', { exact: true }).fill('2005-05');
+						await page.getByLabel('Data di inizio', { exact: true }).fill('2005-05-01');
+						await page.getByLabel('Data di fine', { exact: true }).fill('2005-05-31');
 						await page
 							.getByLabel('File CSV (massimo 1 MB e 2000 righe)', { exact: true })
 							.setInputFiles({
-								name: 'detailed.csv',
+								name: 'archive.csv',
 								mimeType: 'text/csv',
 								buffer: Buffer.from(csv)
 							});
@@ -69,11 +70,13 @@ for (const javaScriptEnabled of [true, false]) {
 					};
 					await preview();
 					await expect(
-						page.getByText('Righe lette: 3. Voci da importare: 3. Righe o voci saltate: 1.', {
+						page.getByText('Righe lette: 4. Voci da importare: 3. Righe o voci saltate: 1.', {
 							exact: true
 						})
 					).toBeVisible();
-					await expect(page.locator('.skipped')).toContainText('intera riga saltata');
+					await expect(page.locator('.skipped')).toContainText(
+						'Valore non valido nella colonna login'
+					);
 					await expect(page.locator('.skipped img')).toHaveCount(0);
 					expect(await client`SELECT * FROM pools ORDER BY id`).toEqual(poolsBefore);
 					expect(await client`SELECT * FROM pool_entries ORDER BY id`).toEqual(entriesBefore);
@@ -101,6 +104,13 @@ for (const javaScriptEnabled of [true, false]) {
 					await expect(
 						page.getByRole('heading', { name: 'maggio 2005', exact: true })
 					).toBeVisible();
+					// The archived pool downloads in the same standard format it was imported from.
+					const href = await page
+						.getByRole('link', { name: 'Scarica archivio CSV' })
+						.getAttribute('href');
+					const download = await page.request.get(href!);
+					expect(download.headers()['content-disposition']).toContain('piscina_2005-05-01.csv');
+					expect((await download.text()).split('\n')[0]).toBe(ARCHIVE_COLUMNS.join(','));
 					await expect(page.getByRole('row', { name: /archive_student/ })).toContainText('50%');
 					await expect(page.getByRole('row', { name: /archive_other/ })).toContainText('100%');
 					await expect(
@@ -133,6 +143,9 @@ for (const javaScriptEnabled of [true, false]) {
 					await client`UPDATE events SET event_date=null`;
 					await page.goto('/admin');
 					await expect(page.getByRole('status')).toContainText('La piscina è finita');
+					await expect(
+						page.getByRole('link', { name: 'Scarica archivio CSV', exact: true })
+					).toHaveAttribute('href', /admin\/archive\/current\.csv$/);
 					await page.goto('/admin');
 					await page.getByRole('link', { name: 'Archivio piscine', exact: true }).click();
 					await page.getByLabel('Anno', { exact: true }).selectOption('2000');

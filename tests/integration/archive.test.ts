@@ -7,8 +7,10 @@ import type { User } from '../../src/lib/server/auth/session.ts';
 import {
 	getArchive,
 	getPoolPhase,
+	exportArchive,
 	importPool,
-	previewPoolImport
+	previewPoolImport,
+	ARCHIVE_COLUMNS
 } from '../../src/lib/server/domain/archive.ts';
 import { closePool } from '../../src/lib/server/domain/pool.ts';
 import { writeCsv } from '../../src/lib/server/domain/csv.ts';
@@ -21,19 +23,23 @@ const client = postgres(process.env.DATABASE_URL!, { onnotice: () => {} });
 const database = drizzle(client, { schema });
 const info = { ipAddress: '127.0.0.1', userAgent: 'archive test' };
 const now = new Date('2026-10-27T10:00:00Z');
+const row = (login: string, over: Record<number, string | number> = {}) =>
+	[login, 'Exam', 'exam', '2025-05-05', 1, '09:00', '10:30', 90, 200, 'true', '', 1, 4, '', ''].map(
+		(cell, i) => over[i] ?? cell
+	);
 const csv = writeCsv([
-	['Nome Partecipante', 'Eventi Partecipati', 'Numero Eventi', 'Totale Ore', 'Totale Altarian'],
-	[
-		'student',
-		'Esami (Lunedì 05/05/2025, 1.5h, 200₳) | Rush (Martedì 06/05/2025, 1h, NON PARTECIPATO)',
-		1,
-		1.5,
-		200
-	],
-	['second', 'Cluster (Mercoledì 07/05/2025, 2h, 100₳)', 1, 2, 100],
-	['skipped', 'A | B (Lunedì 05/05/2025, 2h, 100₳)', 1, 2, 100]
+	[...ARCHIVE_COLUMNS],
+	row('student'),
+	row('student', { 1: 'Rush', 2: 'rush', 3: '2025-05-06', 4: 2, 9: 'false', 8: 0, 7: 60 }),
+	row('second', { 1: 'Cluster', 2: 'cluster', 7: 120, 8: 100 }),
+	row('Bad Login')
 ]);
-const input = { month: '2025-05', csv: Buffer.from(csv).toString('base64'), confirmed: 'yes' };
+const input = {
+	start: '2025-05-01',
+	end: '2025-05-31',
+	csv: Buffer.from(csv).toString('base64'),
+	confirmed: 'yes'
+};
 let actor: User, messages: RealtimeEvent[], unsubscribe: () => void;
 async function snapshot() {
 	return {
@@ -48,8 +54,8 @@ async function snapshot() {
 	};
 }
 beforeEach(async () => {
-	await client`TRUNCATE pools, users, events, registrations, week_templates, whitelist, action_logs RESTART IDENTITY CASCADE`;
-	await client`UPDATE settings SET pool_start='2026-10-19',pool_end='2026-11-15',active_week=1,display_week=1 WHERE id=1`;
+	await client`TRUNCATE pools, week_activations, users, events, registrations, week_templates, whitelist, action_logs RESTART IDENTITY CASCADE`;
+	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start='2026-10-19',pool_end='2026-11-15',active_week=1,display_week=1 WHERE id=1`;
 	[actor] = await database
 		.insert(schema.users)
 		.values({ intraId: 42, login: 'archive_admin', role: 'admin' })
@@ -61,7 +67,7 @@ beforeEach(async () => {
 });
 afterEach(() => unsubscribe());
 afterAll(async () => {
-	await client`TRUNCATE pools, users, events, registrations, week_templates, whitelist, action_logs RESTART IDENTITY CASCADE`;
+	await client`TRUNCATE pools, week_activations, users, events, registrations, week_templates, whitelist, action_logs RESTART IDENTITY CASCADE`;
 	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,active_week=1,display_week=1 WHERE id=1`;
 	await client.end();
 });
@@ -69,16 +75,18 @@ afterAll(async () => {
 it('previews source bytes, skipped reasons and shared totals without writing anything', async () => {
 	const before = await snapshot();
 	const preview = await previewPoolImport(database, actor, {
-		month: '2025-05',
-		file: new File([csv], 'detailed.csv')
+		start: input.start,
+		end: input.end,
+		file: new File([csv], 'archive.csv')
 	});
 	expect(preview).toMatchObject({
-		month: input.month,
+		start: input.start,
+		end: input.end,
 		csv: input.csv,
 		preview: {
-			rowsRead: 3,
+			rowsRead: 4,
 			count: 3,
-			skipped: [{ line: 4, reason: 'archive_skip_ambiguous' }],
+			skipped: [{ line: 5, reason: 'archive_skip_invalid', column: 'login' }],
 			totals: { taken: 3, completed: 2, hours: 3.5, altarian: 300, participants: 2 }
 		}
 	});
@@ -91,7 +99,11 @@ it('imports only readable entries and writes one audit log atomically without ch
 	expect(await importPool(database, actor, input, info, now)).toMatchObject({ ok: true });
 	const after = await snapshot();
 	expect(after.pools).toHaveLength(1);
-	expect(after.pools[0]).toMatchObject({ start_date: '2025-05-01', end_date: null, source: 'csv' });
+	expect(after.pools[0]).toMatchObject({
+		start_date: '2025-05-01',
+		end_date: '2025-05-31',
+		source: 'csv'
+	});
 	expect(new Date(after.pools[0].archived_at)).toEqual(now);
 	expect(after.entries).toHaveLength(3);
 	expect(after.entries[0]).toMatchObject({
@@ -99,12 +111,16 @@ it('imports only readable entries and writes one audit log atomically without ch
 		kind: 'exam',
 		event_date: '2025-05-05',
 		weekday: 1,
-		start_time: null,
-		end_time: null,
+		start_time: '09:00:00',
+		end_time: '10:30:00',
 		duration_minutes: 90,
 		compensation: 200,
 		attended: true,
-		registered_at: null
+		registered_at: null,
+		week: 1,
+		max_slots: 4,
+		event_ref: null,
+		week_activated_at: null
 	});
 	expect(after.entries[1]).toMatchObject({ attended: false, compensation: 0 });
 	expect(after.logs).toHaveLength(1);
@@ -178,7 +194,8 @@ it('rejects unauthorized and revoked administrators and validates confirmation i
 	).rejects.toMatchObject({ status: 403 });
 	for (const invalid of [
 		{ ...input, confirmed: undefined },
-		{ ...input, month: '2025-13' },
+		{ ...input, start: '2025-13-01' },
+		{ ...input, end: '2025-04-30' },
 		{ ...input, csv: '!!!!' },
 		{ ...input, csv: Buffer.from('bad').toString('base64') }
 	])
@@ -191,19 +208,64 @@ it('rejects unauthorized and revoked administrators and validates confirmation i
 	expect(messages).toEqual([]);
 });
 
-it('does not create an empty archive when all entries are skipped', async () => {
-	const empty = Buffer.from(
-		writeCsv([
-			['Nome Partecipante', 'Eventi Partecipati', 'Numero Eventi', 'Totale Ore', 'Totale Altarian'],
-			['student', 'unreadable', 0, 0, 0]
-		])
-	).toString('base64');
+it('rejects a wrong header with a notice and writes nothing', async () => {
+	const before = await snapshot();
+	const file = new File([csv.replace('login', 'user')], 'archive.csv');
+	expect(
+		await previewPoolImport(database, actor, { start: input.start, end: input.end, file })
+	).toMatchObject({ ok: false, status: 400, messages: [{ key: 'archive_bad_header' }] });
+	await expect(
+		importPool(
+			database,
+			actor,
+			{ ...input, csv: Buffer.from(csv.replace('login', 'user')).toString('base64') },
+			info,
+			now
+		)
+	).rejects.toThrow();
+	expect(await snapshot()).toEqual(before);
+});
+
+it('does not create an empty archive when all rows are skipped', async () => {
+	const empty = Buffer.from(writeCsv([[...ARCHIVE_COLUMNS], row('Bad Login')])).toString('base64');
 	const before = await snapshot();
 	expect(await importPool(database, actor, { ...input, csv: empty }, info, now)).toMatchObject({
 		ok: false,
 		messages: [{ key: 'archive_import_empty' }]
 	});
 	expect(await snapshot()).toEqual(before);
+});
+
+it('exports an archived pool and re-imports identical rows (round trip)', async () => {
+	await client`INSERT INTO week_activations (week,activated_at) VALUES (1,'2026-10-19T07:00:00Z')`;
+	await closePool(database, actor, { confirm: 'yes' }, info, now);
+	const stored = await client`SELECT * FROM pool_entries ORDER BY id`;
+	const { startDate, csv: exported } = await exportArchive(database, actor, { pool: '1' });
+	expect(startDate).toBe('2026-10-19');
+	expect((await exportArchive(database, actor, { pool: 'current' })).csv).toBe(exported);
+	await importPool(
+		database,
+		actor,
+		{
+			start: '2030-01-01',
+			end: '2030-01-31',
+			confirmed: 'yes',
+			csv: Buffer.from(exported).toString('base64')
+		},
+		info,
+		now
+	);
+	const copied = await client`SELECT * FROM pool_entries WHERE pool_id=2 ORDER BY id`;
+	const strip = (row: Record<string, unknown>) =>
+		Object.fromEntries(Object.entries(row).filter(([key]) => key !== 'id' && key !== 'pool_id'));
+	expect(copied.map(strip)).toEqual(stored.map(strip));
+	expect((await exportArchive(database, actor, { pool: '2' })).csv).toBe(exported);
+	await expect(exportArchive(database, actor, { pool: '99' })).rejects.toMatchObject({
+		status: 404
+	});
+	await expect(exportArchive(database, null, { pool: 'current' })).rejects.toMatchObject({
+		status: 401
+	});
 });
 
 it('lists years and pools and uses the same totals for current and archived pools without duplication', async () => {
@@ -250,7 +312,7 @@ it('validates malformed form actions as translated 400 errors', async () => {
 			locals: { user: actor },
 			request: new Request('http://localhost/admin/archive', {
 				method: 'POST',
-				body: new URLSearchParams({ month: 'invalid' })
+				body: new URLSearchParams({ start: 'invalid' })
 			}),
 			getClientAddress: () => info.ipAddress
 		} as Parameters<NonNullable<typeof action>>[0]);
@@ -263,14 +325,8 @@ it('validates malformed form actions as translated 400 errors', async () => {
 
 it('imports dense files below the byte limit without exceeding the SQL parameter limit', async () => {
 	const denseCsv = writeCsv([
-		['Nome Partecipante', 'Eventi Partecipati', 'Numero Eventi', 'Totale Ore', 'Totale Altarian'],
-		[
-			'student',
-			Array(6000).fill('Exam (Lunedì 05/05/2025, 1h, 10₳)').join(' | '),
-			6000,
-			6000,
-			60000
-		]
+		[...ARCHIVE_COLUMNS],
+		...Array.from({ length: 6000 }, () => row('student', { 7: 60, 8: 10 }))
 	]);
 	expect(Buffer.byteLength(denseCsv)).toBeLessThan(1024 * 1024);
 	expect(

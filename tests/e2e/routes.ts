@@ -6,6 +6,13 @@ export const adminRoutes = [
 		implementedActions: ['preview', 'importCsv']
 	},
 	{
+		id: '/admin/archive/[pool].csv',
+		implementedEndpoint: true,
+		url: '/admin/archive/current.csv',
+		endpoint: true,
+		actions: []
+	},
+	{
 		id: '/admin',
 		url: '/admin',
 		implementedActions: [

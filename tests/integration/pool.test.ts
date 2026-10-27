@@ -44,7 +44,7 @@ async function snapshot() {
 	};
 }
 beforeEach(async () => {
-	await client`TRUNCATE pools, users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
+	await client`TRUNCATE pools, week_activations, users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
 	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start='2026-10-19',pool_end='2026-11-15',active_week=4,display_week=3,max_events_per_user=2,updated_at='2026-01-01T00:00:00Z' WHERE id=1`;
 	[actor] = await database
 		.insert(schema.users)
@@ -53,6 +53,7 @@ beforeEach(async () => {
 	await client`INSERT INTO events (title,kind,week,weekday,start_time,end_time,compensation) VALUES ('Exam','exam',1,1,'09:00','11:00',200), ('Future','custom',4,7,'14:00','15:00',100)`;
 	await client`INSERT INTO registrations (event_id,participant_login,attended) VALUES (1,'present',true),(1,'absent',false),(2,'present',true)`;
 	await client`INSERT INTO whitelist (login) VALUES ('present'),('absent')`;
+	await client`INSERT INTO week_activations (week,activated_at) VALUES (1,'2026-10-19T07:00:00Z')`;
 	await client`INSERT INTO week_templates (name,target_week) VALUES ('Keep me',2)`;
 	await client`INSERT INTO template_events (template_id,title,kind,weekday,start_time,end_time) VALUES (1,'Template exam','exam',1,'09:00','11:00')`;
 	await client`INSERT INTO action_logs (actor_login,action_type,description) VALUES ('past_admin','LOGIN','Historical log')`;
@@ -61,7 +62,7 @@ beforeEach(async () => {
 });
 afterEach(() => unsubscribe());
 afterAll(async () => {
-	await client`TRUNCATE pools, users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
+	await client`TRUNCATE pools, week_activations, users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
 	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,active_week=1,display_week=1,max_events_per_user=0 WHERE id=1`;
 	await client.end();
 });
@@ -79,8 +80,14 @@ it('closes without cleanup, creates the first snapshot, and is idempotent', asyn
 		login: 'absent',
 		attended: false,
 		event_date: '2026-10-19',
-		duration_minutes: 120
+		duration_minutes: 120,
+		week: 1,
+		max_slots: 10,
+		event_ref: 1
 	});
+	expect(new Date(after.entries[0].week_activated_at)).toEqual(new Date('2026-10-19T07:00:00Z'));
+	// Week 4 was never activated: the timestamp stays unknown.
+	expect(after.entries[2]).toMatchObject({ week: 4, event_ref: 2, week_activated_at: null });
 	expect(after.logs.at(-1)).toMatchObject({
 		action_type: 'CLOSE_POOL',
 		actor_login: actor.login,
@@ -218,6 +225,9 @@ it.each([
 		});
 	if (selected.includes('whitelist'))
 		expect(old.whitelist.map((row: { login: string }) => row.login)).toEqual(['present', 'absent']);
+	expect(await client`SELECT * FROM week_activations`).toHaveLength(
+		selected.includes('weeks') ? 0 : 1
+	);
 	const config = (await database.select().from(schema.settings))[0];
 	expect(config).toMatchObject({
 		activeWeek: selected.includes('weeks') ? 1 : 4,
