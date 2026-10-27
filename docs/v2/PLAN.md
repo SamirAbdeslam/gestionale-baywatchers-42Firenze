@@ -104,7 +104,7 @@ Ismail deve confermare queste decisioni prima del modulo indicato. Finché lo st
 | D10 | Il riepilogo non ha classifiche né percentili tra studenti: solo i propri dati, il proprio contributo in % sul totale della piscina e i totali della piscina senza nomi. | Niente competizione. | M25 | CONFERMATA |
 | D11 | Chi si iscrive con il QR finisce in una **lista d'attesa**; lo staff approva (anche "Approva tutti") o rifiuta. | Un QR fotografato e girato in chat non basta per entrare. | M26 | CONFERMATA |
 | D12 | Dipendenza `uqr` per generare il QR. | Approvata da Ismail. | M26 | CONFERMATA |
-| D13 | Nella fase "in arrivo" il countdown sta in cima a `/calendar` e il calendario resta sotto (iscrizioni anticipate possibili come oggi); nelle fasi "nessuna piscina" e "finita" in cima c'è il riepilogo. | Non toglie funzioni esistenti; modificabile da Ismail dopo il report. | M25 | CONFERMATA |
+| D13 | Nella fase "in arrivo" `/calendar` mostra **solo** il countdown (con il pulsante del riepilogo o il messaggio buffo): il calendario con gli eventi si vede solo quando la piscina è iniziata, e il server rifiuta le iscrizioni prima dell'inizio. Nelle fasi "nessuna piscina" e "finita" in cima c'è il riepilogo. | Deciso da Ismail: prima dell'inizio non ci sono eventi da mostrare. | M25 | CONFERMATA |
 
 Le altre differenze rispetto al legacy sono correzioni di bug (§18) e non richiedono conferma.
 
@@ -1201,7 +1201,7 @@ Valgono le regole di §1 e di §20 (stesso branch, un modulo alla volta in ordin
 Pagina `/recap` (utente loggato) e `/recap/[poolId]` per una piscina archiviata. Nel profilo, "Le tue piscine": elenco delle piscine (archivio + corrente) a cui il login ha partecipato, ciascuna con il link al suo riepilogo.
 
 **Cosa vede lo studente in base alla fase** (D13):
-- `upcoming`: in cima a `/calendar` un **countdown** fino a `pool_start` (giorni, ore, minuti; aggiornato ogni secondo con JS, statico senza JS) con sotto il pulsante "Durante l'attesa, guarda cosa hai fatto" che apre il riepilogo dell'ultima piscina a cui ha partecipato. Se non ha mai partecipato, al posto del pulsante il messaggio buffo (vedi sotto). Sotto il countdown il calendario resta come oggi: se lo staff ha già creato eventi nella settimana attiva, ci si può iscrivere anche prima dell'inizio.
+- `upcoming`: in cima a `/calendar` un **countdown** fino a `pool_start` (giorni, ore, minuti; aggiornato ogni secondo con JS, statico senza JS) con sotto il pulsante "Durante l'attesa, guarda cosa hai fatto" che apre il riepilogo dell'ultima piscina a cui ha partecipato. Se non ha mai partecipato, al posto del pulsante il messaggio buffo (vedi sotto). Il calendario non si vede. Il server rifiuta le iscrizioni in questa fase con l'errore `pool_not_started` ("La piscina non è ancora iniziata"), anche se la richiesta arriva aggirando la pagina.
 - `none` (nessuna piscina impostata): `/calendar` mostra il riepilogo dell'ultima piscina a cui ha partecipato; se non ha mai partecipato, il messaggio buffo.
 - `finished`: `/calendar` mostra in cima il riepilogo della piscina appena finita (dati di lavoro, §21.1), con il calendario sotto per consultazione.
 - `active`: il calendario come oggi.
@@ -1220,7 +1220,7 @@ Schermate (dati da `poolStats`, nessuna classifica, D10):
 Le schermate senza dati (per esempio la fascia oraria di una piscina importata da CSV) si saltano.
 
 - Lo staff in `/admin/archive` può aprire lo stesso riepilogo in versione "piscina intera" (solo totali).
-- Test: unit sulla scelta della vista per fase; e2e con e senza JS, con reduced motion, per: countdown, pulsante riepilogo, messaggio buffo, riepilogo con dati, piscina importata (schermate saltate); nessun overflow a 360 px.
+- Test: unit sulla scelta della vista per fase; integration sul rifiuto `pool_not_started`; e2e con e senza JS, con reduced motion, per: countdown, pulsante riepilogo, messaggio buffo, riepilogo con dati, piscina importata (schermate saltate); nessun overflow a 360 px.
 
 ### 21.5 M26 — Iscrizioni alla piscina con QR (1,5 g)
 
