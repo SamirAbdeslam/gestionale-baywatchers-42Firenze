@@ -1030,7 +1030,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M17 Correzioni dell'audit | completato (75cde19) |
 | M18 Prossimo turno e turni rimasti | completato (e1ae195) |
 | M19 Duplica evento e settimana come template | completato (ab9b5ee) |
-| M20 Chiusura della piscina | da fare |
+| M20 Chiusura della piscina | completato (00dced4) |
 | M21 Display: evento in corso e prossimo | da fare |
 | M22 Feed calendario personale | da fare (dopo la produzione) |
 

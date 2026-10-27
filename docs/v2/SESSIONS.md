@@ -2516,3 +2516,36 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Arresto dopo commit e push dei documenti. M20 non iniziato.
+
+
+## 2026-10-27 — M20 — completato
+
+**Fatto**
+- Letto il piano, compresi §1, §3 e §20 per intero, e l'ultima sessione M19. Confermati checkout pulito, branch `v2.0.0`, versione `2.1.0` e allineamento con il remoto.
+- Link «Chiudi piscina» in `/admin` e nuova pagina `/admin/close-pool`, riservata agli admin: link ai due CSV esistenti, casella obbligatoria «Ho scaricato i dati», quattro opzioni indipendenti senza preselezioni e conferma in `Dialog` con l'elenco delle sole scelte effettuate. La revisione usa GET senza scritture; la conferma usa POST, anche senza JavaScript.
+- Nuovo `domain/pool.ts`: validazione condivisa tra revisione e action `closePool`; avviso e nessuna scrittura senza conferma del download o senza scelte. Un'unica transazione con `lockAdmin`, lock su `settings`, `deletionSnapshot` degli eventi con iscrizioni e snapshot della whitelist prima delle cancellazioni. Vengono azzerate solo le parti scelte; i template, i log precedenti e il limite settimanale restano conservati.
+- Un solo log `CLOSE_POOL`, con `old_value` contenente le parti azzerate, comprese iscrizioni e presenze. Pubblicazione dopo il commit di `log_created`, `event_changed` con `bulk_delete` e, solo se cambia almeno una delle due settimane, `week_activated` a 1.
+- Nuove stringhe in italiano, inglese e francese; matrice di autorizzazione estesa a pagina e action. I fixture SQLite escludono `CLOSE_POOL`, assente nel legacy, mantenendo i 21 tipi e i dati precedenti; aggiunta un'asserzione di regressione. La cartella `legacy/` non è stata modificata.
+- I cinque nuovi file sono quelli necessari al modulo: dominio, due file della route e due suite dedicate alla chiusura distruttiva. Riutilizzati `Dialog`, `Toast`, `formAction`, guard, snapshot e bus esistenti. Nessuna dipendenza o migrazione aggiunta.
+
+**Commit**
+- `00dced4` — `feat(admin): close pools with selective audited resets`.
+- Chiusura del diario e dello stato M20 con `docs: record M20 completion and validation`.
+
+**Controlli**
+- `corepack pnpm ci:local`: exit 0; 238 unit, 309 integration, 175 e2e, totale 722, senza retry locali. Lint, check e build verdi; svelte-check senza errori o warning. `git diff --check` verde.
+- Integration: 16 nuovi casi su soli eventi, sola whitelist, sole settimane, sole date, eventi con whitelist, settimane con date, tutto, niente e download non confermato. Verificati snapshot con presenti e assenti, un solo log e conservazione dei precedenti, template invariati, nessuna modifica alle parti non scelte, accesso negato anche dopo revoca del ruolo e richieste malformate. Rollback completo e nessuna notifica se falliscono cancellazione whitelist, update impostazioni o audit; ripetizione della chiusura e assenza di notifiche di attivazione se le settimane sono già a 1.
+- E2e: quattro nuovi casi in Chromium desktop e mobile, con e senza JavaScript, su download CSV, opzioni inizialmente vuote, avviso senza scelte, revisione senza scritture, annullamento, chiusura completa, conservazione di template/log e assenza di overflow a 360 px o errori JavaScript. Matrice di autorizzazione verde per anonimo, utente e admin; suite WebKit preesistente e controlli di layout, CSP e traduzioni verdi.
+- Corretti prima del risultato verde due problemi emersi nei controlli locali: inclusione della nuova azione nei fixture legacy e confronto, nei nuovi test integration, tra timestamp SQL serializzato e oggetto `Date`. Il test dei fixture mantiene il conteggio atteso di 21; il controllo del timestamp confronta l'istante effettivo. Nessun controllo saltato o timeout/configurazione di test modificato.
+- CI [40472295145](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40472295145) su `00dced4`: `gh run watch --exit-status` exit 0, sei job verdi (lint, unit, integration, legacy-import, e2e, docker). Tutti i 175 e2e passati senza retry.
+- Il commit di chiusura modifica soltanto questo diario e la colonna Stato di M20 in §19; il codice resta quello verificato localmente e nella run CI citata.
+
+**Decisioni prese dentro il perimetro del piano**
+- Branch e versione invariati; nessun branch nuovo, worktree o tag. Porte `5432` e `4173` usate per i test di `ci:local`; configurazione dello stack su `8080` e `8443` invariata. Nessun volume cancellato.
+
+**Domande / blocchi**
+- Nessun blocco o dubbio aperto per M20.
+- Da verificare a mano: rilettura dei nuovi testi inglesi/francesi e flusso di esportazione, revisione e chiusura su una copia dei dati reali. Le verifiche automatiche usano il database di test con dati fittizi; nessuna verifica su un deploy di produzione.
+
+**Prossimo passo**
+- Arresto dopo commit e push dei documenti. M21 resta da fare e non è stato iniziato.
