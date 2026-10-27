@@ -2,7 +2,7 @@
 
 > Documento di riferimento unico per chi esegue il refactor (agent esterno o persona).
 > Leggilo **tutto** a inizio di ogni sessione, poi leggi l'ultima voce di `docs/v2/SESSIONS.md`.
-> Branch di lavoro: `v2.0.0`. Versione in sviluppo: `2.1.0` (SemVer, §20). Ultima release Flask: tag `v1.5.24` su `main`.
+> Branch di lavoro: `v2.0.0`. Versione in sviluppo: `2.2.0` (SemVer, §20, §21). Ultima release Flask: tag `v1.5.24` su `main`.
 
 ---
 
@@ -28,6 +28,7 @@
 18. Bug legacy da NON riprodurre
 19. Stato dei moduli
 20. Versione 2.1.0: correzioni dell'audit e nuove funzioni
+21. Versione 2.2.0: archivio piscine, riepilogo animato e iscrizioni con QR
 
 ---
 
@@ -98,6 +99,12 @@ Ismail deve confermare queste decisioni prima del modulo indicato. Finché lo st
 
 | D6 | Il login è consentito solo agli utenti 42 che hanno il campus **42 Firenze** tra i loro `campus_users` (profilo `/v2/me`). Vale anche per lo staff: `staff? = true` di un altro campus non entra e non diventa admin. I login in `ADMIN_LOGINS` entrano sempre. L'id del campus è la costante `FIRENZE_CAMPUS_ID = 52` in `src/lib/server/auth/oauth42.ts` (campus "Florence", verificato dall'API 42 sul profilo `igilani`). | Dall'audit di 2.0.0: `staff?` vale per tutti i campus del mondo, quindi lo staff di qualunque campus diventava admin di questo sito, e qualunque studente 42 poteva vedere il calendario con i login degli iscritti. | M17 | CONFERMATA |
 | D7 | Nei template **non** si salva più la data dell'evento: si toglie il campo dal builder, l'import CSV ignora la colonna `Data`/`Date` e la colonna `template_events.event_date` si elimina con una migrazione. Le date degli eventi creati da un template derivano dal pool, come oggi. | Oggi la data si chiede e poi non si usa (§8.9 punto 5). Copiarla invece è sbagliato: un template si riusa nei pool successivi, e una data assoluta di un pool vecchio creerebbe eventi già "Passati". | M17 | CONFERMATA |
+| D8 | La piscina corrente resta in `settings` e nelle tabelle di lavoro. La fase "finita" si calcola in automatico (fine passata e nessun evento oltre la fine) ma è solo una visualizzazione: **la pulizia dei dati è sempre manuale** con "Chiudi piscina", che salva prima l'archivio. | Lo staff deve poter correggere le presenze dopo la fine; nessun dato sparisce senza un'azione dello staff. | M23 | CONFERMATA |
+| D9 | Lo storico delle piscine sta nello stesso Postgres (`pools`, `pool_entries`, §21.1). Le piscine vecchie si importano dal `detailed.csv` attuale (pochi file, una tantum). | Una piscina pesa meno di 1 MB; il CSV scaricato alla chiusura resta la copia esterna. | M23, M24 | CONFERMATA |
+| D10 | Il riepilogo non ha classifiche né percentili tra studenti: solo i propri dati, il proprio contributo in % sul totale della piscina e i totali della piscina senza nomi. | Niente competizione. | M25 | CONFERMATA |
+| D11 | Chi si iscrive con il QR finisce in una **lista d'attesa**; lo staff approva (anche "Approva tutti") o rifiuta. | Un QR fotografato e girato in chat non basta per entrare. | M26 | CONFERMATA |
+| D12 | Dipendenza `uqr` per generare il QR. | Approvata da Ismail. | M26 | CONFERMATA |
+| D13 | Nella fase "in arrivo" il countdown sta in cima a `/calendar` e il calendario resta sotto (iscrizioni anticipate possibili come oggi); nelle fasi "nessuna piscina" e "finita" in cima c'è il riepilogo. | Non toglie funzioni esistenti; modificabile da Ismail dopo il report. | M25 | CONFERMATA |
 
 Le altre differenze rispetto al legacy sono correzioni di bug (§18) e non richiedono conferma.
 
@@ -976,6 +983,18 @@ Applica `docs/v2/design/` seguendo l'ordine di lavoro del suo `README.md` §7: f
 ### M22 — Feed calendario personale (1.5 g)
 §20.6. Si inizia solo dopo la messa in produzione con il dominio vero.
 
+### M23 — Archivio alla chiusura (1,5 g)
+§21.2.
+
+### M24 — Archivio per lo staff e import delle piscine vecchie (1,5 g)
+§21.3.
+
+### M25 — Riepilogo studente animato e pagina di attesa (2 g)
+§21.4.
+
+### M26 — Iscrizioni alla piscina con QR (1,5 g)
+§21.5.
+
 Il lavoro di test (§13) è incluso nella stima di ogni modulo, non è una fase separata.
 
 ---
@@ -1033,6 +1052,10 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M20 Chiusura della piscina | completato (00dced4) |
 | M21 Display: evento in corso e prossimo | completato (b604143) |
 | M22 Feed calendario personale | da fare (dopo la produzione) |
+| M23 Archivio alla chiusura | da fare |
+| M24 Archivio staff e import piscine vecchie | da fare |
+| M25 Riepilogo animato e pagina di attesa | da fare |
+| M26 Iscrizioni con QR | da fare |
 
 ---
 
@@ -1122,3 +1145,91 @@ Si inizia solo quando il sito è online sul dominio vero con un certificato vali
 - Il token è nel path, che nginx scrive nell'access log: per questa route usa `access_log off`.
 - Test: integration (contenuto del feed, settimane future escluse, token rigenerato invalida il vecchio); e2e: 404 con token sbagliato, 200 `text/calendar` con quello giusto.
 - Verifica manuale con Ismail: iPhone (Calendario → Aggiungi abbonamento) e Google Calendar (aggiornamento lento, anche 12–24 ore).
+
+---
+
+## 21. Versione 2.2.0: archivio piscine, riepilogo animato e iscrizioni con QR
+
+Valgono le regole di §1 e di §20 (stesso branch, un modulo alla volta in ordine, `pnpm ci:local` verde, push, CI verde, voce in `SESSIONS.md`, testi in it/en/fr). `package.json` passa a `2.2.0` in M23 con il commit `chore: bump version to 2.2.0`. "Piscina" è il nome che lo staff usa per il pool (§8.2): nei testi per l'utente si scrive "piscina".
+
+### 21.1 Modello (D8, D9)
+
+- **La piscina corrente resta quella di oggi**: date in `settings.pool_start` / `pool_end`, eventi, iscrizioni e whitelist nelle tabelle attuali. Nessuna tabella di lavoro cambia forma.
+- **Nome della piscina**: mese e anno di inizio, calcolati da `pool_start` con `Intl` nella lingua dell'utente ("Ottobre 2026", "October 2026"). Non si salva come testo.
+- **Fase della piscina corrente**, funzione pura `poolPhase(settings, events, now)` in `domain/pool.ts`, ora di Roma:
+  - `none`: `pool_start` null;
+  - `upcoming`: oggi < `pool_start`;
+  - `finished`: `pool_end` non null, oggi > `pool_end` e nessun evento con data concreta > `pool_end`;
+  - `active`: tutti gli altri casi.
+- La fase `finished` è **solo una visualizzazione** (riepilogo per gli studenti, avviso per lo staff). Non cancella né salva nulla: i dati restano finché lo staff non usa "Chiudi piscina".
+- **Archivio** (Postgres, stesso DB: una piscina pesa meno di 1 MB):
+  - `pools`: `id`, `start_date date NOT NULL UNIQUE`, `end_date date`, `source` (`'site' | 'csv'`), `archived_at timestamptz NOT NULL`;
+  - `pool_entries`: `id`, `pool_id` FK `ON DELETE CASCADE`, `login`, `title`, `kind`, `event_date date` (null se non nota), `weekday` (null se non noto), `start_time`/`end_time` (null se non noti), `duration_minutes`, `compensation`, `attended`, `registered_at` (null se non nota). Indice su `(pool_id, login)`.
+- **Una sola funzione di statistiche**, `poolStats(entries, login?)`, pura, che lavora sulle righe nella forma di `pool_entries`. Le righe arrivano dall'archivio oppure, per la piscina corrente non ancora archiviata, da una query sulle tabelle di lavoro che restituisce la stessa forma. Le statistiche non si calcolano in due modi diversi.
+
+### 21.2 M23 — Archivio alla chiusura (1,5 g)
+
+- Versione `2.2.0` (commit dedicato).
+- Migrazione con `pools` e `pool_entries` (§21.1).
+- `closePool` (§20.4) **salva sempre l'archivio prima di qualunque cancellazione**, nella stessa transazione: una riga `pools` (`source = 'site'`, date da `settings`) e una riga `pool_entries` per ogni iscrizione della piscina corrente. Se esiste già un archivio con la stessa `start_date` (chiusura ripetuta, per esempio prima senza pulizia e poi con pulizia) lo **sostituisce**, così prende le ultime correzioni delle presenze.
+- Se `pool_start` è null la chiusura non parte: avviso `pool_dates_required` ("Imposta le date della piscina prima di chiuderla"), nessuna scrittura.
+- Tutte le caselle di pulizia restano facoltative: "Chiudi piscina" senza caselle ora ha senso (salva solo l'archivio). Il passo 1 (download dei CSV) resta obbligatorio.
+- Il log `CLOSE_POOL` indica anche l'id dell'archivio e il numero di righe salvate.
+- Correzione dalla review: `closePool` non pubblica più `week_activated` (mostrava agli studenti "La settimana 1 è stata attivata!" alla chiusura). Basta `event_changed`.
+- `poolPhase` e `poolStats` con test unit completi:
+  - `poolPhase`: date null, giorno prima dell'inizio, primo giorno, ultimo giorno, giorno dopo la fine con e senza eventi oltre la fine, cambio ora legale;
+  - `poolStats`: nessuna riga, solo assenze, dati parziali (orari null);
+  - integration: archivio scritto, sostituito alla seconda chiusura, rollback se una parte fallisce.
+- Nessuna pagina nuova in questo modulo.
+
+**Statistiche di `poolStats`** (per un login, più i totali della piscina): turni presi e fatti, ore, ₳, turni per tipo (conteggio e %), giorno della settimana più frequente, fascia oraria più frequente (mattina < 12:00, pomeriggio < 18:00, sera; null se gli orari mancano), settimana o mese più intenso, primo e ultimo turno, presenze su turni presi, contributo in % delle ore totali della piscina, badge descrittivi (`early_bird` maggioranza dei turni prima delle 12, `all_rounder` 3 o più tipi, `always_there` 100% presenze con almeno 3 turni). Totali della piscina: turni, ore, ₳, partecipanti unici, % presenze, copertura dei posti per tipo (solo piscina corrente o archivio `site`).
+
+### 21.3 M24 — Archivio per lo staff e import delle piscine vecchie (1,5 g)
+
+- Pagina `/admin/archive` (solo admin, matrice e2e): selettore anno → piscina ("2025 → Maggio, Ottobre"), più la piscina corrente se non è ancora archiviata. Per la piscina scelta: i totali di `poolStats` con grafici semplici (barre e ciambella in SVG, nessuna libreria) e la tabella per partecipante.
+- Avviso in `/admin` quando `poolPhase = finished`: "La piscina è finita. Quando hai completato le presenze, chiudila" con link a "Chiudi piscina".
+- **Import delle piscine vecchie** dal `detailed.csv` attuale (stesso formato prodotto da `detailedCsv` e dal legacy), solo per i pochi file delle piscine passate:
+  - form con file e mese/anno di inizio della piscina; anteprima con righe lette, righe saltate (con il motivo) e totali, poi conferma;
+  - ogni voce `Titolo (Giorno gg/mm/aaaa, Nh, X₳ | NON PARTECIPATO)` diventa una riga `pool_entries`: `kind = inferKind(titolo)`, `event_date` dalla data, `duration_minutes` dalle ore, `compensation`, `attended`; orari e data di iscrizione null;
+  - una voce che non si legge con certezza (per esempio titolo con " | " o parentesi ambigue) si salta e si mostra nell'anteprima: mai indovinare;
+  - se esiste già una piscina con la stessa `start_date`: errore, nessuna scrittura;
+  - `source = 'csv'`, log `IMPORT_POOL`.
+- Test: unit sul parser (voci valide, NON PARTECIPATO, titoli con parentesi, voci illeggibili, latin-1, BOM); integration su import e duplicato; e2e del flusso con anteprima.
+
+### 21.4 M25 — Riepilogo studente animato e pagina di attesa (2 g)
+
+Pagina `/recap` (utente loggato) e `/recap/[poolId]` per una piscina archiviata. Nel profilo, "Le tue piscine": elenco delle piscine (archivio + corrente) a cui il login ha partecipato, ciascuna con il link al suo riepilogo.
+
+**Cosa vede lo studente in base alla fase** (D13):
+- `upcoming`: in cima a `/calendar` un **countdown** fino a `pool_start` (giorni, ore, minuti; aggiornato ogni secondo con JS, statico senza JS) con sotto il pulsante "Durante l'attesa, guarda cosa hai fatto" che apre il riepilogo dell'ultima piscina a cui ha partecipato. Se non ha mai partecipato, al posto del pulsante il messaggio buffo (vedi sotto). Sotto il countdown il calendario resta come oggi: se lo staff ha già creato eventi nella settimana attiva, ci si può iscrivere anche prima dell'inizio.
+- `none` (nessuna piscina impostata): `/calendar` mostra il riepilogo dell'ultima piscina a cui ha partecipato; se non ha mai partecipato, il messaggio buffo.
+- `finished`: `/calendar` mostra in cima il riepilogo della piscina appena finita (dati di lavoro, §21.1), con il calendario sotto per consultazione.
+- `active`: il calendario come oggi.
+- Messaggio buffo per chi non ha mai partecipato, per esempio "Ehi, qui è tutto vuoto… la prossima piscina aspetta anche te! Fatti avanti con lo staff." (tono leggero, in it/en/fr).
+
+**Il riepilogo** (stile "Wrapped"): schermate a tutto schermo una dopo l'altra, avanti/indietro con tap, frecce o pulsanti; numeri che salgono (`svelte/motion`), barre e ciambella in SVG animate. Nessuna libreria nuova. Con `prefers-reduced-motion` niente animazioni; senza JavaScript tutte le schermate sono una sotto l'altra, statiche.
+Schermate (dati da `poolStats`, nessuna classifica, D10):
+1. "La tua piscina <Mese Anno>": turni fatti, ore, ₳;
+2. il tuo turno preferito, con la ciambella dei tipi;
+3. il tuo ritmo: giorno preferito, fascia oraria, settimana più intensa (barre);
+4. primo e ultimo turno;
+5. presenze ("Presente a 9 turni su 10"), mostrata solo se le presenze sono almeno l'80%;
+6. il tuo contributo: "% delle ore di tutta la piscina";
+7. badge descrittivi ottenuti (solo quelli ottenuti, nessun badge "mancato");
+8. la piscina insieme: totali senza nomi.
+Le schermate senza dati (per esempio la fascia oraria di una piscina importata da CSV) si saltano.
+
+- Lo staff in `/admin/archive` può aprire lo stesso riepilogo in versione "piscina intera" (solo totali).
+- Test: unit sulla scelta della vista per fase; e2e con e senza JS, con reduced motion, per: countdown, pulsante riepilogo, messaggio buffo, riepilogo con dati, piscina importata (schermate saltate); nessun overflow a 360 px.
+
+### 21.5 M26 — Iscrizioni alla piscina con QR (1,5 g)
+
+- Dipendenza approvata (D12): `uqr` per generare il QR in SVG lato server. Versione esatta (`pnpm add -E`).
+- In `/admin/whitelist`: "Apri iscrizioni" / "Chiudi iscrizioni" per la piscina corrente (richiede `pool_start`). Aprire genera un codice casuale; nel DB si salva solo l'hash, in `settings` (`enrollment_code_hash`, null = chiuse). Chiudere lo cancella: il QR vecchio smette di funzionare.
+- Pagina da proiettare `/admin/enroll` (solo admin): QR grande con il link `<ORIGIN>/join/<codice>`, nome della piscina e contatore delle iscrizioni ricevute che si aggiorna in tempo reale (SSE).
+- `/join/[code]` (pubblica nella guard, matrice e2e): codice non valido o iscrizioni chiuse → pagina "Le iscrizioni sono chiuse"; altrimenti, se non loggato, login 42 (campus Firenze, D6) e ritorno a `/join/[code]`. Da loggato: modale "Vuoi diventare Baywatcher di <Mese Anno>?" con conferma.
+- Conferma (D11): il login entra in una **lista d'attesa**, tabella `enrollment_requests` (`login` UNIQUE, `created_at`). Log `WHITELIST_REQUEST`. Messaggio "Richiesta inviata: lo staff ti confermerà". Già in whitelist → "Sei già dentro"; già in attesa → "La tua richiesta è già in attesa".
+- In `/admin/whitelist` la sezione "In attesa" con, per ogni richiesta, "Approva" e "Rifiuta", più "Approva tutti". Approvare sposta il login in whitelist (log `WHITELIST_ADD`, uno per login come oggi) e cancella la richiesta; rifiutare la cancella (log `WHITELIST_REJECT`). Il contatore della pagina da proiettare conta le richieste ricevute.
+- "Chiudi piscina" con la casella whitelist svuota anche le richieste in attesa.
+- Lo staff continua ad aggiungere e togliere a mano come oggi.
+- Test: integration su apertura, chiusura, codice sbagliato, doppia iscrizione; e2e del flusso completo con login di sviluppo, con e senza JS; il redirect dopo il login resta sullo stesso sito (stesse regole di `/language`).
