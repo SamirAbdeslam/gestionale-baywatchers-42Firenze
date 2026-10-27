@@ -1,3 +1,4 @@
+import { personalPools } from '#lib/server/domain/recap.ts';
 import { getProfile, nextShift } from '#lib/server/domain/reports.ts';
 import { formatEventDate } from '#lib/server/domain/dates.ts';
 import { getLocale } from '#lib/paraglide/runtime.js';
@@ -10,6 +11,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	const shift = await nextShift(db, profile.user.login, now);
 	const { imageUrl, ...user } = profile.user;
 	return {
+		pools: await personalPools(db, locals.user),
 		nextShift: shift ? { ...shift, formattedDate: formatEventDate(shift.date, getLocale()) } : null,
 		profile: {
 			...profile,

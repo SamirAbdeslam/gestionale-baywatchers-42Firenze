@@ -34,7 +34,7 @@ for (const javaScriptEnabled of [true, false]) {
 				});
 				try {
 					await client`DELETE FROM events WHERE week=4`;
-					await client`UPDATE settings SET active_week=4,pool_start='2098-12-15',pool_end='2099-01-11',max_events_per_user=0 WHERE id=1`;
+					await client`UPDATE settings SET active_week=4,pool_start='2000-01-03',pool_end=null,max_events_per_user=0 WHERE id=1`;
 					const rows = Array.from({ length: 14 }, (_, i) => ({
 						title: `Compact ${i + 1} · Titolo di un turno lungo da leggere in due righe`,
 						kind: ['exam', 'icebreaker', 'rush', 'cluster', 'welcome', 'custom'][i % 6],
@@ -47,7 +47,7 @@ for (const javaScriptEnabled of [true, false]) {
 					}));
 					const inserted = await client`INSERT INTO events ${client(rows)} RETURNING id,weekday`;
 					await client`INSERT INTO registrations(event_id,participant_login) VALUES (${inserted.find((row) => row.weekday === 3)!.id},${login})`;
-					await page.clock.setFixedTime(new Date('2099-01-07T12:00:00+01:00'));
+					await page.clock.setFixedTime(new Date('2000-01-26T12:00:00+01:00'));
 					await page.emulateMedia({ reducedMotion: 'reduce' });
 					const errors: string[] = [];
 					page.on('pageerror', (error) => errors.push(error.message));

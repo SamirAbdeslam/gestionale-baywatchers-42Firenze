@@ -464,3 +464,22 @@ it.each(['register', 'unregister', 'add', 'remove', 'present', 'absent'] as cons
 		}
 	}
 );
+
+it('rejects user registration before Rome pool midnight without writes or notifications', async () => {
+	const row = await event();
+	await client`UPDATE settings SET pool_start='2026-10-20',pool_end='2026-11-16' WHERE id=1`;
+	const rejected = await register(
+		database,
+		user,
+		{ id: row.id },
+		info,
+		new Date('2026-10-19T21:59:59Z')
+	);
+	expect(rejected).toMatchObject({ ok: false, messages: [{ key: 'error_pool_not_started' }] });
+	expect(await database.select().from(schema.registrations)).toHaveLength(0);
+	expect(await database.select().from(schema.actionLogs)).toHaveLength(0);
+	expect(messages).toEqual([]);
+	expect(
+		(await register(database, user, { id: row.id }, info, new Date('2026-10-19T22:00:00Z'))).ok
+	).toBe(true);
+});

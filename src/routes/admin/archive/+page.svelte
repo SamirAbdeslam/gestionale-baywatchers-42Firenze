@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { enhance } from '$app/forms';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
@@ -55,6 +56,12 @@
 		<h2>
 			{monthName(data.selected.startDate)}{data.selected.current ? ` — ${m.archive_current()}` : ''}
 		</h2>
+		<p>
+			{#if data.selected.current}<a href="{resolve('/recap')}?view=pool">{m.recap_together()}</a>
+			{:else}<a href="{resolve('/recap/[poolId]', { poolId: data.selected.key })}?view=pool"
+					>{m.recap_together()}</a
+				>{/if}
+		</p>
 		{@render statistics(data.totals, data.participants)}
 	</section>
 {:else}<p>{m.archive_empty()}</p>{/if}

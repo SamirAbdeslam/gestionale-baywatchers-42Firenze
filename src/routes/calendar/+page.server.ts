@@ -1,3 +1,4 @@
+import { calendarPoolView } from '#lib/server/domain/recap.ts';
 import { error } from '@sveltejs/kit';
 import { z } from 'zod';
 import { formAction } from '#lib/server/form-action.ts';
@@ -12,14 +13,15 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 	depends('app:calendar');
 	const { db } = await import('#lib/server/db/index.ts');
 	try {
-		const data = await getCalendar(
-			db,
-			locals.user,
-			Object.fromEntries(url.searchParams),
-			new Date()
-		);
+		const now = new Date();
+		const poolView = await calendarPoolView(db, locals.user, now);
+		const calendar = await getCalendar(db, locals.user, Object.fromEntries(url.searchParams), now);
+		const data = poolView.calendar
+			? calendar
+			: { ...calendar, events: [], days: [], nextShift: null, weeklyRegistrationCount: null };
 		return {
 			...data,
+			poolView,
 			nextShift: data.nextShift
 				? {
 						...data.nextShift,

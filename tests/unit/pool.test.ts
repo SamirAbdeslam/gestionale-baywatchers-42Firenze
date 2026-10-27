@@ -60,7 +60,7 @@ it('returns finite zero totals and absent descriptive values for no entries or u
 		contributionPercent: 0,
 		favoriteWeekday: null,
 		favoriteTimeBand: null,
-		busiestMonth: null,
+		busiestWeek: null,
 		firstShift: null,
 		lastShift: null,
 		badges: []
@@ -84,7 +84,7 @@ it('counts absences as taken and participants but gives no hours, money or badge
 		attendancePercent: 0,
 		favoriteWeekday: null,
 		favoriteTimeBand: null,
-		busiestMonth: null,
+		busiestWeek: null,
 		firstShift: null,
 		contributionPercent: 0,
 		badges: [],
@@ -140,7 +140,7 @@ it('handles imported rows without times, weekday, date or registration date with
 		altarian: 200,
 		favoriteWeekday: null,
 		favoriteTimeBand: null,
-		busiestMonth: null,
+		busiestWeek: null,
 		firstShift: null,
 		lastShift: null,
 		badges: []
@@ -159,7 +159,7 @@ it.each([
 ] as const)('classifies the %s boundary as %s', (startTime, band) => {
 	expect(poolStats([entry({ startTime })]).favoriteTimeBand).toBe(band);
 });
-it('finds attended first/last shifts and busiest month with stable ties independent of input order', () => {
+it('finds attended first/last shifts and stable descriptors with stable ties independent of input order', () => {
 	const first = entry({ eventDate: '2026-09-30', startTime: '08:00', weekday: 3 });
 	const last = entry({ eventDate: '2026-10-30', startTime: '18:00', weekday: 5 });
 	const rows = [last, entry({ attended: false, eventDate: '2026-12-01' }), first];
@@ -167,12 +167,11 @@ it('finds attended first/last shifts and busiest month with stable ties independ
 	expect(stats).toMatchObject({
 		firstShift: first,
 		lastShift: last,
-		busiestMonth: '2026-09',
+		busiestWeek: null,
 		favoriteWeekday: 3,
 		favoriteTimeBand: 'morning'
 	});
 	expect(stats).toEqual(poolStats([...rows].reverse()));
-	expect(poolStats([first, last, entry({ eventDate: '2026-10-01' })]).busiestMonth).toBe('2026-10');
 });
 it('awards descriptive badges only when their attendance and strict majority thresholds hold', () => {
 	const rows = [entry(), entry({ kind: 'rush' }), entry({ kind: 'cluster', startTime: '18:00' })];
@@ -187,4 +186,47 @@ it('awards descriptive badges only when their attendance and strict majority thr
 		poolStats([entry(), entry({ kind: 'rush' }), entry({ kind: 'cluster', attended: false })])
 			.badges
 	).toEqual(['early_bird']);
+});
+
+it('counts exact seven-day weeks from pool start across months and DST, with stable ties', () => {
+	const rows = [
+		entry({ eventDate: '2026-10-25' }),
+		entry({ eventDate: '2026-10-26' }),
+		entry({ eventDate: '2026-11-01' }),
+		entry({ eventDate: '2026-11-02' }),
+		entry({ eventDate: '2026-11-09' }),
+		entry({ eventDate: '2026-11-15' }),
+		entry({ eventDate: '2026-11-16' }),
+		entry({ eventDate: '2026-10-18' }),
+		entry({ eventDate: '2026-10-19', attended: false })
+	];
+	const stats = poolStats(rows, 'alpha', '2026-10-19');
+	expect(stats.weekCounts).toEqual([
+		{ week: 1, count: 1 },
+		{ week: 2, count: 2 },
+		{ week: 3, count: 1 },
+		{ week: 4, count: 2 }
+	]);
+	expect(stats.busiestWeek).toBe(2);
+	expect(poolStats([...rows].reverse(), 'alpha', '2026-10-19')).toEqual(stats);
+	expect(poolStats([entry({ eventDate: '2026-03-30' })], 'alpha', '2026-03-24').busiestWeek).toBe(
+		1
+	);
+	expect(poolStats([entry({ eventDate: '2026-03-31' })], 'alpha', '2026-03-24').busiestWeek).toBe(
+		2
+	);
+});
+it('omits weekly statistics without an exact start or complete attended dates', () => {
+	expect(poolStats([entry()], 'alpha').weekCounts).toBeNull();
+	expect(
+		poolStats([entry(), entry({ eventDate: null })], 'alpha', '2026-10-19').weekCounts
+	).toBeNull();
+	expect(poolStats([], 'alpha', '2026-10-19').busiestWeek).toBeNull();
+	expect(
+		poolStats([entry({ eventDate: '2026-12-01' })], 'alpha', '2026-10-19').busiestWeek
+	).toBeNull();
+	expect(
+		poolStats([entry(), entry({ eventDate: null, attended: false })], 'alpha', '2026-10-19')
+			.busiestWeek
+	).toBe(1);
 });

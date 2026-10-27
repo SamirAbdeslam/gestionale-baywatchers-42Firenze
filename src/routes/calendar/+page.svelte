@@ -6,6 +6,8 @@
 	import { listenRealtime } from '#lib/realtime.ts';
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import Recap from '#lib/components/Recap.svelte';
+	import PoolCountdown from '#lib/components/PoolCountdown.svelte';
 	import NextShift from '#lib/components/NextShift.svelte';
 	import WeekNav from '#lib/components/WeekNav.svelte';
 	import ParticipantBadge from '#lib/components/ParticipantBadge.svelte';
@@ -103,7 +105,8 @@
 		mobile.addEventListener('change', resize);
 		const close = listenRealtime((event) => {
 			if (event.type === 'log_created') return;
-			if (event.type === 'week_activated') activated = { week: event.week };
+			if (event.type === 'week_activated' && data.poolView.calendar)
+				activated = { week: event.week };
 			void reload();
 		}, reload);
 		return () => {
@@ -114,223 +117,235 @@
 </script>
 
 <svelte:head><title>{m.nav_calendar()} — {m.app_name()}</title></svelte:head>
-<div class="calendar-stage">
-	<div class="calendar-heading">
-		{#if data.days[0]?.date}<p class="calendar-period">
-				{data.week === data.activeWeek ? m.week_active() : m.week_closed()} · {data.days[0].date} – {data.days.at(
-					-1
-				)?.date}
-			</p>{/if}
-		<h1>{m.calendar_week({ week: formatNumber(data.week) })}</h1>
-		<section class="shift-counter" aria-label={m.calendar_your_shifts()}>
-			<h2>{m.calendar_your_shifts()}</h2>
-			<div class="counter-values">
-				{#if data.maxEventsPerUser > 0 && data.maxEventsPerUser <= 10}<div
-						class="counter-seats"
-						aria-hidden="true"
-					>
-						{#each Array.from({ length: data.maxEventsPerUser }, (_, i) => i) as i (i)}<span
-								class="counter-seat"
-								class:own={i < data.weeklyRegistrationCount!}
-								data-counter-slot={i}
-							></span>{/each}
-					</div>{/if}
-				<span class="mono" data-counter-value
-					>{data.weeklyRegistrationCount !== null
-						? m.calendar_weekly_shifts({
-								count: formatNumber(data.weeklyRegistrationCount),
-								limit: formatNumber(data.maxEventsPerUser)
-							})
-						: formatNumber(totals.count)} · {formatNumber(totals.compensation)} ₳</span
-				>
-			</div>
-		</section>
-		<WeekNav week={data.week} activeWeek={data.activeWeek} />
-	</div>
-	{#if weeklyLimitReached}<p id="weekly-limit-reason">
-			{m.error_weekly_limit({ count: formatNumber(data.maxEventsPerUser) })}
-		</p>{/if}
-	{#if data.nextShift}<NextShift shift={data.nextShift} />{/if}
-	{#if registered}
-		<Dialog
-			label={m.calendar_add()}
-			title={m.ticket_taken_title()}
-			closeLabel={m.dialog_close()}
-			open
-		>
-			<p class="confirmation">✓ {m.ticket_confirmed()}</p>
-			<EventCard event={registered} orientation="horizontal" mine={false} />
-			{#if registered.googleUrl}<p>
-					<a
-						class="button"
-						href={registered.googleUrl}
-						target="_blank"
-						rel="external noopener noreferrer">{m.calendar_google()}</a
-					>
+{#if data.poolView.countdown && data.poolView.poolStart}
+	<PoolCountdown start={data.poolView.poolStart} now={data.poolView.now} />
+	{#if data.poolView.lastRecap}<p>
+			<a
+				class="button"
+				href={resolve('/recap/[poolId]', { poolId: String(data.poolView.lastRecap) })}
+				>{m.recap_wait_link()}</a
+			>
+		</p>{:else}<p>{m.recap_empty()}</p>{/if}
+{/if}
+{#if data.poolView.recap}<Recap recap={data.poolView.recapData} />{/if}
+{#if data.poolView.calendar}
+	<div class="calendar-stage">
+		<div class="calendar-heading">
+			{#if data.days[0]?.date}<p class="calendar-period">
+					{data.week === data.activeWeek ? m.week_active() : m.week_closed()} · {data.days[0].date} –
+					{data.days.at(-1)?.date}
 				</p>{/if}
-			<p>
-				<a
-					class="button secondary"
-					href={resolve('/events/[id]/calendar.ics', { id: String(registered.id) })}
-					>{m.calendar_ics()}</a
-				>
-			</p>
-		</Dialog>
-	{/if}
-	{#if activated}
-		{#key activated}
+			<h1>{m.calendar_week({ week: formatNumber(data.week) })}</h1>
+			<section class="shift-counter" aria-label={m.calendar_your_shifts()}>
+				<h2>{m.calendar_your_shifts()}</h2>
+				<div class="counter-values">
+					{#if data.maxEventsPerUser > 0 && data.maxEventsPerUser <= 10}<div
+							class="counter-seats"
+							aria-hidden="true"
+						>
+							{#each Array.from({ length: data.maxEventsPerUser }, (_, i) => i) as i (i)}<span
+									class="counter-seat"
+									class:own={i < data.weeklyRegistrationCount!}
+									data-counter-slot={i}
+								></span>{/each}
+						</div>{/if}
+					<span class="mono" data-counter-value
+						>{data.weeklyRegistrationCount !== null
+							? m.calendar_weekly_shifts({
+									count: formatNumber(data.weeklyRegistrationCount),
+									limit: formatNumber(data.maxEventsPerUser)
+								})
+							: formatNumber(totals.count)} · {formatNumber(totals.compensation)} ₳</span
+					>
+				</div>
+			</section>
+			<WeekNav week={data.week} activeWeek={data.activeWeek} />
+		</div>
+		{#if weeklyLimitReached}<p id="weekly-limit-reason">
+				{m.error_weekly_limit({ count: formatNumber(data.maxEventsPerUser) })}
+			</p>{/if}
+		{#if data.nextShift}<NextShift shift={data.nextShift} />{/if}
+		{#if registered}
 			<Dialog
-				label={m.calendar_week_activated({ week: formatNumber(activated.week) })}
-				title={m.calendar_week_activated({ week: formatNumber(activated.week) })}
-				closeLabel={m.dialog_ok()}
+				label={m.calendar_add()}
+				title={m.ticket_taken_title()}
+				closeLabel={m.dialog_close()}
 				open
 			>
-				<p>{m.calendar_week_activated({ week: formatNumber(activated.week) })}</p>
-			</Dialog>
-		{/key}
-	{/if}
-	<div class="day-tabs" role={ready ? 'tablist' : 'navigation'} aria-label={m.calendar_days()}>
-		{#each data.days as day, index (day.weekday)}
-			<a
-				href={`#panel-${day.weekday}`}
-				role={ready ? 'tab' : undefined}
-				class:today={day.isoDate !== null && day.isoDate === today}
-				id={`tab-${day.weekday}`}
-				aria-controls={`panel-${day.weekday}`}
-				aria-selected={ready ? selectedDay === day.weekday : undefined}
-				tabindex={ready ? (selectedDay === day.weekday ? 0 : -1) : undefined}
-				onclick={(event) => {
-					event.preventDefault();
-					showDay(day.weekday);
-				}}
-				onkeydown={(event) => {
-					let next: number;
-					if (event.key === 'ArrowRight') next = (index + 1) % data.days.length;
-					else if (event.key === 'ArrowLeft')
-						next = (index - 1 + data.days.length) % data.days.length;
-					else if (event.key === 'Home') next = 0;
-					else if (event.key === 'End') next = data.days.length - 1;
-					else return;
-					event.preventDefault();
-					showDay(data.days[next].weekday);
-					document.getElementById(`tab-${selectedDay}`)?.focus();
-				}}
-			>
-				<span>{weekdays[day.weekday - 1]().slice(0, 3)}</span><span class="day-number"
-					>{day.date.split(' ')[0]}</span
-				>
-				{#if data.events.some((event) => event.weekday === day.weekday && event.isRegistered)}<span
-						class="own-day"
-						aria-hidden="true"
-					></span>{/if}
-			</a>
-		{/each}
-	</div>
-	<!-- svelte-ignore a11y_no_noninteractive_tabindex (The scrollable calendar needs keyboard focus.) -->
-	<div
-		class="calendar"
-		bind:this={calendar}
-		onscroll={followDay}
-		role="region"
-		aria-label={m.calendar_events()}
-		tabindex="0"
-	>
-		{#each data.days as day (day.weekday)}
-			<section
-				id={`panel-${day.weekday}`}
-				data-weekday={day.weekday}
-				aria-labelledby={`day-${day.weekday}`}
-			>
-				<h2
-					class="day-heading"
-					class:today={day.isoDate !== null && day.isoDate === today}
-					id={`day-${day.weekday}`}
-				>
-					{#if day.date}<span class="day-number">{day.date.split(' ')[0]}</span>{/if}<span
-						>{weekdays[day.weekday - 1]()}</span
-					>{#if day.isoDate !== null && day.isoDate === today}<small>{m.calendar_today()}</small
-						>{/if}
-				</h2>
-				{#each data.events.filter((event) => event.weekday === day.weekday) as event (event.id)}
-					<EventCard {event} mine={event.isRegistered} headingLevel={3}>
-						<p
-							class:own={event.isRegistered}
-							class:full={event.registeredCount >= event.maxSlots}
-							class="capacity"
+				<p class="confirmation">✓ {m.ticket_confirmed()}</p>
+				<EventCard event={registered} orientation="horizontal" mine={false} />
+				{#if registered.googleUrl}<p>
+						<a
+							class="button"
+							href={registered.googleUrl}
+							target="_blank"
+							rel="external noopener noreferrer">{m.calendar_google()}</a
 						>
-							{#if event.isRegistered}
-								{m.calendar_inside()}{:else if event.state === 'available'}
-								{m.display_free_slots({
-									count: formatNumber(event.maxSlots - event.registeredCount)
-								})}{/if}
-						</p>
-						<ul aria-label={m.calendar_participants()}>
-							{#each event.participants as participant (participant.participantLogin)}
-								<li>
-									<ParticipantBadge
-										login={participant.participantLogin}
-										mine={participant.participantLogin === data.user?.login}
-										absent={!participant.attended}
-									/>{#if !participant.attended}<span class="sr-only">{m.calendar_absent()}</span
-										>{/if}
-								</li>
-							{/each}
-						</ul>
-						{#if event.state === 'passed'}<p>{m.calendar_passed()}</p>
-						{:else if event.state === 'full'}<button type="button" disabled
-								>{m.calendar_full()}</button
+					</p>{/if}
+				<p>
+					<a
+						class="button secondary"
+						href={resolve('/events/[id]/calendar.ics', { id: String(registered.id) })}
+						>{m.calendar_ics()}</a
+					>
+				</p>
+			</Dialog>
+		{/if}
+		{#if activated}
+			{#key activated}
+				<Dialog
+					label={m.calendar_week_activated({ week: formatNumber(activated.week) })}
+					title={m.calendar_week_activated({ week: formatNumber(activated.week) })}
+					closeLabel={m.dialog_ok()}
+					open
+				>
+					<p>{m.calendar_week_activated({ week: formatNumber(activated.week) })}</p>
+				</Dialog>
+			{/key}
+		{/if}
+		<div class="day-tabs" role={ready ? 'tablist' : 'navigation'} aria-label={m.calendar_days()}>
+			{#each data.days as day, index (day.weekday)}
+				<a
+					href={`#panel-${day.weekday}`}
+					role={ready ? 'tab' : undefined}
+					class:today={day.isoDate !== null && day.isoDate === today}
+					id={`tab-${day.weekday}`}
+					aria-controls={`panel-${day.weekday}`}
+					aria-selected={ready ? selectedDay === day.weekday : undefined}
+					tabindex={ready ? (selectedDay === day.weekday ? 0 : -1) : undefined}
+					onclick={(event) => {
+						event.preventDefault();
+						showDay(day.weekday);
+					}}
+					onkeydown={(event) => {
+						let next: number;
+						if (event.key === 'ArrowRight') next = (index + 1) % data.days.length;
+						else if (event.key === 'ArrowLeft')
+							next = (index - 1 + data.days.length) % data.days.length;
+						else if (event.key === 'Home') next = 0;
+						else if (event.key === 'End') next = data.days.length - 1;
+						else return;
+						event.preventDefault();
+						showDay(data.days[next].weekday);
+						document.getElementById(`tab-${selectedDay}`)?.focus();
+					}}
+				>
+					<span>{weekdays[day.weekday - 1]().slice(0, 3)}</span><span class="day-number"
+						>{day.date.split(' ')[0]}</span
+					>
+					{#if data.events.some((event) => event.weekday === day.weekday && event.isRegistered)}<span
+							class="own-day"
+							aria-hidden="true"
+						></span>{/if}
+				</a>
+			{/each}
+		</div>
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex (The scrollable calendar needs keyboard focus.) -->
+		<div
+			class="calendar"
+			bind:this={calendar}
+			onscroll={followDay}
+			role="region"
+			aria-label={m.calendar_events()}
+			tabindex="0"
+		>
+			{#each data.days as day (day.weekday)}
+				<section
+					id={`panel-${day.weekday}`}
+					data-weekday={day.weekday}
+					aria-labelledby={`day-${day.weekday}`}
+				>
+					<h2
+						class="day-heading"
+						class:today={day.isoDate !== null && day.isoDate === today}
+						id={`day-${day.weekday}`}
+					>
+						{#if day.date}<span class="day-number">{day.date.split(' ')[0]}</span>{/if}<span
+							>{weekdays[day.weekday - 1]()}</span
+						>{#if day.isoDate !== null && day.isoDate === today}<small>{m.calendar_today()}</small
+							>{/if}
+					</h2>
+					{#each data.events.filter((event) => event.weekday === day.weekday) as event (event.id)}
+						<EventCard {event} mine={event.isRegistered} headingLevel={3}>
+							<p
+								class:own={event.isRegistered}
+								class:full={event.registeredCount >= event.maxSlots}
+								class="capacity"
 							>
-						{:else}<div class="ticket-actions">
-								<form
-									method="POST"
-									action={`?/${event.state === 'registered' ? 'unregister' : 'register'}&week=${data.week}`}
-									use:enhance={animateRegistration}
+								{#if event.isRegistered}
+									{m.calendar_inside()}{:else if event.state === 'available'}
+									{m.display_free_slots({
+										count: formatNumber(event.maxSlots - event.registeredCount)
+									})}{/if}
+							</p>
+							<ul aria-label={m.calendar_participants()}>
+								{#each event.participants as participant (participant.participantLogin)}
+									<li>
+										<ParticipantBadge
+											login={participant.participantLogin}
+											mine={participant.participantLogin === data.user?.login}
+											absent={!participant.attended}
+										/>{#if !participant.attended}<span class="sr-only">{m.calendar_absent()}</span
+											>{/if}
+									</li>
+								{/each}
+							</ul>
+							{#if event.state === 'passed'}<p>{m.calendar_passed()}</p>
+							{:else if event.state === 'full'}<button type="button" disabled
+									>{m.calendar_full()}</button
 								>
-									<input type="hidden" name="id" value={event.id} />
-									<button
-										class:danger={event.state === 'registered'}
-										type="submit"
-										disabled={busy || (event.state === 'available' && weeklyLimitReached)}
-										aria-describedby={event.state === 'available' && weeklyLimitReached
-											? 'weekly-limit-reason'
-											: undefined}
-										>{event.state === 'registered'
-											? m.calendar_unregister()
-											: m.calendar_register()}</button
+							{:else}<div class="ticket-actions">
+									<form
+										method="POST"
+										action={`?/${event.state === 'registered' ? 'unregister' : 'register'}&week=${data.week}`}
+										use:enhance={animateRegistration}
 									>
-								</form>
-								{#if event.isRegistered && event.state !== 'passed'}
-									<Dialog
-										label={m.calendar_add()}
-										title={m.calendar_add()}
-										closeLabel={m.dialog_close()}
-										icon
-									>
-										<EventCard {event} orientation="horizontal" mine={false} />
-										{#if event.googleUrl}<p>
-												<a
-													class="button"
-													href={event.googleUrl}
-													target="_blank"
-													rel="external noopener noreferrer">{m.calendar_google()}</a
-												>
-											</p>{/if}
-										<a
-											class="button secondary"
-											href={resolve('/events/[id]/calendar.ics', { id: String(event.id) })}
-											>{m.calendar_ics()}</a
+										<input type="hidden" name="id" value={event.id} />
+										<button
+											class:danger={event.state === 'registered'}
+											type="submit"
+											disabled={busy || (event.state === 'available' && weeklyLimitReached)}
+											aria-describedby={event.state === 'available' && weeklyLimitReached
+												? 'weekly-limit-reason'
+												: undefined}
+											>{event.state === 'registered'
+												? m.calendar_unregister()
+												: m.calendar_register()}</button
 										>
-									</Dialog>
-								{/if}
-							</div>{/if}
-					</EventCard>
-				{:else}<p>{m.calendar_empty()}</p>{/each}
-			</section>
-		{/each}
-	</div>
+									</form>
+									{#if event.isRegistered && event.state !== 'passed'}
+										<Dialog
+											label={m.calendar_add()}
+											title={m.calendar_add()}
+											closeLabel={m.dialog_close()}
+											icon
+										>
+											<EventCard {event} orientation="horizontal" mine={false} />
+											{#if event.googleUrl}<p>
+													<a
+														class="button"
+														href={event.googleUrl}
+														target="_blank"
+														rel="external noopener noreferrer">{m.calendar_google()}</a
+													>
+												</p>{/if}
+											<a
+												class="button secondary"
+												href={resolve('/events/[id]/calendar.ics', { id: String(event.id) })}
+												>{m.calendar_ics()}</a
+											>
+										</Dialog>
+									{/if}
+								</div>{/if}
+						</EventCard>
+					{:else}<p>{m.calendar_empty()}</p>{/each}
+				</section>
+			{/each}
+		</div>
 
-	<footer class="live-status">● {m.calendar_live()}</footer>
-</div>
+		<footer class="live-status">● {m.calendar_live()}</footer>
+	</div>
+{/if}
 
 <style>
 	.calendar-period {

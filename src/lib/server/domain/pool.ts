@@ -185,7 +185,11 @@ export async function currentPoolEntries(
 	}));
 }
 
-export function poolStats(entries: readonly PoolEntry[], login?: string) {
+export function poolStats(
+	entries: readonly PoolEntry[],
+	login?: string,
+	poolStart: string | null = null
+) {
 	const selected = login === undefined ? entries : entries.filter((row) => row.login === login);
 	const summarize = (rows: readonly PoolEntry[]) => {
 		const attended = rows.filter((row) => row.attended);
@@ -209,7 +213,7 @@ export function poolStats(entries: readonly PoolEntry[], login?: string) {
 	const mostFrequent = <T extends string | number>(values: T[]): T | null => {
 		const counts = new Map<T, number>();
 		for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
-		// Stable tie-break: earliest day/month or morning before afternoon/evening.
+		// Stable tie-break: earliest day/week or morning before afternoon/evening.
 		return (
 			[...counts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))[0]?.[0] ??
 			null
@@ -240,6 +244,16 @@ export function poolStats(entries: readonly PoolEntry[], login?: string) {
 		badges.push('early_bird');
 	if (personal.byKind.filter((kind) => kind.count > 0).length >= 3) badges.push('all_rounder');
 	if (personal.taken >= 3 && personal.completed === personal.taken) badges.push('always_there');
+	const weekCounts =
+		poolStart && attended.length && attended.every((row) => row.eventDate !== null)
+			? Array.from({ length: 4 }, (_, index) => ({
+					week: index + 1,
+					count: attended.filter((row) => {
+						const day = (Date.parse(row.eventDate!) - Date.parse(poolStart)) / 86400000;
+						return Math.floor(day / 7) === index;
+					}).length
+				}))
+			: null;
 	return {
 		...personal,
 		favoriteWeekday: mostFrequent(
@@ -247,7 +261,11 @@ export function poolStats(entries: readonly PoolEntry[], login?: string) {
 		),
 		favoriteTimeBand:
 			timeBand === null ? null : (['morning', 'afternoon', 'evening'] as const)[timeBand],
-		busiestMonth: mostFrequent(dated.map((row) => row.eventDate!.slice(0, 7))),
+		weekCounts,
+		busiestWeek:
+			weekCounts
+				?.filter((week) => week.count > 0)
+				.sort((a, b) => b.count - a.count || a.week - b.week)[0]?.week ?? null,
 		firstShift: dated[0] ?? null,
 		lastShift: dated.at(-1) ?? null,
 		contributionPercent: totals.minutes ? (personal.minutes / totals.minutes) * 100 : 0,

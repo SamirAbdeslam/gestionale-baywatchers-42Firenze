@@ -30,7 +30,7 @@ async function setup(request: APIRequestContext, admin = false, dates = true) {
 	const savedRegistrations =
 		await client`SELECT r.* FROM registrations r JOIN events e ON r.event_id=e.id WHERE e.week=2`;
 	await client`DELETE FROM events WHERE week=2`;
-	await client`UPDATE settings SET active_week=2,max_events_per_user=0,pool_start=null,pool_end=null WHERE id=1`;
+	await client`UPDATE settings SET active_week=2,max_events_per_user=0,pool_start='2000-01-03',pool_end=null WHERE id=1`;
 	await client`INSERT INTO whitelist(login) VALUES (${name})`;
 	const [event] =
 		await client`INSERT INTO events(title,week,weekday,event_date,start_time,end_time,max_slots,compensation) VALUES (${'<img src=x onerror=alert(1)> ' + name},2,1,${dates ? '2099-01-05' : null},'09:00','11:00',3,200) RETURNING id,title`;
@@ -243,24 +243,20 @@ for (const { javaScriptEnabled, reducedMotion } of [
 		);
 	});
 test(
-	'omits Google links without a date and returns the explicit ICS conflict',
+	'hides the calendar without a pool and retains the explicit ICS conflict',
 	{ tag: '@shared-db' },
 	async ({ page }) => {
 		const fixture = await setup(page.request, false, false);
 		try {
+			await client`UPDATE settings SET pool_start=null,pool_end=null WHERE id=1`;
 			await page.goto('/calendar');
-			await page
-				.getByRole('article', { name: fixture.title, exact: true })
-				.getByRole('button', { name: 'Prendo il turno', exact: true })
-				.click();
-			const dialog = page.getByRole('dialog');
-			await expect(dialog).toBeVisible();
-			await expect(dialog.getByRole('link', { name: 'Google Calendar', exact: true })).toHaveCount(
-				0
-			);
+			await expect(page.locator('div.calendar')).toHaveCount(0);
 			await expect(
-				page.getByRole('region', { name: 'Il tuo prossimo turno', exact: true }).getByRole('link')
-			).toHaveCount(0);
+				page.getByText(
+					'Ehi, qui è tutto vuoto… la prossima piscina aspetta anche te! Fatti avanti con lo staff.',
+					{ exact: true }
+				)
+			).toBeVisible();
 			const response = await page.request.get(`/events/${fixture.id}/calendar.ics`);
 			expect(response.status()).toBe(409);
 			expect(await response.text()).toContain("Impossibile determinare la data dell'evento");
