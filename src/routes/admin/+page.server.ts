@@ -17,6 +17,7 @@ import {
 	deleteAllEvents,
 	listWeekEvents
 } from '#lib/server/domain/events.ts';
+import { getPoolPhase } from '#lib/server/domain/archive.ts';
 import { saveWeekAsTemplate } from '#lib/server/domain/templates.ts';
 import { formAction } from '#lib/server/form-action.ts';
 import {
@@ -42,6 +43,7 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 		const events = await listWeekEvents(db, locals.user, data.week, data.settings.poolStart);
 		return {
 			...data,
+			phase: await getPoolPhase(db, locals.user, new Date()),
 			kinds: EVENT_KINDS,
 			events: events.map((event) => ({
 				...event,

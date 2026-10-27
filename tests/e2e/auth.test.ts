@@ -35,7 +35,9 @@ async function snapshot() {
 		'settings',
 		'week_templates',
 		'template_events',
-		'whitelist'
+		'whitelist',
+		'pools',
+		'pool_entries'
 	])
 		result.push(
 			await client`SELECT md5(coalesce(json_agg(t ORDER BY id)::text,'')) AS hash FROM ${client(table)} t`

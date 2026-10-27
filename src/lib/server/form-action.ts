@@ -9,9 +9,9 @@ type Result = {
 	messages: Notice[];
 	status?: 400 | 403 | 404;
 };
-export async function formAction(
+export async function formAction<T>(
 	event: RequestEvent,
-	mutate: (...args: Parameters<typeof register>) => Promise<unknown>,
+	mutate: (...args: Parameters<typeof register>) => Promise<T>,
 	options: {
 		input?: unknown;
 		success?:
@@ -40,7 +40,7 @@ export async function formAction(
 				ok: true,
 				messages: [{ type: 'success' as const, key: options.success, params: {} }]
 			};
-		const { status, ...data } = result as Result;
+		const { status, ...data } = result as T & Result;
 		return status ? fail(status, data) : data;
 	} catch (cause) {
 		if (cause instanceof z.ZodError || (options.notFound && isHttpError(cause, 404))) {

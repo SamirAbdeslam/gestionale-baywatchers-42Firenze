@@ -4,8 +4,10 @@ import { addDays } from '../../src/lib/server/domain/dates.ts';
 import type { LegacyRows } from './normalize.ts';
 
 import { ACTION_TYPES } from '../../src/lib/server/domain/audit.ts';
-// Pool closure did not exist in the legacy app.
-const legacyActionTypes = ACTION_TYPES.filter((action) => action !== 'CLOSE_POOL');
+// Pool closure and archive import did not exist in the legacy app.
+const legacyActionTypes = ACTION_TYPES.filter(
+	(action) => action !== 'CLOSE_POOL' && action !== 'IMPORT_POOL'
+);
 export const LEGACY_DAYS = [
 	'Lunedì',
 	'Martedì',

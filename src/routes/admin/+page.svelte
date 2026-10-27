@@ -32,6 +32,12 @@
 
 <svelte:head><title>{m.nav_admin()} — {m.app_name()}</title></svelte:head>
 <h1 class="sr-only">{m.nav_admin()}</h1>
+<p><a href={resolve('/admin/archive')}>{m.archive_title()}</a></p>
+{#if data.phase === 'finished'}
+	<p role="status">
+		{m.archive_finished()} <a href={resolve('/admin/close-pool')}>{m.pool_close()}</a>
+	</p>
+{/if}
 <details class="settings-panel">
 	<summary>{m.admin_settings()} · W0{data.settings.activeWeek}</summary>
 	<div class="settings-grid">

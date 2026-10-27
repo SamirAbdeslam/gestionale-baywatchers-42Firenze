@@ -1,5 +1,11 @@
 export const adminRoutes = [
 	{
+		id: '/admin/archive',
+		url: '/admin/archive',
+		actions: ['preview', 'importCsv'],
+		implementedActions: ['preview', 'importCsv']
+	},
+	{
 		id: '/admin/close-pool',
 		url: '/admin/close-pool',
 		actions: ['closePool'],

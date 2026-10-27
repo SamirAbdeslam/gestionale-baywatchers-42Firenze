@@ -29,7 +29,7 @@ export function writeCsv(rows: (string | number | null)[][], lineEnding: '\n' | 
 }
 
 // Quoted fields may contain separators, escaped quotes and line breaks.
-function readCsv(text: string, separator: string) {
+export function readCsv(text: string, separator: string) {
 	const rows: { cells: string[]; line: number }[] = [];
 	let cells: string[] = [],
 		cell = '',
