@@ -278,14 +278,20 @@ it.each(['0x2', '1e0', ' 2 ', '2.0', '000002'])(
 	}
 );
 
-it('upserts the activation time of the activated week', async () => {
+it('records the activation time once and updates it only when the week changes', async () => {
+	const later = new Date('2026-10-21T10:00:00Z');
+	const read = async () =>
+		(await client`SELECT week, activated_at FROM week_activations ORDER BY week`).map((row) => [
+			row.week,
+			new Date(row.activated_at)
+		]);
 	await setActiveWeek(database, actor, { week: 2 }, info, now);
-	const later = new Date('2026-10-20T10:00:00Z');
 	await setActiveWeek(database, actor, { week: 2 }, info, later);
-	await setActiveWeek(database, actor, { week: 3 }, info, now);
-	const rows = await client`SELECT week, activated_at FROM week_activations ORDER BY week`;
-	expect(rows.map((row) => [row.week, new Date(row.activated_at)])).toEqual([
-		[2, later],
-		[3, now]
+	expect(await read()).toEqual([[2, now]]);
+	await setActiveWeek(database, actor, { week: 3 }, info, later);
+	await setActiveWeek(database, actor, { week: 2 }, info, new Date('2026-10-22T10:00:00Z'));
+	expect(await read()).toEqual([
+		[2, new Date('2026-10-22T10:00:00Z')],
+		[3, later]
 	]);
 });

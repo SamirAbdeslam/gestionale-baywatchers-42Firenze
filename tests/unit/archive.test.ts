@@ -99,6 +99,15 @@ it('round-trips export to import with identical rows', () => {
 	);
 });
 
+it('round-trips titles and logins that writeCsv protects against formulas', () => {
+	const rows = ['-Corso C', '=sum', '@home', '+1'].map((title) => entry({ title, login: '-x' }));
+	const result = parseArchiveCsv(new TextEncoder().encode(archiveCsv(rows)));
+	expect(result.skipped).toEqual([]);
+	expect(result.entries.map((row) => [row.login, row.title])).toEqual(
+		rows.map((row) => [row.login, row.title])
+	);
+});
+
 it('rejects a wrong header and oversized input', () => {
 	expect(() => parseArchiveCsv(new TextEncoder().encode('login,title\nx,y\n'))).toThrow();
 	expect(() =>

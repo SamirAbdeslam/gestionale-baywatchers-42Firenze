@@ -55,8 +55,8 @@ async function saveSettings(
 			.update(settings)
 			.set({ ...changes, updatedAt: now })
 			.where(eq(settings.id, 1));
-		// The archive records when each week was opened to registrations.
-		if (changes.activeWeek !== undefined)
+		// The archive records when each week was opened; saving the same week again keeps the first time.
+		if (changes.activeWeek !== undefined && changes.activeWeek !== before.activeWeek)
 			await tx
 				.insert(weekActivations)
 				.values({ week: changes.activeWeek, activatedAt: now })

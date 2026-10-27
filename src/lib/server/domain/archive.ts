@@ -126,7 +126,12 @@ export function parseArchiveCsv(bytes: Uint8Array) {
 		}
 		const parsed: Record<string, unknown> = {};
 		const invalid = ARCHIVE_COLUMNS.find((column, i) => {
-			const result = rowSchemas[column].safeParse(row.cells[i]);
+			// Inverse of the formula protection applied by writeCsv to text cells.
+			const cell =
+				column === 'login' || column === 'title'
+					? row.cells[i].replace(/^'(?=[=+\-@])/, '')
+					: row.cells[i];
+			const result = rowSchemas[column].safeParse(cell);
 			if (result.success) parsed[column] = result.data;
 			return !result.success;
 		});
