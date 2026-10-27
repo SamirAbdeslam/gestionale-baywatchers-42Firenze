@@ -131,7 +131,7 @@ it('counts all registrations but never discloses absent identities, including to
 		expect(json).not.toContain('participantLogin');
 	}
 });
-it('uses passed before full or available, including the exact end boundary', async () => {
+it('uses ongoing at the exact end and passed strictly afterwards', async () => {
 	const past = await event({ eventDate: '2000-01-01', maxSlots: 1 });
 	const exact = await event({ eventDate: '2026-10-21', endTime: '12:00' });
 	await database
@@ -139,7 +139,7 @@ it('uses passed before full or available, including the exact end boundary', asy
 		.values({ eventId: past.id, participantLogin: 'present' });
 	let data = await getDisplay(database, null, {}, '', now);
 	expect(data.events.find((row) => row.id === past.id)?.state).toBe('passed');
-	expect(data.events.find((row) => row.id === exact.id)?.state).toBe('available');
+	expect(data.events.find((row) => row.id === exact.id)?.state).toBe('ongoing');
 	data = await getDisplay(database, null, {}, '', new Date(now.getTime() + 1));
 	expect(data.events.find((row) => row.id === exact.id)?.state).toBe('passed');
 });

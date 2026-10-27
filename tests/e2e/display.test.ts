@@ -117,6 +117,26 @@ for (const javaScriptEnabled of [true, false])
 			}
 		);
 		test(
+			'shows ongoing and next labels with availability',
+			{ tag: '@shared-db' },
+			async ({ page }) => {
+				const fixture = await setup();
+				try {
+					await client`UPDATE events SET event_date=(CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Rome')::date, start_time='00:00', end_time='23:59:59' WHERE title=${fixture.title}`;
+					await page.goto('/display');
+					const ongoing = page.getByRole('article', { name: fixture.title, exact: true });
+					await expect(ongoing.getByText('In corso', { exact: true })).toBeVisible();
+					await expect(ongoing).toContainText('1 posti liberi');
+					const next = page.getByRole('article', { name: 'Full ' + fixture.name, exact: true });
+					await expect(next.getByText('Prossimo', { exact: true })).toBeVisible();
+					await expect(next).toContainText('Turno pieno');
+					await expect(page.getByText('Prossimo', { exact: true })).toHaveCount(1);
+				} finally {
+					await fixture.cleanup();
+				}
+			}
+		);
+		test(
 			'redirects using a native meta refresh with or without JavaScript',
 			{ tag: '@shared-db' },
 			async ({ page }) => {

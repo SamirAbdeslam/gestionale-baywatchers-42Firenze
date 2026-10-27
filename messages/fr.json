@@ -325,5 +325,7 @@
 	"pool_confirm_hint": "Seuls les éléments indiqués seront réinitialisés. Confirmez pour continuer.",
 	"pool_closed": "Piscine clôturée. Les éléments sélectionnés ont été réinitialisés.",
 	"pool_download_required": "Confirmez avoir téléchargé les données avant de continuer.",
-	"pool_nothing_selected": "Aucun élément sélectionné : aucune donnée n’a été modifiée."
+	"pool_nothing_selected": "Aucun élément sélectionné : aucune donnée n’a été modifiée.",
+	"display_ongoing": "En cours",
+	"display_next": "À venir"
 }

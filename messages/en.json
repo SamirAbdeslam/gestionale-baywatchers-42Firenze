@@ -325,5 +325,7 @@
 	"pool_confirm_hint": "Only the listed items will be reset. Confirm to continue.",
 	"pool_closed": "Pool closed. The selected items have been reset.",
 	"pool_download_required": "Confirm that you have downloaded the data before continuing.",
-	"pool_nothing_selected": "No items selected: no data has been changed."
+	"pool_nothing_selected": "No items selected: no data has been changed.",
+	"display_ongoing": "Ongoing",
+	"display_next": "Next"
 }

@@ -5,7 +5,7 @@ import type { db } from '../db/index.ts';
 import { events, settings } from '../db/schema.ts';
 import type { User } from '../auth/session.ts';
 import { matchesDisplayToken } from '../auth/guards.ts';
-import { concreteDate, isPassed, visibleWeekDays } from './dates.ts';
+import { concreteDate, isPassed, romeDateTime, visibleWeekDays } from './dates.ts';
 import { readWeekEvents } from './events.ts';
 import { m } from '#lib/paraglide/messages.js';
 
@@ -45,6 +45,38 @@ export async function advanceDisplayWeek(database: typeof db, now: Date) {
 		return updated;
 	});
 }
+export function displayStates(
+	candidates: {
+		id: number;
+		date: string | null;
+		startTime: string;
+		endTime: string;
+		freeSlots: number;
+	}[],
+	now: Date
+) {
+	const localNow = romeDateTime(now);
+	const started = (event: (typeof candidates)[number]) =>
+		event.date !== null &&
+		localNow >=
+			`${event.date}T${event.startTime.length === 5 ? `${event.startTime}:00` : event.startTime}.000`;
+	const next = candidates
+		.filter((event) => event.date !== null && !started(event))
+		.toSorted(
+			(a, b) => `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`) || a.id - b.id
+		)[0];
+	return candidates.map((event) =>
+		isPassed(event.date, event.endTime, now)
+			? 'passed'
+			: started(event)
+				? 'ongoing'
+				: event.id === next?.id
+					? 'next'
+					: event.freeSlots > 0
+						? 'available'
+						: 'full'
+	);
+}
 export async function getDisplay(
 	database: typeof db,
 	actor: User | null,
@@ -74,15 +106,15 @@ export async function getDisplay(
 			compensation: event.compensation,
 			freeSlots,
 			maxSlots: event.maxSlots,
-			state: isPassed(date, event.endTime, now) ? 'passed' : freeSlots > 0 ? 'available' : 'full',
 			participants: event.participants
 				.filter((participant) => participant.attended)
 				.map((participant) => participant.participantLogin)
 		};
 	});
+	const states = displayStates(visible, now);
 	return {
 		week: config.displayWeek,
 		days: visibleWeekDays(visible, config.poolStart, config.displayWeek),
-		events: visible
+		events: visible.map((event, index) => ({ ...event, state: states[index] }))
 	};
 }

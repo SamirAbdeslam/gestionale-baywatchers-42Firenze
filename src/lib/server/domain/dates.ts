@@ -51,13 +51,17 @@ const romeClock = new Intl.DateTimeFormat('en-CA', {
 	hourCycle: 'h23'
 });
 
-export function isPassed(date: string | null, endTime: string, now: Date): boolean {
-	if (date === null) return false;
-	isoDate.parse(date);
+export function romeDateTime(now: Date): string {
 	const p = Object.fromEntries(
 		romeClock.formatToParts(now).map(({ type, value }) => [type, value])
 	);
-	const localNow = `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}.${p.fractionalSecond}`;
+	return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}.${p.fractionalSecond}`;
+}
+
+export function isPassed(date: string | null, endTime: string, now: Date): boolean {
+	if (date === null) return false;
+	isoDate.parse(date);
+	const localNow = romeDateTime(now);
 	const end = endTime.length === 5 ? `${endTime}:00` : endTime;
 	z.iso.time().parse(end);
 	return localNow > `${date}T${end}.000`;

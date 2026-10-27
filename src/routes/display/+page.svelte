@@ -68,10 +68,15 @@
 						headingLevel={3}
 						orientation="vertical"
 					>
-						<p class:full={event.state === 'full'} class="availability">
+						{#if event.state === 'ongoing' || event.state === 'next'}
+							<p class="event-status" class:ongoing={event.state === 'ongoing'}>
+								{event.state === 'ongoing' ? m.display_ongoing() : m.display_next()}
+							</p>
+						{/if}
+						<p class:full={event.freeSlots <= 0 && event.state !== 'passed'} class="availability">
 							{event.state === 'passed'
 								? m.calendar_passed()
-								: event.state === 'full'
+								: event.freeSlots <= 0
 									? m.calendar_full()
 									: m.display_free_slots({
 											count: formatNumber(event.freeSlots)
@@ -133,6 +138,18 @@
 	}
 	section {
 		min-width: 0;
+	}
+	.event-status {
+		align-self: flex-start;
+		padding: var(--space-xs) var(--space-sm);
+		border-radius: var(--radius-pill);
+		font-weight: 700;
+		background: var(--color-raised);
+		color: var(--color-text);
+	}
+	.event-status.ongoing {
+		background: var(--color-ok-bg);
+		color: var(--color-ok);
 	}
 	.availability {
 		color: var(--color-ok);

@@ -325,5 +325,7 @@
 	"pool_confirm_hint": "Verranno azzerate solo le voci elencate. Confermare per continuare.",
 	"pool_closed": "Piscina chiusa. Le voci selezionate sono state azzerate.",
 	"pool_download_required": "Conferma di aver scaricato i dati prima di continuare.",
-	"pool_nothing_selected": "Nessuna voce selezionata: nessun dato è stato modificato."
+	"pool_nothing_selected": "Nessuna voce selezionata: nessun dato è stato modificato.",
+	"display_ongoing": "In corso",
+	"display_next": "Prossimo"
 }
