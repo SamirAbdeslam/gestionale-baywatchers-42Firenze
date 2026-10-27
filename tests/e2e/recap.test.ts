@@ -45,7 +45,11 @@ for (const options of [
 					await page.goto('/calendar');
 					await expect(page.getByText(/Ehi, qui è tutto vuoto/)).toBeVisible();
 					await expect(page.locator('div.calendar')).toHaveCount(0);
-					await client`UPDATE settings SET pool_start='2099-01-01',pool_end='2099-01-28' WHERE id=1`;
+					await client`UPDATE settings SET pool_start='2000-01-03',pool_end='2000-01-30',pool_closed_at=now(),pool_reopened=false WHERE id=1`;
+					await page.goto('/calendar');
+					await expect(page.getByText(/Ehi, qui è tutto vuoto/)).toBeVisible();
+					await expect(page.locator('div.calendar')).toHaveCount(0);
+					await client`UPDATE settings SET pool_start='2099-01-01',pool_end='2099-01-28',pool_closed_at=null WHERE id=1`;
 					await page.goto('/calendar');
 					await expect(
 						page.getByRole('heading', { name: 'La prossima piscina inizia tra', exact: true })
@@ -96,11 +100,19 @@ for (const options of [
 					await client`INSERT INTO pool_entries ${client(entries)}`;
 					await client`INSERT INTO pool_entries(pool_id,login,title,kind,event_date,duration_minutes,compensation,attended) VALUES (${pool.id},'secret_recap_other','Hidden other shift','exam','2004-10-19',60,100,true)`;
 					await page.goto('/calendar');
-					await page
-						.getByRole('link', { name: 'Durante l’attesa, guarda cosa hai fatto', exact: true })
-						.click();
-					await expect(page).toHaveURL(`/recap/${pool.id}`);
 					const recap = page.getByRole('region', { name: 'Il tuo riepilogo', exact: true });
+					await expect(page.getByText('Nell’attesa, guarda cosa hai fatto finora')).toBeVisible();
+					await expect(
+						recap.getByRole('heading', { name: 'La tua piscina ottobre 2004', exact: true })
+					).toBeVisible();
+					await expect(recap.getByRole('link')).toHaveCount(0);
+					await expect(page.locator('div.calendar')).toHaveCount(0);
+					await page.setViewportSize({ width: 360, height: 800 });
+					expect(
+						await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
+					).toBe(true);
+					await page.setViewportSize({ width: 1280, height: 720 });
+					await page.goto(`/recap/${pool.id}`);
 					await expect(
 						recap.getByRole('heading', { name: 'La tua piscina ottobre 2004', exact: true })
 					).toBeVisible();
@@ -143,7 +155,12 @@ for (const options of [
 							await recap.getByRole('button', { name: 'Avanti', exact: true }).click();
 						await expect(recap.getByRole('heading', { name: /La piscina insieme/ })).toBeVisible();
 					} else {
-						await expect(recap.locator('.screen')).toHaveCount(8);
+						await expect(recap.locator('.screen')).toHaveCount(11);
+						await expect(
+							recap.getByRole('heading', { name: 'In totale', exact: true })
+						).toBeVisible();
+						await expect(recap.getByText('Nottambulo')).toHaveCount(0);
+						await expect(recap.getByText('Debuttante').first()).toBeVisible();
 						await expect(recap.getByRole('navigation')).toHaveCount(0);
 						await expect(
 							recap.getByText('Settimana più intensa: 1', { exact: true })
@@ -161,10 +178,11 @@ for (const options of [
 					csvId = csv.id;
 					await client`INSERT INTO pool_entries(pool_id,login,title,kind,duration_minutes,compensation,attended) VALUES (${csv.id},${login},'Imported','exam',90,200,true),(${csv.id},${login},'Absent','rush',60,0,false)`;
 					await page.goto(`/recap/${csv.id}`);
-					await expect(recap.locator('[data-screen=attendance]')).toHaveCount(0);
+					await expect(recap.locator('[data-screen=attendance]')).toHaveCount(1);
 					await expect(recap.locator('[data-screen=rhythm]')).toHaveCount(0);
 					await expect(recap.locator('[data-screen=first-last]')).toHaveCount(0);
-					await expect(recap.locator('[data-screen=badges]')).toHaveCount(0);
+					await expect(recap.locator('[data-screen=badges]')).toContainText('Custode degli esami');
+					await expect(recap.locator('[data-screen=badges]')).not.toContainText('Nottambulo');
 					expect(
 						await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
 					).toBe(true);
@@ -180,6 +198,9 @@ for (const options of [
 					await expect(
 						recap.getByRole('heading', { name: 'La tua piscina gennaio 2001', exact: true })
 					).toBeVisible();
+					expect(
+						await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
+					).toBe(true);
 					await expect(page.locator('div.calendar')).toHaveCount(0);
 					await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start='2000-01-03',pool_end='2099-12-31' WHERE id=1`;
 					await page.goto('/calendar');

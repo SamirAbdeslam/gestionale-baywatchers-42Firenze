@@ -5,7 +5,14 @@ import type { db } from '../db/index.ts';
 import { events, poolEntries, pools, settings } from '../db/schema.ts';
 import { assertAdmin, assertUser } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
-import { currentPoolEntries, poolPhase, poolStats, type PoolEntry } from './pool.ts';
+import {
+	badgesOf,
+	currentPoolEntries,
+	poolPhase,
+	poolStats,
+	type Badge,
+	type PoolEntry
+} from './pool.ts';
 import { digits } from './dates.ts';
 import { m } from '#lib/paraglide/messages.js';
 
@@ -13,7 +20,7 @@ export function calendarView(phase: ReturnType<typeof poolPhase>) {
 	return {
 		countdown: phase === 'upcoming',
 		calendar: phase === 'open',
-		recap: phase === 'none' || phase === 'closed'
+		recap: phase !== 'open'
 	};
 }
 
@@ -36,6 +43,45 @@ export async function personalPools(database: typeof db, actor: User | null) {
 	)
 		choices.push({ id: 0, startDate: config.poolStart });
 	return choices.sort((a, b) => b.startDate.localeCompare(a.startDate));
+}
+
+// Sums every pool of the login (archive plus the current pool when not yet archived).
+async function overallStats(database: typeof db, actor: User, startDate: string) {
+	// Only pools where the login actually attended something count as done.
+	const choices = [];
+	const perPool: PoolEntry[][] = [];
+	for (const choice of await personalPools(database, actor)) {
+		const rows = choice.id
+			? await database.select().from(poolEntries).where(eq(poolEntries.poolId, choice.id))
+			: await currentPoolEntries(database, choice.startDate);
+		const own = rows.filter((row) => row.login === actor.login);
+		if (!own.some((row) => row.attended)) continue;
+		choices.push(choice);
+		perPool.push(own);
+	}
+	const all = perPool.flat();
+	const stats = poolStats(all, actor.login);
+	const earliest = choices.at(-1)?.startDate;
+	const badges = new Set<Badge>(
+		perPool.flatMap((rows, i) =>
+			// Weekly badges only make sense inside a single pool.
+			badgesOf(rows, { first: i === choices.length - 1, pools: choices.length })
+		)
+	);
+	for (const badge of badgesOf(all, { first: false, pools: choices.length }))
+		if (badge !== 'loyal') badges.add(badge);
+	const favorite = [...stats.byKind].sort((a, b) => b.count - a.count)[0];
+	return {
+		pools: choices.length,
+		taken: stats.taken,
+		completed: stats.completed,
+		hours: stats.hours,
+		altarian: stats.altarian,
+		byKind: stats.byKind,
+		favoriteKind: favorite?.count ? favorite.kind : null,
+		badges: [...badges],
+		isFirst: earliest === startDate
+	};
 }
 
 export async function getRecap(
@@ -64,6 +110,11 @@ export async function getRecap(
 			if (last) return getRecap(database, actor, String(last.id));
 		}
 		entries = await currentPoolEntries(database, startDate);
+		if (!whole && !entries.some((row) => row.login === actor.login)) {
+			// The current pool has nothing of this login: show the latest pool it took part in.
+			const last = (await personalPools(database, actor)).find((pool) => pool.id);
+			if (last) return getRecap(database, actor, String(last.id));
+		}
 		if (config.poolClosedAt && startDate && !entries.length) {
 			const [archive] = await database.select().from(pools).where(eq(pools.startDate, startDate));
 			if (archive) return getRecap(database, actor, String(archive.id), whole);
@@ -72,7 +123,16 @@ export async function getRecap(
 	if (!startDate || (!whole && !entries.some((row) => row.login === actor.login))) return null;
 	const stats = poolStats(entries, whole ? undefined : actor.login, exactStart);
 	// Whole-pool views expose aggregates only, including in serialized page data.
-	return { startDate, whole, stats: whole ? null : stats, totals: stats.totals };
+	if (whole) return { startDate, whole, stats: null, totals: stats.totals, overall: null };
+	const overall = await overallStats(database, actor, startDate);
+	const personal = {
+		...stats,
+		badges: badgesOf(
+			entries.filter((row) => row.login === actor.login),
+			{ first: overall.isFirst, pools: overall.pools }
+		)
+	};
+	return { startDate, whole, stats: personal, totals: stats.totals, overall };
 }
 
 export async function calendarPoolView(database: typeof db, actor: User | null, now: Date) {
@@ -88,11 +148,10 @@ export async function calendarPoolView(database: typeof db, actor: User | null, 
 		phase,
 		poolStart: config.poolStart ? new Date(`${config.poolStart}T00:00:00`).toISOString() : null,
 		now: now.getTime(),
-		lastRecap: last?.id ?? null,
 		recapData:
 			phase === 'closed'
 				? await getRecap(database, actor)
-				: phase === 'none' && last
+				: (phase === 'none' || phase === 'upcoming') && last
 					? await getRecap(database, actor, last.id ? String(last.id) : undefined)
 					: null
 	};

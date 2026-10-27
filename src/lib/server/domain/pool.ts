@@ -367,6 +367,54 @@ export async function currentPoolEntries(
 	}));
 }
 
+export type Badge =
+	| 'early_bird'
+	| 'all_rounder'
+	| 'always_there'
+	| 'night_owl'
+	| 'weekend_warrior'
+	| 'marathoner'
+	| 'loyal'
+	| 'exam_keeper'
+	| 'debutant'
+	| 'veteran'
+	| 'quick_reflexes';
+
+// Descriptive badges for one login. Badges that need missing data (times, week, activation) are skipped.
+export function badgesOf(
+	rows: readonly PoolEntry[],
+	context: { first: boolean; pools: number }
+): Badge[] {
+	const attended = rows.filter((row) => row.attended);
+	const starts = attended.flatMap((row) =>
+		row.startTime === null ? [] : [Number(row.startTime.slice(0, 2))]
+	);
+	const found: Badge[] = [];
+	if (starts.filter((hour) => hour < 12).length > attended.length / 2 && attended.length)
+		found.push('early_bird');
+	if (EVENT_KINDS.filter((kind) => attended.some((row) => row.kind === kind)).length >= 3)
+		found.push('all_rounder');
+	if (rows.length >= 3 && attended.length === rows.length) found.push('always_there');
+	if (starts.length && starts.filter((hour) => hour >= 18).length > starts.length / 2)
+		found.push('night_owl');
+	if (attended.some((row) => row.weekday === 6 || row.weekday === 7)) found.push('weekend_warrior');
+	if (attended.some((row) => row.durationMinutes >= 240)) found.push('marathoner');
+	if ([1, 2, 3, 4].every((week) => attended.some((row) => row.week === week))) found.push('loyal');
+	if (attended.filter((row) => row.kind === 'exam').length > attended.length / 2)
+		found.push('exam_keeper');
+	if (context.first) found.push('debutant');
+	if (context.pools >= 3) found.push('veteran');
+	if (
+		rows.some((row) => {
+			if (!row.registeredAt || !row.weekActivatedAt) return false;
+			const delay = row.registeredAt.getTime() - row.weekActivatedAt.getTime();
+			return delay >= 0 && delay <= 5 * 60000;
+		})
+	)
+		found.push('quick_reflexes');
+	return found;
+}
+
 export function poolStats(
 	entries: readonly PoolEntry[],
 	login?: string,
@@ -421,11 +469,7 @@ export function poolStats(
 				(a.startTime ?? '').localeCompare(b.startTime ?? '') ||
 				a.title.localeCompare(b.title)
 		);
-	const badges: ('early_bird' | 'all_rounder' | 'always_there')[] = [];
-	if (attended.length && times.filter((time) => time === 0).length > attended.length / 2)
-		badges.push('early_bird');
-	if (personal.byKind.filter((kind) => kind.count > 0).length >= 3) badges.push('all_rounder');
-	if (personal.taken >= 3 && personal.completed === personal.taken) badges.push('always_there');
+	const badges = badgesOf(selected, { first: false, pools: 1 });
 	// The stored week is exact; dates measured from the pool start are the fallback for old archives.
 	const weekOf = (row: PoolEntry, index: number) =>
 		attended.every((entry) => entry.week !== null)

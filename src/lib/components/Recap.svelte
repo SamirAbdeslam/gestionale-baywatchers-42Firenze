@@ -27,10 +27,17 @@
 							? ['rhythm']
 							: []),
 						...(stats?.firstShift ? ['first-last'] : []),
-						...(stats && stats.taken > 0 && stats.attendancePercent >= 80 ? ['attendance'] : []),
+						...(stats && stats.taken > 0 ? ['attendance'] : []),
 						...(totals?.minutes ? ['contribution'] : []),
 						...(stats?.badges.length ? ['badges'] : []),
-						'together'
+						'together',
+						...(recap.overall?.taken
+							? [
+									'overall',
+									...(recap.overall.favoriteKind ? ['overall-favorite'] : []),
+									...(recap.overall.badges.length ? ['overall-badges'] : [])
+								]
+							: [])
 					]
 	);
 	const labels = {
@@ -49,7 +56,15 @@
 	const badges = {
 		early_bird: m.recap_early_bird,
 		all_rounder: m.recap_all_rounder,
-		always_there: m.recap_always_there
+		always_there: m.recap_always_there,
+		night_owl: m.recap_night_owl,
+		weekend_warrior: m.recap_weekend_warrior,
+		marathoner: m.recap_marathoner,
+		loyal: m.recap_loyal,
+		exam_keeper: m.recap_exam_keeper,
+		debutant: m.recap_debutant,
+		veteran: m.recap_veteran,
+		quick_reflexes: m.recap_quick_reflexes
 	};
 	const number = (value: number, precision = 0) =>
 		formatNumber(Math.round(value * progress.current * 10 ** precision) / 10 ** precision);
@@ -232,6 +247,37 @@
 						</div>
 					</dl>
 					{@render kinds(totals.byKind)}
+				{:else if screen === 'overall' && recap.overall}
+					<h2>{m.recap_total()}</h2>
+					<dl class="numbers">
+						<div>
+							<dt>{m.recap_pools_done()}</dt>
+							<dd>{number(recap.overall.pools)}</dd>
+						</div>
+						<div>
+							<dt>{m.archive_completed()}</dt>
+							<dd>{number(recap.overall.completed)}</dd>
+						</div>
+						<div>
+							<dt>{m.reports_hours()}</dt>
+							<dd>{number(recap.overall.hours, 2)}</dd>
+						</div>
+						<div>
+							<dt>{m.reports_altarian()}</dt>
+							<dd>{number(recap.overall.altarian)} ₳</dd>
+						</div>
+					</dl>
+				{:else if screen === 'overall-favorite' && recap.overall?.favoriteKind}
+					<h2>{m.recap_total()} — {m.recap_favorite()}</h2>
+					<p class="highlight">{labels[recap.overall.favoriteKind]()}</p>
+					{@render kinds(recap.overall.byKind)}
+				{:else if screen === 'overall-badges' && recap.overall}
+					<h2>{m.recap_total()} — {m.recap_badges()}</h2>
+					<ul>
+						{#each recap.overall.badges as badge (badge)}<li class="highlight">
+								{badges[badge]()}
+							</li>{/each}
+					</ul>
 				{/if}
 			</section>
 		{/each}

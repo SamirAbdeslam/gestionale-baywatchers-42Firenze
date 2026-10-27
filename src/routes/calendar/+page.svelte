@@ -120,13 +120,7 @@
 <svelte:head><title>{m.nav_calendar()} — {m.app_name()}</title></svelte:head>
 {#if data.poolView.countdown && data.poolView.poolStart}
 	<PoolCountdown start={data.poolView.poolStart} now={data.poolView.now} />
-	{#if data.poolView.lastRecap}<p>
-			<a
-				class="button"
-				href={resolve('/recap/[poolId]', { poolId: String(data.poolView.lastRecap) })}
-				>{m.recap_wait_link()}</a
-			>
-		</p>{:else}<p>{m.recap_empty()}</p>{/if}
+	<p>{m.recap_waiting()}</p>
 {/if}
 {#if data.poolView.recap}<Recap recap={data.poolView.recapData} />{/if}
 {#if data.poolView.calendar}

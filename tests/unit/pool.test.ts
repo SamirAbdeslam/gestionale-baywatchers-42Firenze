@@ -1,5 +1,10 @@
 import { expect, it } from 'vitest';
-import { poolPhase, poolStats, type PoolEntry } from '../../src/lib/server/domain/pool.ts';
+import {
+	badgesOf,
+	poolPhase,
+	poolStats,
+	type PoolEntry
+} from '../../src/lib/server/domain/pool.ts';
 
 const config = { poolStart: '2026-10-19', poolEnd: '2026-11-15' };
 const event = { eventDate: null, week: 1, weekday: 1 };
@@ -147,7 +152,8 @@ it('handles imported rows without times, weekday, date or registration date with
 		weekday: null,
 		eventDate: null,
 		registeredAt: null,
-		durationMinutes: 90
+		durationMinutes: 90,
+		kind: 'rush'
 	});
 	expect(poolStats([partial])).toMatchObject({
 		hours: 1.5,
@@ -159,7 +165,7 @@ it('handles imported rows without times, weekday, date or registration date with
 		lastShift: null,
 		badges: []
 	});
-	expect(poolStats([partial, entry()])).toMatchObject({
+	expect(poolStats([partial, entry({ kind: 'rush' })])).toMatchObject({
 		favoriteWeekday: 1,
 		favoriteTimeBand: 'morning',
 		badges: []
@@ -191,7 +197,7 @@ it('awards descriptive badges only when their attendance and strict majority thr
 	const rows = [entry(), entry({ kind: 'rush' }), entry({ kind: 'cluster', startTime: '18:00' })];
 	expect(poolStats(rows).badges).toEqual(['early_bird', 'all_rounder', 'always_there']);
 	expect(poolStats(rows.slice(0, 2)).badges).toEqual(['early_bird']);
-	expect(poolStats([entry(), entry({ startTime: '12:00' })]).badges).toEqual([]);
+	expect(poolStats([entry(), entry({ startTime: '12:00', kind: 'rush' })]).badges).toEqual([]);
 	expect(poolStats([...rows, entry({ attended: false })]).badges).toEqual([
 		'early_bird',
 		'all_rounder'
@@ -200,6 +206,46 @@ it('awards descriptive badges only when their attendance and strict majority thr
 		poolStats([entry(), entry({ kind: 'rush' }), entry({ kind: 'cluster', attended: false })])
 			.badges
 	).toEqual(['early_bird']);
+});
+
+const ctx = { first: false, pools: 1 };
+it('awards the new descriptive badges and skips those needing missing data', () => {
+	const kinds = (rows: PoolEntry[]) => badgesOf(rows, ctx);
+	expect(kinds([entry({ startTime: '18:00', kind: 'rush' })])).toContain('night_owl');
+	expect(kinds([entry({ startTime: '17:59', kind: 'rush' })])).not.toContain('night_owl');
+	expect(kinds([entry({ startTime: null, kind: 'rush' })])).not.toContain('night_owl');
+	expect(kinds([entry({ weekday: 6 })])).toContain('weekend_warrior');
+	expect(kinds([entry({ weekday: 5 })])).not.toContain('weekend_warrior');
+	expect(kinds([entry({ durationMinutes: 240 })])).toContain('marathoner');
+	expect(kinds([entry({ durationMinutes: 239 })])).not.toContain('marathoner');
+	const weeks = [1, 2, 3, 4].map((week) => entry({ week }));
+	expect(kinds(weeks)).toContain('loyal');
+	expect(kinds(weeks.slice(1))).not.toContain('loyal');
+	expect(kinds([...weeks.slice(1), entry({ week: null })])).not.toContain('loyal');
+	expect(kinds([entry(), entry({ kind: 'rush' })])).not.toContain('exam_keeper');
+	expect(kinds([entry(), entry(), entry({ kind: 'rush' })])).toContain('exam_keeper');
+	expect(badgesOf([entry()], { first: true, pools: 1 })).toContain('debutant');
+	expect(badgesOf([entry()], { first: false, pools: 2 })).not.toContain('veteran');
+	expect(badgesOf([entry()], { first: false, pools: 3 })).toContain('veteran');
+});
+it('awards quick reflexes only for registrations 0 to 5 minutes after activation', () => {
+	const activated = new Date('2026-10-19T08:00:00Z');
+	const at = (seconds: number, weekActivatedAt: Date | null = activated) =>
+		badgesOf(
+			[
+				entry({
+					weekActivatedAt,
+					registeredAt: new Date(activated.getTime() + seconds * 1000),
+					attended: false
+				})
+			],
+			ctx
+		);
+	expect(at(0)).toContain('quick_reflexes');
+	expect(at(300)).toContain('quick_reflexes');
+	expect(at(301)).not.toContain('quick_reflexes');
+	expect(at(-1)).not.toContain('quick_reflexes');
+	expect(at(10, null)).not.toContain('quick_reflexes');
 });
 
 it('counts exact seven-day weeks from pool start across months and DST, with stable ties', () => {

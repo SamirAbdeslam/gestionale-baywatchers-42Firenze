@@ -73,8 +73,11 @@ it('serves anonymous aggregates to staff and skips unknown CSV weeks and times',
 		weekCounts: null,
 		favoriteTimeBand: null
 	});
+	expect(personal?.overall).toMatchObject({ pools: 1, completed: 1, favoriteKind: 'exam' });
+	expect(personal?.stats?.badges).toContain('debutant');
 	const whole = await getRecap(database, admin, String(pool.id), true);
 	expect(whole?.stats).toBeNull();
+	expect(whole?.overall).toBeNull();
 	expect(whole?.totals.taken).toBe(2);
 	expect(JSON.stringify(whole)).not.toContain('student');
 	expect(JSON.stringify(whole)).not.toContain('Secret title');
@@ -99,9 +102,14 @@ it('uses live data when finished, latest personal archive when unset, and avoids
 	});
 	await client`UPDATE settings SET pool_start='2026-10-19',pool_end='2026-11-15' WHERE id=1`;
 	const upcoming = await calendarPoolView(database, user, new Date('2026-10-18T12:00:00Z'));
-	// The prior archive is the wait link even when the new pool already has registrations.
-	expect(upcoming.lastRecap).toBe(pool.id);
-	expect(upcoming).toMatchObject({ phase: 'upcoming', calendar: false, countdown: true });
+	// The prior archive is shown under the countdown even when the new pool already has registrations.
+	expect(upcoming).toMatchObject({
+		phase: 'upcoming',
+		calendar: false,
+		countdown: true,
+		recap: true,
+		recapData: { startDate: pool.startDate }
+	});
 	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null WHERE id=1`;
 	const none = await calendarPoolView(database, user, new Date());
 	expect(none).toMatchObject({
