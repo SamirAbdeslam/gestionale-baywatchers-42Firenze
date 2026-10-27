@@ -2772,3 +2772,58 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Arresto dopo commit e push dei documenti e verifica della relativa CI. M26 non iniziato; M22 resta subordinato alla produzione.
+
+## 2026-10-27 — M27 — bloccato prima dell'implementazione
+
+**Fatto**
+- Letti le regole, le decisioni D8–D17, §21 e §22 e l'ultima sessione M25. Confermati branch `v2.0.0`, versione `2.2.0` e sola modifica iniziale a `docs/v2/PLAN.md`.
+- Committato il piano ricevuto senza modificarlo: `a4c4b10` — `docs(plan): add 2.3.0 pool lifecycle, full archive and final recap`.
+- Ispezionati il dominio piscina, la modifica delle date, i relativi chiamanti e i test esistenti. Nessuna modifica al codice, alle migrazioni o alla versione; nessun modulo successivo iniziato.
+
+**Controlli**
+- `git diff --check` verde prima del commit del piano. `ci:local` non eseguito: nessun test eseguito in questa sessione. Nessun push e nessuna run CI avviata.
+- Stato M27 aggiornato soltanto nella colonna Stato di §19; questa voce e lo stato di blocco restano locali, senza commit o push in assenza dei gate richiesti.
+
+**Domande / blocchi**
+- §22.1 definisce `pool_closed_at` e `pool_reopened`, ma non specifica la transizione quando lo staff modifica le date con `setPoolDates`. La funzione esistente (`src/lib/server/domain/settings.ts`) consente di sostituire direttamente inizio e fine; l'inizio identifica anche l'archivio (`start_date` unica).
+- Occorre decidere se cambiare l'inizio identifica una nuova piscina e azzera i due campi, oppure se i campi restano invariati e il passaggio a una nuova piscina richiede prima la Pulizia delle date. Nel primo caso una correzione dell'inizio potrebbe riaprire una piscina già chiusa; nel secondo una nuova piscina potrebbe restare chiusa o mantenere l'esenzione dalla chiusura automatica della precedente. Va precisato anche se la sola correzione della fine conserva sempre i due campi.
+- Arresto richiesto da §1.2 e dalle istruzioni della sessione: il punto cambia il comportamento del ciclo di vita e non viene risolto con un default implicito. Nessun problema di ambiente riscontrato; nessun metodo alternativo tentato.
+
+**Prossimo passo**
+- Chiarire la transizione di `setPoolDates` rispetto ai due campi, poi riprendere soltanto M27 con versione `2.3.0`, test e intera sequenza di gate richiesta. Verifiche manuali della nuova funzione non ancora applicabili: implementazione non iniziata.
+
+**Risoluzione autorizzata e ripresa**
+- Blocco risolto dalla precisazione di §22.1 "Date e stato": correggere la fine conserva lo stato; cambiare l'inizio a piscina chiusa è rifiutato con `pool_dates_locked`; impostare le date da `none` azzera `pool_closed_at` e `pool_reopened`. Ripresa autorizzata limitatamente a M27, inclusi i test di queste transizioni; M28 non viene iniziato. Stato M27: in corso.
+
+## 2026-10-27 — M27 — completato
+
+**Fatto**
+- Blocco sulle date risolto dalla precisazione autorizzata di §22.1 "Date e stato", inclusa in questo aggiornamento documentale. Correggere solo la fine conserva chiusura e riapertura; cambiare l'inizio a piscina chiusa restituisce `pool_dates_locked`; impostare le date da `none` azzera entrambi i campi. Inizio e fine sono obbligatori.
+- Versione `2.3.0`, migrazione dei campi `pool_closed_at` e `pool_reopened`, stati `none`, `upcoming`, `open`, `closed`. Chiusura automatica alla prima richiesta utile, protetta dal lock su `settings`, primo salvataggio e log con attore `SYSTEM`; riapertura manuale che impedisce ulteriori chiusure automatiche fino alla richiusura manuale.
+- Pannello Piscina in `/admin`: Chiudi/Riapri con conferma, Salva archivio indipendente e Pulizia abilitata solo a piscina chiusa. Riutilizzata la logica della vecchia pagina `/admin/close-pool`, eliminata e rimossa dalla matrice delle route.
+- Pulizia con caselle inizialmente vuote, scelta tra salvataggio prima della cancellazione e conservazione del salvataggio precedente. Verifica dell'esistenza dell'archivio e del numero di righe appena salvate nella stessa transazione delle cancellazioni; rollback e messaggio dedicato in caso di errore. Con zero iscrizioni correnti l'archivio esistente viene conservato. Template, log e archivio restano intatti.
+- Iscrizioni e disiscrizioni degli studenti rifiutate in `upcoming` e `closed`; correzioni delle presenze dello staff consentite. A piscina chiusa il calendario lascia posto al riepilogo, disponibile dall'archivio anche dopo la pulizia degli eventi.
+- Evento pubblico `pool_closed` privo di dati personali e popup per gli studenti, anche dal profilo e dalle pagine del riepilogo, riusando lo stream SSE già aperto dalla pagina. Conservata la notifica di attivazione settimana. Testi aggiornati in italiano, inglese e francese; nessuna dipendenza aggiunta.
+- Nuovi file limitati alla migrazione SQL e al relativo snapshot Drizzle. Adeguati fixture e test esistenti ai nuovi stati e alle date obbligatorie; i dati fittizi legacy continuano a escludere le azioni introdotte nella v2.
+
+**Commit**
+- `a4c4b10` — `docs(plan): add 2.3.0 pool lifecycle, full archive and final recap`.
+- `40d5006` — `chore: bump version to 2.3.0`.
+- `85cf5cb` — `feat(pool): add lifecycle controls and verified archive cleanup`.
+- Chiusura documentale con `docs: record M27 completion and validation`: precisazione sulle date, stato M27 in §19 e diario; codice invariato rispetto alla validazione.
+
+**Controlli**
+- `corepack pnpm ci:local`: exit 0 nell'esecuzione conclusiva; 302 unit, 348 integration, 193 e2e, totale 843 test, senza retry. Migrazioni, lint, check e build verdi; svelte-check senza errori o warning. `git diff --check` verde.
+- Test su stati e transizioni, estremi delle date e ora legale, chiusura automatica una sola volta con richieste concorrenti, riapertura che impedisce la chiusura automatica, regole di modifica delle date e rifiuto delle operazioni degli studenti.
+- Verificati salvataggi e correzioni indipendenti dalla chiusura, pulizia delle sole parti scelte, conservazione dell'archivio con zero iscrizioni, verifica del conteggio e rollback in caso di errori a salvataggio, cancellazioni, impostazioni o audit. Controllati privilegi anche nella transazione e validazione delle action senza fidarsi dei dialoghi.
+- E2e desktop e mobile del pannello con e senza JavaScript, popup per chiusura manuale e automatica, riapertura e seconda chiusura, una sola connessione SSE per pagina, riepilogo e assenza di overflow a 360 px. Suite esistente, movimento ridotto e regressioni WebKit verdi.
+- Durante lo sviluppo corretti fixture e chiamanti del vecchio flusso, tipi e sintassi del popup; eliminata una connessione SSE duplicata e usata la navigazione interna nel test del contatore per coordinarla con gli aggiornamenti realtime. Un tentativo mirato con due progetti condivisi avviati senza dipendenze ha prodotto interferenze tra fixture: esito non usato come validazione. Il passaggio completo conclusivo ha rispettato la sequenza del repository ed è verde; nessun timeout aumentato o retry aggiunto.
+- Push del codice completato su `v2.0.0`. CI [40519798744](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40519798744) su `85cf5cb`: verde. Review M27 pulita, senza correzioni, come confermato alla ripresa.
+- Ripresa finale limitata ai documenti: `ci:local` non rilanciato. La precisazione di §22.1 viene committata insieme al diario e allo stato di completamento richiesto.
+
+**Domande / blocchi**
+- Blocco iniziale risolto; nessun dubbio o blocco aperto per M27.
+- Da verificare a mano: resa del pannello e dei popup sui dispositivi reali, rilettura dei testi inglesi e francesi, salvataggio delle correzioni e pulizia con entrambe le scelte su una copia dei dati reali. Le verifiche automatiche hanno usato dati fittizi; nessuna validazione su un deploy di produzione.
+
+**Prossimo passo**
+- Arresto dopo commit e push dei soli documenti. M28 non iniziato: formato CSV standard e relativo download restano in §22.3; riepilogo definitivo in M29 e QR in M26. Nessun branch nuovo, worktree, tag o push forzato; nessun volume cancellato.

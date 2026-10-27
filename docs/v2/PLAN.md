@@ -1070,7 +1070,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M24 Archivio staff e import piscine vecchie | completato (85fe2b4) |
 | M25 Riepilogo animato e pagina di attesa | completato (bc903d3) |
 | M26 Iscrizioni con QR | da fare (dopo M29) |
-| M27 Ciclo di vita e pannello piscina | da fare |
+| M27 Ciclo di vita e pannello piscina | completato (85cf5cb) |
 | M28 Archivio completo e CSV standard | da fare |
 | M29 Riepilogo definitivo | da fare |
 
@@ -1273,6 +1273,10 @@ Stati della piscina corrente, calcolati in `domain/pool.ts`:
 - **Chiusura manuale anticipata**: pulsante "Chiudi piscina" in admin, stessa funzione (log con l'admin come attore).
 - **Riapertura**: pulsante "Riapri piscina": `pool_closed_at = null`, `pool_reopened = true`. Finché `pool_reopened` è true la chiusura automatica non scatta; si richiude solo a mano. Log `REOPEN_POOL`.
 - Colonne nuove in `settings`: `pool_closed_at timestamptz`, `pool_reopened boolean NOT NULL DEFAULT false`.
+- **Date e stato** (`setPoolDates`):
+  - correggere solo la **fine** è sempre possibile e **non** tocca `pool_closed_at` né `pool_reopened`: una piscina chiusa resta chiusa finché lo staff non la riapre; una piscina riaperta resta aperta;
+  - cambiare l'**inizio** è possibile solo se la piscina non è `closed`: a piscina chiusa la data di inizio identifica l'archivio, quindi si rifiuta con `pool_dates_locked` ("Per cambiare l'inizio, prima fai la pulizia delle date");
+  - impostare le date partendo da `none` (dopo la pulizia) parte sempre con `pool_closed_at = null` e `pool_reopened = false`.
 - **Popup**: "Settimana N attivata" resta come oggi al cambio di settimana. Alla chiusura (automatica o manuale) gli studenti con il sito aperto ricevono il popup "La piscina è finita!" e vedono il riepilogo. Evento SSE nuovo `pool_closed` (pubblico, senza dati personali).
 - **Avviso staff** in `/admin` a piscina chiusa: solo "La piscina è finita".
 
