@@ -2893,3 +2893,33 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Domande / blocchi**
 - Nessun dubbio o blocco aperto. Nessuna verifica in produzione; il ritorno a Flask descritto nel runbook non è stato eseguito.
+
+
+## 2026-10-28 — M26 — completato
+
+**Fatto**
+- `0eee30d` — `feat(enrollment): add QR enrollment and week preferences`: apertura e chiusura delle iscrizioni dalla whitelist, QR generato lato server con la sola dipendenza approvata `uqr` (`0.1.3`), pagina pubblica `/join/[code]` e lista d'attesa con scelta delle settimane. Apertura consentita solo con entrambe le date della piscina impostate; chiusura che invalida il vecchio QR e riapertura con un codice nuovo.
+- Migrazione `0006`: `settings.enrollment_code`, tabella `enrollment_requests` con login univoco e settimane obbligatorie da 1 a 4, colonna nullable `whitelist.weeks` per conservare la scelta dopo l'approvazione. Le aggiunte manuali restano disponibili e senza settimane.
+- Approva/Rifiuta sulla singola richiesta, selezione multipla e Seleziona tutti con approvazione o rifiuto in blocco. Ogni invio è transazionale, con audit per login e rollback in caso di errore. La selezione globale riguarda i login presenti nel form visualizzato: reinviare una vecchia selezione non coinvolge richieste arrivate dopo.
+- Contatore delle richieste ricevute per la piscina corrente aggiornato tramite lo stream SSE esistente; approvare o rifiutare non diminuisce il contatore. Pulizia con casella whitelist che elimina anche le richieste in attesa nella stessa transazione e ne conserva lo snapshot nell'audit.
+- Ritorno al link di iscrizione dopo login OAuth o di sviluppo, con validazione dell'origine anche al callback. Nuove route nella matrice E2E, `/join/[code]` pubblica nella guard, testi e nuovi messaggi di audit in italiano, inglese e francese.
+- Review del codice pulita, senza correzioni, confermata da Ismail alla ripresa. Aggiornata solo la colonna Stato di M26 in §19; branch `v2.0.0`, versione `2.3.0`.
+
+**Decisioni di Ismail del 28/10**
+- Codice salvato in chiaro in `settings.enrollment_code`, senza hash: ogni admin può rimostrare lo stesso QR finché le iscrizioni restano aperte.
+- Mostra QR apre un `<dialog>` a tutto schermo chiudibile solo con la X; Esc e clic esterno vengono ignorati. Senza JavaScript si usa `/admin/enroll`, con la X che torna alla whitelist.
+- Settimane 1–4 informative, almeno una obbligatoria nella richiesta: non limitano le iscrizioni ai turni. Riquadro Settimane con conteggi e login etichettati `approved`/`waiting`, tradotti nella lingua dell'interfaccia; esclusi dai conteggi i login aggiunti a mano senza settimane.
+- Approvazione e rifiuto anche in blocco, con selezione multipla e Seleziona tutti; l'approvazione trasferisce alla whitelist le settimane richieste.
+
+**Controlli**
+- `pnpm ci:local` sul codice definitivo: exit 0; 304 unit, 374 integration, 199 E2E, totale 877 test, senza retry. Migrazioni, lint, check e build verdi; svelte-check senza errori o warning.
+- Integration su apertura, chiusura, rotazione e codice errato, richieste duplicate e concorrenti, settimane mancanti o non valide, approvazione e rifiuto in blocco, conteggi, privilegi e rollback. Verificata anche la pulizia delle richieste con la casella whitelist.
+- E2E del flusso completo su desktop e mobile, con e senza JavaScript: ritorno dal login di sviluppo, scelta delle settimane, QR, contatore, revisione e invalidazione del vecchio link. Verificati dialogo a tutto schermo, Esc e clic esterno ignorati, reinvio di una vecchia selezione e assenza di overflow a 360 px. Test unitari del passaggio OAuth con provider simulato e dei redirect verso siti esterni rifiutati; regressioni WebKit verdi.
+- Push del codice completato; CI [40662985736](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40662985736) su `0eee30d`: verde, come verificato da Ismail alla ripresa. Review pulita confermata nella stessa ripresa.
+- Chiusura limitata ai documenti con `docs: record M26 completion and validation`: `ci:local` non rilanciato, come richiesto; codice invariato rispetto alla validazione.
+
+**Domande / blocchi**
+- Nessun dubbio o blocco aperto. Restano da verificare a mano scansione del QR proiettato su dispositivi reali, login OAuth 42 reale e testi inglesi/francesi. Nessuna verifica in produzione; i test hanno usato dati fittizi e login di sviluppo o provider simulato.
+
+**Prossimo passo**
+- Arresto dopo commit e push dei soli documenti. Nessun altro modulo avviato.

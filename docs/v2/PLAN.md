@@ -1069,7 +1069,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M23 Archivio alla chiusura | completato (0187ced) |
 | M24 Archivio staff e import piscine vecchie | completato (85fe2b4) |
 | M25 Riepilogo animato e pagina di attesa | completato (bc903d3) |
-| M26 Iscrizioni con QR | da fare (dopo M29) |
+| M26 Iscrizioni con QR | completato (0eee30d) |
 | M27 Ciclo di vita e pannello piscina | completato (85cf5cb) |
 | M28 Archivio completo e CSV standard | completato (84d524f) |
 | M29 Riepilogo definitivo | completato (2336180) |
