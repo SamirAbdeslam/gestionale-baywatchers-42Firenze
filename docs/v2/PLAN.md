@@ -2,7 +2,7 @@
 
 > Documento di riferimento unico per chi esegue il refactor (agent esterno o persona).
 > Leggilo **tutto** a inizio di ogni sessione, poi leggi l'ultima voce di `docs/v2/SESSIONS.md`.
-> Branch di lavoro: `v2.0.0`. Versione in sviluppo: `2.3.0` (SemVer, §20, §21, §22). Ultima release Flask: tag `v1.5.24` su `main`.
+> Branch di lavoro: `v2.0.0`. Versione attuale: `2.3.1` (SemVer, §1.3, §20, §21, §22). Ultima release Flask: tag `v1.5.24` su `main`.
 
 ---
 
@@ -59,6 +59,7 @@ Fermati, scrivi il problema in `SESSIONS.md` e chiedi a Ismail, **senza** cercar
 - **Push**: solo a modulo completato e con tutti i controlli locali verdi (§14.3). Dopo il push verifica la CI (`gh run watch --exit-status`). Se è rossa, correggi prima di iniziare il modulo successivo.
 - Mai `git push --force`, mai riscrivere la storia già pubblicata.
 - Non toccare `main` e il tag `v1.5.24`.
+- **Versioni (SemVer) e tag**: le funzioni nuove fanno salire il numero di mezzo (`2.4.0`), un gruppo di sole correzioni l'ultimo (`2.3.2`), i cambi incompatibili il primo. Il commit `chore: bump version to X.Y.Z` (solo `package.json`) si fa **alla fine** della versione, non all'inizio; poi un tag annotato `vX.Y.Z` su quel commit, con la descrizione delle modifiche, creato solo su richiesta di Ismail. Tag esistenti: `v2.0.0` (fino a M17), `v2.1.0`, `v2.2.0`, `v2.3.0`, `v2.3.1`.
 
 ### 1.4 Codice
 - La cartella `legacy/` è **sola lettura**: serve come riferimento. Si cancella solo nel modulo M15 e solo dopo conferma scritta di Ismail.
