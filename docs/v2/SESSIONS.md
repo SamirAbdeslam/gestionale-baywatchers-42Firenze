@@ -2923,3 +2923,29 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Arresto dopo commit e push dei soli documenti. Nessun altro modulo avviato.
+
+
+## 2026-10-28 — Correzioni dell'audit finale (§23 punto 5) — completate
+
+**Fatto**
+- Applicate le sette correzioni approvate da Ismail il 28/10, sul branch `v2.0.0`, versione `2.3.0`. Commit `0af5820` — `fix(audit): harden pool closure, registration, login and recaps`.
+- Salvataggio dell'archivio in blocchi da 1000 righe nella stessa transazione, per evitare il limite dei parametri di postgres.js. La chiusura automatica nell'hook è protetta da try/catch: registra soltanto `Auto close failed`, senza dettagli personali o SQL, e lascia proseguire la richiesta.
+- Iscrizione degli studenti a settimane successive a quella attiva rifiutata con `error_event_not_found` e stato 404, prima di qualsiasi scrittura. Conservati i privilegi dello staff.
+- Zona nginx OAuth separata per `/auth/login` e `/auth/callback`: 60 richieste/minuto, burst 60 senza ritardo; `/auth/dev` conserva il limite precedente. Token e profilo 42 ritentati soltanto sui 429, al massimo due volte: `Retry-After` in secondi fino a 3, altrimenti 1 secondo; errori finali invariati.
+- Nel totale personale, righe archiviate e correnti filtrate per login in SQL; verifica dell'esistenza di iscrizioni correnti con query su `registrations` e `limit 1`. Se la data iniziale coincide con la piscina corrente, il totale usa le righe vive anche con un archivio già salvato, includendo le correzioni delle presenze. Conservati i dati collettivi necessari al capitolo della singola piscina e alla percentuale di contributo.
+- Eliminato il calcolo duplicato dei badge da `poolStats`, con test spostati su `badgesOf`. Eliminato `getPoolPhase`: il load di `/admin` riusa settings già letti e considera gli eventi di tutte le settimane.
+- Nessuna dipendenza o stringa d'interfaccia nuova; piano e versione invariati.
+
+**Controlli**
+- `corepack pnpm ci:local` sul codice definitivo: exit 0; 309 unit, 377 integration, 199 E2E, totale 885 test, senza retry. Migrazioni, lint, check e build verdi; svelte-check senza errori o warning; `git diff --check` verde.
+- Regressioni: chiusura automatica con 4203 iscrizioni e conteggi dell'archivio verificati; richiesta HTTP completata anche con chiusura automatica che lancia, senza dettagli privati nel log; settimana 2 con activeWeek 1 rifiutata senza iscrizioni, audit o eventi realtime.
+- Token e profilo verificati con fetch simulato: 429 seguito da 200, tetto di 3 secondi, attesa predefinita di 1 secondo e tre 429 con errore finale invariato; verificato anche il corpo del token al secondo tentativo. Riepilogo verificato dopo chiusura e correzione della presenza, senza risalvare; fase admin verificata anche con evento fuori dalla settimana visualizzata.
+- Nei passaggi locali iniziali corretti un riferimento TypeScript oscurato da una variabile locale e una fixture E2E che iscriveva alla settimana 4 senza attivarla. La fixture ora attiva esplicitamente la settimana e ripristina le impostazioni al termine; nessun timeout aumentato o retry aggiunto. Il successivo gate completo è verde.
+- Push di `0af5820` completato; CI [40678008373](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40678008373): tutti e sei i job verdi, `gh run watch 40678008373 --exit-status` exit 0, senza rilanci remoti.
+- Chiusura documentale con `docs: record final audit fixes`; nessuna modifica al codice dopo la validazione.
+
+**Domande / blocchi**
+- Nessun dubbio o blocco aperto. Restano da verificare con dispositivi e account reali la scansione del QR e almeno 30 login OAuth simultanei dallo stesso IP: i test OAuth usano un provider simulato. Nessuna verifica in produzione.
+
+**Prossimo passo**
+- Arresto dopo commit e push del diario. Nessun branch nuovo, worktree, tag, push forzato o volume cancellato.
