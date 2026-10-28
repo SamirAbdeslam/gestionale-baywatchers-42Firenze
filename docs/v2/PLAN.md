@@ -2,7 +2,7 @@
 
 > Documento di riferimento unico per chi esegue il refactor (agent esterno o persona).
 > Leggilo **tutto** a inizio di ogni sessione, poi leggi l'ultima voce di `docs/v2/SESSIONS.md`.
-> Branch di lavoro: `v2.0.0`. Versione attuale: `2.3.1` (SemVer, §1.3, §20, §21, §22). Ultima release Flask: tag `v1.5.24` su `main`.
+> Branch di lavoro: `v2` (fino al 28/10/2026 si chiamava `v2.0.0`). Versione attuale: `2.3.1` (SemVer, §1.3, §20, §21, §22). Ultima release Flask: tag `v1.5.24` su `main`.
 
 ---
 
@@ -52,7 +52,7 @@ Fermati, scrivi il problema in `SESSIONS.md` e chiedi a Ismail, **senza** cercar
 - la CI resta rossa dopo due tentativi di correzione sullo stesso problema.
 
 ### 1.3 Git
-- Lavora sempre sul branch `v2.0.0`. Non creare altri branch, worktree o tag senza richiesta esplicita.
+- Lavora sempre sul branch `v2`. Non creare altri branch, worktree o tag senza richiesta esplicita.
 - Commit piccoli, in inglese, formato Conventional Commits (`feat(registrations): ...`, `fix(auth): ...`, `test: ...`, `chore(ci): ...`).
 - Usa l'identità git già configurata nel repo. Non modificarla.
 - **Vietato** inserire nei commit, nelle PR o nei commenti qualunque riferimento a Claude, AI, assistenti o generatori (niente `Co-Authored-By`, niente footer "Generated with ...").
@@ -743,7 +743,7 @@ Nessuna soglia numerica. Ogni funzione in `src/lib/server/domain` ha almeno un t
 ## 14. CI
 
 ### 14.1 Workflow `.github/workflows/ci.yml`
-Trigger: `push` su `v2.0.0` e `main`, `pull_request` verso `main`. Concurrency per branch con `cancel-in-progress: true`. La CI ignora `legacy/` (nessun job Python).
+Trigger: `push` su `v2` e `main`, `pull_request` verso `main`. Concurrency per branch con `cancel-in-progress: true`. La CI ignora `legacy/` (nessun job Python).
 
 Job (tutti su `ubuntu-latest`, Node da `.nvmrc`, pnpm con cache):
 1. `lint` — `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm check` (svelte-check + tsc).
@@ -1328,7 +1328,7 @@ In `/admin` un pannello "Piscina" con tre pulsanti separati. Sostituisce la pagi
 
 ## 23. Controllo finale prima della produzione
 
-Si fa dopo M26, solo sulla v2 (branch `v2.0.0`): il branch principale con l'app Python non si tocca e le sue segnalazioni non si controllano. Ogni passo parte solo con il via di Ismail, perché alcuni consumano molti token. Ordine, dal più economico:
+Si fa dopo M26, solo sulla v2 (branch `v2`): il branch principale con l'app Python non si tocca e le sue segnalazioni non si controllano. Ogni passo parte solo con il via di Ismail, perché alcuni consumano molti token. Ordine, dal più economico:
 
 1. `pnpm audit` sulle dipendenze (niente `osv-scanner` né `pip-audit`).
 2. ponytail-audit sull'intero repository.

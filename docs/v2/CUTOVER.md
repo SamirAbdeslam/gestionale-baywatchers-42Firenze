@@ -4,7 +4,7 @@ Passaggio dal Flask legacy all'app v2. Ismail ha deciso, il 26 ottobre 2026, che
 vuoto**: nessun import di `calendar.db` e nessun dump. Il passaggio dei dati dal vecchio sito, se servirà, si deciderà
 più avanti. Gli script `legacy:import` e `legacy:verify` restano nel repository ma non fanno parte di questo runbook.
 
-I comandi si eseguono nella cartella del repository, sul branch `v2.0.0`.
+I comandi si eseguono nella cartella del repository, sul branch `v2`.
 
 ## 1. Preparazione
 
