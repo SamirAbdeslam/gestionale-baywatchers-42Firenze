@@ -16,7 +16,7 @@ afterEach(() => {
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 });
-async function open(role: 'user' | 'admin' | null = null, query = '', aborted = false) {
+async function open(role: 'user' | 'admin' | null = null, query = '', aborted = false, id = 1) {
 	const controller = new AbortController();
 	controllers.push(controller);
 	if (aborted) controller.abort();
@@ -24,7 +24,7 @@ async function open(role: 'user' | 'admin' | null = null, query = '', aborted = 
 	const response = await GET({
 		request: new Request(url, { signal: controller.signal }),
 		url,
-		locals: { user: role ? ({ role } as User) : null }
+		locals: { user: role ? ({ id, role } as User) : null }
 	} as Parameters<typeof GET>[0]);
 	return { response, reader: response.body!.getReader(), controller };
 }
@@ -127,7 +127,9 @@ it('does not subscribe or schedule a heartbeat for an already aborted request', 
 	expect(vi.getTimerCount()).toBe(0);
 });
 it('supports more than ten simultaneous connections and closes them independently', async () => {
-	const streams = await Promise.all(Array.from({ length: 20 }, () => open()));
+	const streams = await Promise.all(
+		Array.from({ length: 20 }, (_, id) => open('user', '', false, id))
+	);
 	for (const stream of streams) await decode(stream.reader);
 	await streams[0].reader.cancel();
 	publish({ type: 'week_activated', week: 4 });
@@ -135,17 +137,56 @@ it('supports more than ten simultaneous connections and closes them independentl
 	for (const stream of streams.slice(1)) await stream.reader.cancel();
 	expect(vi.getTimerCount()).toBe(0);
 });
-it('rejects the 501st connection without adding a listener and admits one after cleanup', async () => {
-	const streams = await Promise.all(Array.from({ length: 500 }, () => open()));
+it.each(['user', 'admin', null] as const)(
+	'limits each client to six streams and releases slots after cancel and abort (%s)',
+	async (role) => {
+		const query = role === null ? '?token=tv' : '';
+		expectedToken = 'tv';
+		const streams = await Promise.all(Array.from({ length: 6 }, () => open(role, query)));
+		await expect(open(role, query)).rejects.toMatchObject({ status: 429 });
+		expect(listenerCount()).toBe(6);
+		expect(vi.getTimerCount()).toBe(6);
+		const other = await open('user', '', false, 2);
+		expect(other.response.status).toBe(200);
+		await streams[0].reader.cancel();
+		streams[0].controller.abort();
+		streams[1].controller.abort();
+		const replacements = await Promise.all([open(role, query), open(role, query)]);
+		await expect(open(role, query)).rejects.toMatchObject({ status: 429 });
+		for (const stream of [...streams.slice(2), ...replacements, other])
+			await stream.reader.cancel();
+		expect(listenerCount()).toBe(0);
+		expect(vi.getTimerCount()).toBe(0);
+	}
+);
+it('shares the display quota across anonymous and authenticated display streams', async () => {
+	expectedToken = 'tv';
+	for (let id = 0; id < 6; id++) await open('user', '?token=tv', false, id);
+	await expect(open(null, '?token=tv')).rejects.toMatchObject({ status: 429 });
+	await expect(open('admin', '?token=tv')).rejects.toMatchObject({ status: 429 });
+	expect((await open('user')).response.status).toBe(200);
+});
+it('reserves the last 20 slots for admins and display and enforces the global cap', async () => {
+	const streams = await Promise.all(
+		Array.from({ length: 480 }, (_, id) => open('user', '', false, id))
+	);
+	await expect(open('user', '', false, 480)).rejects.toMatchObject({ status: 503 });
+	const display = await open(null, '?token=');
+	expect(display.response.status).toBe(200);
+	const admins = await Promise.all(
+		Array.from({ length: 19 }, (_, id) => open('admin', '', false, 500 + id))
+	);
+	expect(admins.every(({ response }) => response.status === 200)).toBe(true);
 	expect(listenerCount()).toBe(500);
-	await expect(open()).rejects.toMatchObject({ status: 503 });
+	await expect(open('admin', '', false, 600)).rejects.toMatchObject({ status: 503 });
+	await expect(open(null, '?token=')).rejects.toMatchObject({ status: 503 });
 	expect(listenerCount()).toBe(500);
 	expect(vi.getTimerCount()).toBe(500);
 	await streams[0].reader.cancel();
-	const replacement = await open();
+	const replacement = await open('admin', '', false, 600);
 	expect(replacement.response.status).toBe(200);
-	await replacement.reader.cancel();
-	for (const stream of streams.slice(1)) await stream.reader.cancel();
+	for (const stream of [...streams.slice(1), ...admins, display, replacement])
+		await stream.reader.cancel();
 	expect(listenerCount()).toBe(0);
 	expect(vi.getTimerCount()).toBe(0);
 });

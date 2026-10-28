@@ -131,11 +131,15 @@ for (const javaScriptEnabled of [true, false])
 						await client`SELECT * FROM action_logs WHERE action_type='WHITELIST_REJECT' AND actor_login=${adminName}`
 					).toHaveLength(2);
 					await page.getByRole('button', { name: 'Chiudi iscrizioni', exact: true }).click();
+					await expect(
+						page.getByRole('button', { name: 'Apri iscrizioni', exact: true })
+					).toBeVisible();
 					await studentPage.goto(joinUrl!);
 					await expect(
 						studentPage.getByRole('heading', { name: 'Le iscrizioni sono chiuse' })
 					).toBeVisible();
 					await page.getByRole('button', { name: 'Apri iscrizioni', exact: true }).click();
+					await expect(show).toBeVisible();
 					await page.getByRole('link', { name: 'Mostra QR', exact: true }).click();
 					expect(await qr.locator('a.join-url').getAttribute('href')).not.toBe(joinUrl);
 					await page

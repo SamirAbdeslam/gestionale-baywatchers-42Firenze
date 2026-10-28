@@ -32,9 +32,11 @@ all'avvio e non parte se manca un valore obbligatorio.
   cookie e OAuth. Quando cambia, ricostruire.
 - `FT_CLIENT_ID` e `FT_CLIENT_SECRET` vengono dall'app OAuth 42. Nell'app 42 va registrato il redirect URI
   `<ORIGIN>/auth/callback`.
-- `AUTH_DEV_LOGIN=true` abilita il login di sviluppo su `/auth/dev`, ammesso solo con `ORIGIN` su `localhost` o
-  `127.0.0.1`.
-- `DISPLAY_TOKEN`, se impostato, rende `/display` accessibile solo con `?token=<valore>`.
+- `AUTH_DEV_LOGIN` è `false` per impostazione predefinita. Impostarlo a `true` solo per lo sviluppo locale:
+  abilita `/auth/dev` con `ORIGIN` su `localhost` o `127.0.0.1`.
+- `DISPLAY_TOKEN` è obbligatorio fuori da `localhost`/`127.0.0.1`, con almeno 32 caratteri casuali
+  (generare con `openssl rand -hex 32`). `/display` richiede `?token=<valore>` quando è impostato.
+  Solo in locale può restare vuoto; un token locale non vuoto richiede almeno 24 caratteri.
 - `.env` resta fuori da Git.
 
 ## Sviluppo

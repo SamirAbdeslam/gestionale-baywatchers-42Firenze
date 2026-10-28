@@ -19,8 +19,9 @@ export function writeCsv(rows: (string | number | null)[][], lineEnding: '\n' | 
 				row
 					.map((value) => {
 						const raw = String(value ?? '');
-						const text = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
-						return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+						// Escape existing apostrophes too so archive imports can undo exactly one layer.
+						const text = raw.replace(/(^|;)(?='*[=+\-@\t\r])/g, "$1'");
+						return /[",;\t\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 					})
 					.join(',')
 			)

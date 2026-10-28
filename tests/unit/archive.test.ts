@@ -100,7 +100,19 @@ it('round-trips export to import with identical rows', () => {
 });
 
 it('round-trips titles and logins that writeCsv protects against formulas', () => {
-	const rows = ['-Corso C', '=sum', '@home', '+1'].map((title) => entry({ title, login: '-x' }));
+	const rows = [
+		'-Corso C',
+		'=sum',
+		'@home',
+		'+1',
+		'x;=1+1;',
+		"x;'=1+1;''@home",
+		"'=sum",
+		'x;+1;-2;@cmd',
+		'\t=1',
+		'\r=1',
+		'x;\t=1;\r=1'
+	].map((title) => entry({ title, login: '-x' }));
 	const result = parseArchiveCsv(new TextEncoder().encode(archiveCsv(rows)));
 	expect(result.skipped).toEqual([]);
 	expect(result.entries.map((row) => [row.login, row.title])).toEqual(

@@ -34,6 +34,25 @@ describe('environment validation', () => {
 			).toBe(true);
 		}
 	);
+	it.each(['https://example.com', 'http://localhost.example.com', 'http://192.168.1.10'])(
+		'requires a display token of at least 32 characters on %s',
+		(ORIGIN) => {
+			for (const DISPLAY_TOKEN of [undefined, '', 'short', 'x'.repeat(31), ' '.repeat(32)])
+				expect(() => readEnv({ ...base, ORIGIN, DISPLAY_TOKEN })).toThrow('DISPLAY_TOKEN');
+			expect(
+				readEnv({ ...base, ORIGIN, DISPLAY_TOKEN: 'x'.repeat(32) }).DISPLAY_TOKEN
+			).toHaveLength(32);
+		}
+	);
+	it.each(['http://localhost', 'http://127.0.0.1:4173'])(
+		'allows an empty or legacy 24-character display token locally on %s',
+		(ORIGIN) => {
+			expect(readEnv({ ...base, ORIGIN }).DISPLAY_TOKEN).toBe('');
+			expect(
+				readEnv({ ...base, ORIGIN, DISPLAY_TOKEN: 'x'.repeat(24) }).DISPLAY_TOKEN
+			).toHaveLength(24);
+		}
+	);
 	it('requires OAuth credentials for production without dev login', () => {
 		expect(() => readEnv({ ...base, NODE_ENV: 'production' })).toThrow('FT_CLIENT_SECRET');
 	});

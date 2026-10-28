@@ -16,7 +16,9 @@ I comandi si eseguono nella cartella del repository, sul branch `v2.0.0`.
    - `ORIGIN` con l'indirizzo pubblico, senza percorso;
    - `FT_CLIENT_ID` e `FT_CLIENT_SECRET` dell'app 42;
    - `AUTH_DEV_LOGIN=false`. Il login di sviluppo è accettato solo con `ORIGIN` su `localhost` o `127.0.0.1`;
-   - `DISPLAY_TOKEN`, facoltativo: almeno 24 caratteri casuali, per esempio `openssl rand -hex 24`;
+   - `DISPLAY_TOKEN`, obbligatorio fuori da `localhost`/`127.0.0.1`: almeno 32 caratteri casuali,
+     generati per esempio con `openssl rand -hex 32`. Solo in locale può essere vuoto; se impostato,
+     richiede almeno 24 caratteri;
    - `DISPLAY_REDIRECT_URL` e `DISPLAY_REDIRECT_SECONDS`, facoltativi.
 
    `.env` resta fuori da Git. Non copiarne il contenuto in chat, ticket o documenti.

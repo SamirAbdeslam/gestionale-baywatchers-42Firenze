@@ -42,6 +42,16 @@ export const envSchema = z
 				message: 'Requires a localhost ORIGIN'
 			});
 		}
+		if (
+			!['localhost', '127.0.0.1'].includes(URL.parse(env.ORIGIN)?.hostname ?? '') &&
+			env.DISPLAY_TOKEN.trim().length < 32
+		) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['DISPLAY_TOKEN'],
+				message: 'Requires at least 32 characters outside localhost'
+			});
+		}
 		if (env.NODE_ENV === 'production' && !env.AUTH_DEV_LOGIN) {
 			for (const key of ['FT_CLIENT_ID', 'FT_CLIENT_SECRET'] as const) {
 				if (!env[key])

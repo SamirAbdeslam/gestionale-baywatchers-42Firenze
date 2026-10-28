@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { parseTemplateCsv, writeCsv } from '../../src/lib/server/domain/csv.ts';
+import { parseTemplateCsv, readCsv, writeCsv } from '../../src/lib/server/domain/csv.ts';
 const header = 'Week,Giorno,Orario,Tipo Evento,Compenso,Partecipanti,Data';
 const bytes = (text: string) => new TextEncoder().encode(text);
 it.each([',', ';'])(
@@ -105,3 +105,19 @@ it.each(['Data', 'Date'])(
 		expect(result.grouped.get(1)).toHaveLength(2);
 	}
 );
+
+it.each(['=1+1', '+SUM(A1)', '-2', '@cmd', '\t=1+1', '\r=1+1'])(
+	'neutralizes formulas at the start and after semicolons: %j',
+	(value) => {
+		const csv = writeCsv([[value, `x;${value};`]]);
+		expect(readCsv(csv, ',')[0].cells).toEqual([`'${value}`, `x;'${value};`]);
+		for (const separator of [',', ';']) {
+			for (const { cells } of readCsv(csv, separator))
+				for (const cell of cells) expect(cell).not.toMatch(/^[=+\-@\t\r]/);
+			for (const cell of csv.trimEnd().split(separator)) expect(cell).not.toMatch(/^[=+\-@\t\r]/);
+		}
+	}
+);
+it('quotes semicolons and tabs, including a formula injected in a User-Agent', () => {
+	expect(writeCsv([['x;=1+1;', 'a\tb']])).toBe('"x;\'=1+1;","a\tb"\n');
+});

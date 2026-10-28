@@ -129,7 +129,7 @@ export function parseArchiveCsv(bytes: Uint8Array) {
 			// Inverse of the formula protection applied by writeCsv to text cells.
 			const cell =
 				column === 'login' || column === 'title'
-					? row.cells[i].replace(/^'(?=[=+\-@])/, '')
+					? row.cells[i].replace(/(^|;)'(?='*[=+\-@\t\r])/g, '$1')
 					: row.cells[i];
 			const result = rowSchemas[column].safeParse(cell);
 			if (result.success) parsed[column] = result.data;

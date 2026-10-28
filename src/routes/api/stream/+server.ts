@@ -9,6 +9,9 @@ import type { RequestHandler } from './$types';
 
 // shortcut: cap connections at 500 per process; revisit admission control before scaling out.
 const MAX_CONNECTIONS = 500;
+const RESERVED_CONNECTIONS = 20;
+const MAX_CLIENT_CONNECTIONS = 6;
+const clientConnections = new Map<number | 'display', number>();
 
 export const GET: RequestHandler = ({ request, url, locals }) => {
 	const query = z
@@ -22,7 +25,14 @@ export const GET: RequestHandler = ({ request, url, locals }) => {
 		!matchesDisplayToken(query.token ?? null, readEnv().DISPLAY_TOKEN)
 	)
 		error(404, m.error_not_found());
-	if (listenerCount() >= MAX_CONNECTIONS) error(503, m.error_stream_busy());
+	const client = display || !locals.user ? 'display' : locals.user.id;
+	if ((clientConnections.get(client) ?? 0) >= MAX_CLIENT_CONNECTIONS)
+		error(429, m.error_stream_busy());
+	if (
+		listenerCount() >=
+		MAX_CONNECTIONS - (admin || client === 'display' ? 0 : RESERVED_CONNECTIONS)
+	)
+		error(503, m.error_stream_busy());
 	const encoder = new TextEncoder();
 	let cleanup = () => {};
 	const stream = new ReadableStream<Uint8Array>({
@@ -31,6 +41,7 @@ export const GET: RequestHandler = ({ request, url, locals }) => {
 				controller.close();
 				return;
 			}
+			clientConnections.set(client, (clientConnections.get(client) ?? 0) + 1);
 			const stop = subscribe((event) => {
 				if (event.type === 'log_created' && (!admin || display)) return;
 				// Strip unknown fields so transport payloads cannot carry participant or audit details.
@@ -44,7 +55,11 @@ export const GET: RequestHandler = ({ request, url, locals }) => {
 				controller.close();
 			};
 			cleanup = () => {
+				cleanup = () => {};
 				stop();
+				const remaining = clientConnections.get(client)! - 1;
+				if (remaining) clientConnections.set(client, remaining);
+				else clientConnections.delete(client);
 				clearInterval(timer);
 				request.signal.removeEventListener('abort', abort);
 			};
