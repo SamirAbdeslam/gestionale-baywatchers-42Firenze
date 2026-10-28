@@ -5,7 +5,7 @@ https://claude.ai/artifact/E5g6vAA2HsBf3RZweoghvb, sorgenti in `project/`, PNG i
 copia nel repo in `docs/v2/design/`) e ne corregge l'usabilità.
 
 Obiettivo: tenere l'identità visiva della v1 e recuperare la densità e la rapidità di lettura del vecchio sito
-(`gestionale-baywatchers-42Firenze/legacy/templates/calendar.html` e `admin.html`). Il mobile è la priorità:
+(nella vecchia app Flask, rimossa dal repository). Il mobile è la priorità:
 è il formato usato di più dagli studenti.
 
 ## 1. Cosa resta della v1

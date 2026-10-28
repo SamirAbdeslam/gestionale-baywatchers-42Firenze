@@ -15,7 +15,7 @@ Stack: SvelteKit, Svelte 5, Postgres 17, Drizzle, Paraglide (it, en, fr) e nginx
 - Avvio in produzione: [docs/v2/CUTOVER.md](docs/v2/CUTOVER.md).
 - Design: [docs/v2/design/](docs/v2/design/).
 
-Il codice Flask originale è conservato in `legacy/` come riferimento.
+Il codice Flask originale resta disponibile nella storia Git.
 
 ## Requisiti
 

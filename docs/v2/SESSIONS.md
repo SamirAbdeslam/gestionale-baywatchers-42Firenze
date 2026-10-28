@@ -2876,3 +2876,20 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Push dei documenti e verifica CI, poi rimozione autorizzata della cartella `legacy/`. M26 non viene iniziato.
+
+
+## 2026-10-28 — Rimozione dell'app Flask legacy
+
+**Fatto**
+- Ismail ha confermato il 27/10: "si può cancellare il legacy senza problemi". Rimossa la cartella `legacy/`; conservati intatti `scripts/legacy/`, seed, import e test.
+- Rimossi gli ignore di Prettier, ESLint e CI; aggiornati README, runbook di cutover e riferimento storico nel design. Il codice Flask resta nella storia Git; il rollback usa una copia separata recuperata dalla storia e il database conservato fuori dal repository.
+- PLAN.md e voci precedenti del diario conservati come storia. M26 non iniziato.
+
+**Controlli**
+- CI documentazione M29 [40653452707](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40653452707) su `b8ca715`: `gh run watch --exit-status` exit 0.
+- Ricerca dei riferimenti alla cartella completata; restano quelli storici nel piano e nel diario e gli import degli script conservati.
+- `pnpm ci:local`: exit 0; 290 unit, 351 integration, 193 E2E, totale 834 test, senza retry. Migrazioni, lint, check e build verdi; `git diff --check` verde. Nessuna modifica a `scripts/legacy/`.
+- Commit di rimozione: `chore: remove legacy Flask app`; dopo il push, verifica della relativa run con `gh run watch --exit-status`.
+
+**Domande / blocchi**
+- Nessun dubbio o blocco aperto. Nessuna verifica in produzione; il ritorno a Flask descritto nel runbook non è stato eseguito.

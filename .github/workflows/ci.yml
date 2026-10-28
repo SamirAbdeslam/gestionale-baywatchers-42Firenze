@@ -3,10 +3,8 @@ name: CI
 on:
   push:
     branches: [v2.0.0, main]
-    paths-ignore: ['legacy/**']
   pull_request:
     branches: [main]
-    paths-ignore: ['legacy/**']
 
 permissions:
   contents: read

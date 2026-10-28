@@ -65,11 +65,13 @@ Il primo deve rispondere `200`. Il secondo deve rispondere `308` verso `https://
 1. Avvisare gli utenti del cambio di indirizzo, se cambia.
 2. Fermare il processo Flask.
 3. Conservare `calendar.db` del legacy fuori dal repository, senza cancellarlo.
-4. La cartella `legacy/` del repository si cancella solo dopo la conferma scritta di Ismail in `docs/v2/SESSIONS.md`.
+4. Il codice Flask è stato rimosso dal repository con la conferma di Ismail del 27 ottobre 2026; resta disponibile nella storia Git.
 
 ## 5. Ritorno indietro
 
-Se la v2 non va, `docker compose stop` e riavviare il Flask legacy, che non è stato toccato. I dati inseriti nella v2
+Se la v2 non va, eseguire `docker compose stop`. Per riavviare Flask, recuperare il codice dalla storia Git
+(per esempio dal tag `v1.5.24`) in una cartella separata e usare il `calendar.db` conservato fuori dal repository.
+Il ritorno indietro non dipende da una cartella presente nel checkout corrente. I dati inseriti nella v2
 restano nel volume `pgdata`.
 
 ## HSTS sul dominio di produzione — da decidere
