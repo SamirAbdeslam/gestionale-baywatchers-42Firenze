@@ -1,0 +1,356 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import {
+	generateSessionToken,
+	sessionId,
+	cookieOptions
+} from '../../src/lib/server/auth/session.ts';
+import {
+	sameSiteRedirect,
+	assertAdmin,
+	isPublicPath,
+	matchesDisplayToken
+} from '../../src/lib/server/auth/guards.ts';
+import {
+	generateState,
+	CampusAccessError,
+	FIRENZE_CAMPUS_ID,
+	profileSchema,
+	oauthClient,
+	AUTHORIZE_URL,
+	fetchProfile
+} from '../../src/lib/server/auth/oauth42.ts';
+import { publish, subscribe } from '../../src/lib/server/realtime/bus.ts';
+import type { User } from '../../src/lib/server/auth/session.ts';
+
+afterEach(() => {
+	vi.unstubAllGlobals();
+	vi.useRealTimers();
+});
+it('generates independent base32 tokens with exactly 160 bits and stores only a SHA256 id', () => {
+	const first = generateSessionToken(),
+		second = generateSessionToken();
+	expect(first).toMatch(/^[a-z2-7]{32}$/);
+	expect(first).not.toBe(second);
+	expect(sessionId(first)).toMatch(/^[a-f0-9]{64}$/);
+	expect(sessionId(first)).toBe(sessionId(first));
+	expect(cookieOptions('https://localhost:8443')).toEqual({
+		path: '/',
+		httpOnly: true,
+		sameSite: 'lax',
+		secure: true
+	});
+	expect(cookieOptions('http://localhost:4173').secure).toBe(false);
+});
+it.each([
+	'/',
+	'/display',
+	'/display/sub',
+	'/join/[code]',
+	'/join/test',
+	'/auth/login',
+	'/healthz',
+	'/language/en',
+	'/api/stream',
+	'/_app/immutable/a.js'
+])('recognizes public boundary %s', (path) => expect(isPublicPath(path)).toBe(true));
+it.each([
+	'/admin',
+	'/calendar',
+	'/profile',
+	'/display-admin',
+	'/joining',
+	'/authentication',
+	'/healthz-private',
+	'/languages',
+	'/api/streams',
+	'/_application'
+])('denies unrelated path %s', (path) => expect(isPublicPath(path)).toBe(false));
+it('guards admin actors and checks display tokens without accepting prefixes', () => {
+	expect(() => assertAdmin(null)).toThrow();
+	expect(() => assertAdmin({ role: 'user' } as User)).toThrow();
+	expect(() => assertAdmin({ role: 'admin' } as User)).not.toThrow();
+	expect(matchesDisplayToken(null, '')).toBe(true);
+	expect(matchesDisplayToken('secret', 'secret')).toBe(true);
+	expect(matchesDisplayToken(null, 'secret')).toBe(false);
+	expect(matchesDisplayToken('secretX', 'secret')).toBe(false);
+	expect(matchesDisplayToken('secreX', 'secret')).toBe(false);
+});
+it('validates profile identity, defaults malformed optional fields and recalculates roles', () => {
+	expect(
+		profileSchema.parse({
+			id: 42,
+			login: ' IGILANI ',
+			email: 1,
+			displayname: false,
+			image: null,
+			wallet: '5',
+			'staff?': 'true'
+		})
+	).toEqual({
+		intraId: 42,
+		login: 'igilani',
+		email: '',
+		displayName: 'igilani',
+		imageUrl: '',
+		wallet: 0,
+		role: 'admin'
+	});
+	expect(
+		profileSchema.parse({
+			campus_users: [{ campus_id: 52 }],
+			id: 1,
+			login: 'student',
+			'staff?': true
+		}).role
+	).toBe('admin');
+	expect(
+		profileSchema.parse({
+			campus_users: [{ campus_id: 52 }],
+			id: 1,
+			login: 'student',
+			'staff?': false
+		}).role
+	).toBe('user');
+	expect(() =>
+		profileSchema.parse({ campus_users: [{ campus_id: 52 }], id: '1', login: 'student' })
+	).toThrow();
+	expect(() =>
+		profileSchema.parse({ campus_users: [{ campus_id: 52 }], id: 1, login: '<script>' })
+	).toThrow();
+});
+it('uses the fixed 42 endpoints and validates mocked token and profile responses', async () => {
+	const client = oauthClient({
+		FT_CLIENT_ID: 'client',
+		FT_CLIENT_SECRET: 'secret',
+		ORIGIN: 'https://localhost:8443'
+	});
+	const url = client.authorizationUrl('random-state');
+	expect(url.origin + url.pathname).toBe(AUTHORIZE_URL);
+	expect(url.searchParams.get('redirect_uri')).toBe('https://localhost:8443/auth/callback');
+	expect(url.searchParams.get('state')).toBe('random-state');
+	expect(url.searchParams.get('scope')).toBe('public');
+	expect(url.searchParams.get('response_type')).toBe('code');
+	expect(url.searchParams.get('client_id')).toBe('client');
+	const mocked = vi
+		.fn()
+		.mockResolvedValueOnce(Response.json({ access_token: 'test-token', token_type: 'bearer' }))
+		.mockResolvedValueOnce(
+			Response.json({ id: 42, login: 'student', campus_users: [{ campus_id: 52 }] })
+		);
+	vi.stubGlobal('fetch', mocked);
+	expect((await fetchProfile(client, 'code')).login).toBe('student');
+	const tokenRequest = mocked.mock.calls[0][0] as Request;
+	expect(tokenRequest.url).toBe('https://api.intra.42.fr/oauth/token');
+	expect(await tokenRequest.text()).toContain('grant_type=authorization_code');
+	expect((mocked.mock.calls[1][0] as Request).url).toBe('https://api.intra.42.fr/v2/me');
+	expect(new Request(mocked.mock.calls[1][0], mocked.mock.calls[1][1]).redirect).toBe('error');
+	expect((mocked.mock.calls[1][0] as Request).headers.get('Authorization')).toBe(
+		'Bearer test-token'
+	);
+});
+it('rejects unsuccessful provider responses', async () => {
+	vi.stubGlobal(
+		'fetch',
+		vi.fn().mockResolvedValue(new Response('provider unavailable', { status: 503 }))
+	);
+	await expect(
+		fetchProfile(
+			oauthClient({ FT_CLIENT_ID: 'id', FT_CLIENT_SECRET: 'secret', ORIGIN: 'http://localhost' }),
+			'code'
+		)
+	).rejects.toThrow();
+});
+it('publishes only to active listeners and unsubscribes independently', () => {
+	const one = vi.fn(),
+		two = vi.fn(),
+		unsubscribeOne = subscribe(one),
+		unsubscribeTwo = subscribe(two);
+	const event = { type: 'log_created' as const, id: 7 };
+	publish(event);
+	unsubscribeOne();
+	publish(event);
+	unsubscribeTwo();
+	publish(event);
+	expect(one).toHaveBeenCalledExactlyOnceWith(event);
+	expect(two).toHaveBeenCalledTimes(2);
+});
+
+it('generates distinct 32-byte base64url OAuth states', () => {
+	const state = generateState();
+	expect(state).toHaveLength(43);
+	expect(state).toMatch(/^[A-Za-z0-9_-]+$/);
+	expect(Buffer.from(state, 'base64url')).toHaveLength(32);
+	expect(generateState()).not.toBe(state);
+});
+it.each([{}, null, { access_token: '' }, { access_token: 42 }])(
+	'rejects an invalid token response %j before fetching a profile',
+	async (body) => {
+		const mocked = vi.fn().mockResolvedValue(Response.json(body));
+		vi.stubGlobal('fetch', mocked);
+		await expect(
+			fetchProfile(
+				oauthClient({
+					FT_CLIENT_ID: 'id',
+					FT_CLIENT_SECRET: 'secret',
+					ORIGIN: 'https://localhost:8443'
+				}),
+				'code'
+			)
+		).rejects.toThrow();
+		expect(mocked).toHaveBeenCalledTimes(1);
+		const request = mocked.mock.calls[0][0] as Request;
+		expect(request.method).toBe('POST');
+		expect(request.redirect).toBe('error');
+		expect(request.headers.get('content-type')).toBe('application/x-www-form-urlencoded');
+		expect(Object.fromEntries(new URLSearchParams(await request.text()))).toEqual({
+			grant_type: 'authorization_code',
+			code: 'code',
+			redirect_uri: 'https://localhost:8443/auth/callback',
+			client_id: 'id',
+			client_secret: 'secret'
+		});
+	}
+);
+
+it('isolates a failing listener without throwing, leaking details or skipping other listeners', () => {
+	const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+	const healthy = vi.fn();
+	const stopBroken = subscribe(() => {
+		throw new Error('PRIVATE_LISTENER_DATA');
+	});
+	const stopHealthy = subscribe(healthy);
+	const event = { type: 'log_created' as const, id: 7 };
+	try {
+		expect(() => publish(event)).not.toThrow();
+		expect(healthy).toHaveBeenCalledExactlyOnceWith(event);
+		expect(log).toHaveBeenCalledExactlyOnceWith('Realtime listener failed');
+		expect(JSON.stringify(log.mock.calls)).not.toContain('PRIVATE_LISTENER_DATA');
+	} finally {
+		stopBroken();
+		stopHealthy();
+		log.mockRestore();
+	}
+});
+
+it.each([
+	[
+		{
+			link: 'https://cdn.intra.42.fr/full.jpg',
+			versions: { medium: 'https://cdn.intra.42.fr/medium.jpg' }
+		},
+		'https://cdn.intra.42.fr/medium.jpg'
+	],
+	[{ link: 'https://cdn.intra.42.fr/full.jpg' }, 'https://cdn.intra.42.fr/full.jpg'],
+	[
+		{ link: 'https://cdn.intra.42.fr/full.jpg', versions: { medium: null } },
+		'https://cdn.intra.42.fr/full.jpg'
+	],
+	[undefined, '']
+])('prefers the medium avatar and safely handles optional image data %j', (image, expected) => {
+	expect(
+		profileSchema.parse({ campus_users: [{ campus_id: 52 }], id: 123, login: 'student', image })
+			.imageUrl
+	).toBe(expected);
+});
+
+it.each([
+	[{ campus_users: [{ campus_id: 52 }] }, 'user'],
+	[{ campus_users: [{ campus_id: 1 }, { campus_id: 52 }], 'staff?': true }, 'admin'],
+	[{ login: ' IGILANI ', campus_users: [{ campus_id: 1 }] }, 'admin'],
+	[{ login: 'igilani' }, 'admin']
+])('admits Florence members and listed admins: %j', (fields, role) => {
+	expect(FIRENZE_CAMPUS_ID).toBe(52);
+	expect(profileSchema.parse({ id: 42, login: 'student', ...fields }).role).toBe(role);
+});
+it.each([
+	{ campus_users: [{ campus_id: 1 }] },
+	{ campus_users: [{ campus_id: 1 }], 'staff?': true },
+	{},
+	{ 'staff?': true },
+	{ campus_users: null },
+	{ campus_users: [{ campus_id: '52' }] }
+])('denies profiles without verified Florence membership: %j', (fields) => {
+	expect(() => profileSchema.parse({ id: 42, login: 'student', ...fields })).toThrow(
+		CampusAccessError
+	);
+});
+
+it.each([
+	'https://evil.test/join/123',
+	'//evil.test',
+	'/\\evil.test',
+	'https://evil.test@evil.test',
+	'http://[invalid'
+])('rejects off-site or invalid login return targets %s', (target) => {
+	expect(sameSiteRedirect(target, 'https://example.test')).toBe('/calendar');
+});
+it('preserves an absolute same-site login return target including its query', () => {
+	expect(sameSiteRedirect('/join/123?test=1', 'https://example.test')).toBe(
+		'https://example.test/join/123?test=1'
+	);
+	expect(sameSiteRedirect(null, 'https://example.test')).toBe('https://example.test/calendar');
+});
+
+it('keeps normalized double-slash paths on the same site by returning absolute URLs', () => {
+	const target = sameSiteRedirect('/.//evil.test', 'https://example.test');
+	expect(new URL(target).origin).toBe('https://example.test');
+});
+
+it.each(['token', 'profile'] as const)(
+	'retries a throttled %s request with a reusable request body',
+	async (endpoint) => {
+		vi.useFakeTimers();
+		const client = oauthClient({
+			FT_CLIENT_ID: 'id',
+			FT_CLIENT_SECRET: 'secret',
+			ORIGIN: 'http://localhost'
+		});
+		const mocked = vi
+			.fn()
+			.mockResolvedValueOnce(new Response(null, { status: 429, headers: { 'Retry-After': '9' } }))
+			.mockResolvedValueOnce(
+				Response.json(
+					endpoint === 'token'
+						? { access_token: 'token' }
+						: { id: 42, login: 'student', campus_users: [{ campus_id: 52 }] }
+				)
+			);
+		vi.stubGlobal('fetch', mocked);
+		const result =
+			endpoint === 'token'
+				? client.accessToken('code')
+				: fetchProfile({ ...client, accessToken: async () => 'token' }, 'code');
+		await vi.advanceTimersByTimeAsync(2999);
+		expect(mocked).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(1);
+		await expect(result).resolves.toEqual(
+			endpoint === 'token' ? 'token' : expect.objectContaining({ login: 'student' })
+		);
+		expect(mocked).toHaveBeenCalledTimes(2);
+		if (endpoint === 'token')
+			expect(await mocked.mock.calls[1][0].text()).toContain('grant_type=authorization_code');
+	}
+);
+it.each(['token', 'profile'] as const)(
+	'stops after three 429 responses for %s with the existing error',
+	async (endpoint) => {
+		vi.useFakeTimers();
+		const client = oauthClient({
+			FT_CLIENT_ID: 'id',
+			FT_CLIENT_SECRET: 'secret',
+			ORIGIN: 'http://localhost'
+		});
+		const mocked = vi.fn().mockImplementation(async () => new Response(null, { status: 429 }));
+		vi.stubGlobal('fetch', mocked);
+		const result =
+			endpoint === 'token'
+				? client.accessToken('code')
+				: fetchProfile({ ...client, accessToken: async () => 'token' }, 'code');
+		const assertion = expect(result).rejects.toThrow(`OAuth ${endpoint} request failed`);
+		await vi.advanceTimersByTimeAsync(1999);
+		expect(mocked).toHaveBeenCalledTimes(2);
+		await vi.advanceTimersByTimeAsync(1);
+		await assertion;
+		expect(mocked).toHaveBeenCalledTimes(3);
+	}
+);

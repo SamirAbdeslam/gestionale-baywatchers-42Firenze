@@ -1,0 +1,262 @@
+/*
+ * 42 Baywatchers v2 — design tokens (design v2, 2026-10-23).
+ * M14 replaces src/lib/styles/tokens.css with this file.
+ * Existing variable names are kept (same meaning, new values); new names are added below them.
+ * Source of every value: reference/Alt.dc.html ("fondamenta") and the screen sources in reference/.
+ *
+ * Themes: dark ("notte") is the reference theme of every screen; light ("giorno") has the same roles.
+ * Theme choice: system preference by default, overridden by the in-app switch (README §2).
+ */
+
+@import './fonts/fonts.css'; /* in the app: copy fonts/ next to tokens.css */
+
+/* Shared by both themes */
+:root {
+	/* event kinds: fill = stub background, ink = text on the stub (same in both themes) */
+	--color-exam: #3d3aa8;
+	--color-exam-ink: #ffffff;
+	--color-icebreaker: #f06ba8;
+	--color-icebreaker-ink: #1f0612;
+	--color-rush: #ffcf2e;
+	--color-rush-ink: #1f1700;
+	--color-cluster: #17a589;
+	--color-cluster-ink: #03180f;
+	--color-welcome: #9bd34a;
+	--color-welcome-ink: #132006;
+	--color-custom: #5cc8f0;
+	--color-custom-ink: #04202c;
+
+	/* fonts (self-hosted, see fonts.css) */
+	--font-body: 'Instrument Sans', system-ui, sans-serif;
+	--font-heading: 'Bricolage Grotesque', 'Instrument Sans', system-ui, sans-serif;
+	--font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+	--line-height: 1.5;
+
+	/* type scale (desktop; mobile values in README §3) */
+	--font-display: 4.5rem; /* 72px / 800 / -0.03em */
+	--font-title: 2.5rem; /* 40px / 800 / -0.02em */
+	--font-section: 1.5rem; /* 24px / 700 / -0.01em */
+	--font-size-body: 1rem; /* 16px / 400 */
+	--font-label: 0.8125rem; /* 13px / 700 / 0.06em uppercase */
+	--font-mono-lg: 1.625rem; /* 26px / 600: ticket times */
+	--font-mono-sm: 0.875rem; /* 14px / 400: seats, Altarian, logins */
+	--tracking-display: -0.03em;
+	--tracking-title: -0.02em;
+	--tracking-label: 0.06em;
+
+	/* spacing */
+	--space-xs: 0.25rem;
+	--space-sm: 0.5rem;
+	--space-md: 1rem;
+	--space-lg: 2rem;
+	--space-xl: 2.5rem;
+
+	/* shape */
+	--radius: 0.875rem; /* 14px: cards, tickets, panels */
+	--radius-sm: 0.375rem; /* 6px: log tags */
+	--radius-seat: 0.25rem; /* 4px at 14px seats, 5px at 18px seats */
+	--radius-pill: 999px; /* buttons, chips */
+	--border-width: 1px;
+	--border-strong: 2px; /* important things: active week, active field, mine, buttons with outline */
+	--control-height: 3rem; /* 48px pills; 40px inside tickets (--control-height-sm) */
+	--control-height-sm: 2.5rem;
+	--focus-width: 3px;
+
+	/* ticket */
+	--ticket-hole-step: 10px; /* perforation: one hole every 10px */
+	--ticket-hole-radius: 3px; /* soft edge to 3.6px */
+	--ticket-stub-height: 92px; /* vertical ticket (desktop) */
+	--ticket-stub-inline-padding: 10px; /* horizontal stub: reference/CalendarMobile.dc.html */
+	--ticket-stub-width: 88px; /* horizontal ticket: calendar 88px, admin 96px, dialog 84px */
+	--seat-size: 14px; /* 18px in large demos */
+
+	/* layout */
+	--header-height: 72px; /* desktop; mobile 60px */
+	--brand-bar: 4px; /* orange line at the top of every page */
+	--content-width: 85rem; /* 1360px */
+	--calendar-day-width: 15rem;
+	--admin-day-width: 15rem; /* 240px: seven admin columns fit at 1920 */
+	--logo-size: 20px; /* horizontal logo height in the header */
+	--profile-image-size: 3.5rem; /* 56px avatar in the profile aside */
+	--profile-aside-width: 17rem;
+	--whitelist-aside-width: 18rem;
+	--search-width: 18rem;
+	--toast-width: 20rem;
+	--squares-min-width: 10rem;
+	--kind-bar-height: 22px;
+	--opacity-faint: 0.4; /* weeks not open yet */
+	--bp-md: 768px;
+	--bp-lg: 1200px;
+}
+
+/*
+ * Both themes in one place: light-dark(<light>, <dark>).
+ * Default = system preference (color-scheme: light dark). The in-app switch sets
+ * <html data-theme="light|dark"> and overrides it; no attribute = follow the system (README §2).
+ */
+:root {
+	color-scheme: light dark;
+	--color-background: light-dark(#f2f4f7, #0b1422);
+	--color-surface: light-dark(#ffffff, #121f33);
+	--color-raised: light-dark(#e6eaf0, #1c2c45);
+	--color-border: light-dark(#cfd6df, #2b3e5c);
+	--color-text: light-dark(#0e1a2b, #eef3fa);
+	--color-muted: light-dark(#4f5d70, #9aabc4);
+	--color-brand: light-dark(#0e1a2b, #ff6a3d);
+	--color-on-brand: light-dark(#ffffff, #0b1422);
+	--color-signal: light-dark(#ff4f1f, #ff6a3d);
+	--color-signal-text: light-dark(#c2380f, #ff8a63);
+	--color-on-signal: #1a0700;
+	--color-focus: light-dark(
+		#c2380f,
+		#ff6a3d
+	); /* light: signal #ff4f1f is under 3:1 on the light background */
+	--color-ok-bg: light-dark(#dcf5ec, #0f3a33);
+	--color-ok: light-dark(#0b6b50, #5ee0b5);
+	--color-warn-bg: light-dark(#fff1cc, #3b2f0c);
+	--color-warn: light-dark(#7a5000, #ffd36b);
+	--color-danger-bg: light-dark(#fde4e1, #43191a);
+	--color-danger: light-dark(#b4231b, #ff8f87);
+	--color-ghost-fill: light-dark(rgb(255 79 31 / 0.06), rgb(255 106 61 / 0.06));
+	/* log tags: dark from reference/Logs.dc.html, light approved by Ismail 2026-10-22 */
+	--color-log-create-bg: light-dark(#e6e5fb, #2a2560);
+	--color-log-create: light-dark(#3d3aa8, #b9b6ff);
+	--color-log-update-bg: var(--color-raised);
+	--color-log-update: light-dark(#0b5f80, #5cc8f0);
+	--color-log-delete-bg: var(--color-danger-bg);
+	--color-log-delete: var(--color-danger);
+	--color-log-register-bg: var(--color-ok-bg);
+	--color-log-register: var(--color-ok);
+	--color-log-new: light-dark(#fff1cc, #1c2c45); /* rows that arrived after the page was opened */
+}
+:root[data-theme='light'] {
+	color-scheme: light;
+}
+:root[data-theme='dark'] {
+	color-scheme: dark;
+}
+
+/* Measurements shared by the implementation; design README §§3–5. */
+:root {
+	--logo-compact-width: 18rem;
+	--header-mobile-height: 60px;
+	--bottom-nav-height: 76px;
+	--avatar-size: 32px;
+	--font-small: 0.75rem;
+	--font-tiny: 0.6875rem;
+	--font-nav: 0.9375rem;
+	--font-title-mobile: 1.875rem;
+	--font-calendar-title: 4rem;
+	--font-display-mobile: 2.5rem;
+	--radius-panel: 1rem;
+	--radius-field: 0.75rem;
+	--field-height: 44px;
+	--nav-underline: 3px;
+	--ticket-padding: 12px;
+	--ticket-gap: 9px;
+	--ticket-hole-soft: 3.6px;
+	--ticket-stub-admin: 96px;
+	--ticket-stub-dialog: 84px;
+	--week-chip-width: 112px;
+	--week-chip-height: 60px;
+	--day-tab-height: 68px;
+	--dialog-width: 32rem;
+	--layer-nav: 10;
+	--layer-overlay: 20;
+}
+
+:root {
+	--logo-aspect: 12.33925;
+	--logo-stacked-aspect: 5.11958;
+}
+
+:root {
+	--icon-size: 20px;
+}
+
+:root {
+	--badge-height: 24px;
+	--week-mobile-width: 72px;
+}
+
+:root {
+	--color-backdrop: rgb(0 0 0 / 0.6);
+	--dialog-handle-width: 40px;
+}
+
+:root {
+	--day-tab-width: 56px;
+}
+
+:root {
+	--landing-preview-width: 24rem;
+	--landing-copy-width: 42rem;
+}
+
+:root {
+	--admin-editor-width: 20rem;
+}
+
+:root {
+	--template-name-height: 52px;
+	--template-day-width: 9rem;
+}
+
+:root {
+	--font-stub-horizontal: 20px;
+}
+:root {
+	--motion-tear: 400;
+	--motion-flight: 680;
+	--motion-fiber: 480;
+	--motion-recoil: 220;
+	--motion-fade: 400;
+	--motion-release-delay: 120;
+	--motion-pop: 420;
+	--motion-ghost: 300;
+	--motion-restore-fill: 1000;
+	--motion-restore-delay: 50;
+	--motion-restore: 1100;
+	--motion-star: 850;
+	--color-paper: #e8dfc9;
+	--color-paper-glow: rgb(255 180 120 / 0.6);
+	--color-paper-white: #fff;
+}
+
+:root {
+	--logo-mobile-height: 14px;
+}
+
+:root {
+	--font-calendar-mobile: clamp(1.875rem, 8vw, 2.5rem);
+}
+
+:root {
+	--display-logo-width: 25rem;
+}
+
+:root {
+	--font-ticket-label: 10px;
+	--ticket-stub-preview: 110px;
+}
+
+:root {
+	--paper-sweep-angle: 0deg;
+	--paper-sweep-horizontal: 270deg;
+}
+
+:root {
+	--font-admin-title: 44px;
+	--font-profile-title: 32px;
+}
+
+/* Design v2: compact tickets, messages and account menu. */
+:root {
+	--font-ticket-time: 18px;
+	--message-close-size: 32px;
+	--user-menu-width: 200px;
+	--menu-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
+	--calendar-mobile-day: 88%;
+	--settings-input-width: 5rem;
+	--settings-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
+}

@@ -1,276 +1,232 @@
-# 🏊 Gestionale Baywatchers - 42 Firenze
+<div align="center">
 
-Sistema di gestione degli eventi e delle presenze per i Baywatcher della scuola 42 Firenze.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-dark.svg">
+  <img src=".github/assets/logo-light.svg" alt="42 Baywatchers" width="460">
+</picture>
 
-## 📋 Descrizione del Progetto
+### Il gestionale dei turni Baywatchers di 42 Firenze 🏊
 
-Gestionale Baywatchers è un'applicazione web Flask che permette di:
+Calendario, iscrizioni, presenze e display TV, in tempo reale, su telefono e su desktop.
 
-- **Gestire eventi settimanali** (sorveglianza esami, icebreaker, rush, accoglienza, ecc.)
-- **Registrare partecipanti** con sistema di slot limitati
-- **Tracciare presenze** e compensi (wallet system)
-- **Visualizzare il calendario** su display per gli utenti
-- **Autenticazione OAuth** tramite 42 API
-- **Sistema di whitelist** per controllare chi può iscriversi agli eventi
-- **Template settimane** per riutilizzare configurazioni di eventi
-- **Real-time updates** tramite WebSocket (SocketIO)
-- **Deployment automatico** via webhook GitHub/GitLab
+[![CI](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/workflows/ci.yml/badge.svg?branch=v2)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/workflows/ci.yml)
+[![Versione](https://img.shields.io/github/v/tag/SamirAbdeslam/gestionale-baywatchers-42Firenze?sort=semver&label=versione&color=ff6a3d)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/tags)
+[![Licenza](https://img.shields.io/badge/licenza-GPL--3.0-0e1a2b)](LICENSE)
+[![Lingue](https://img.shields.io/badge/lingue-IT%20%C2%B7%20EN%20%C2%B7%20FR-17a589)](messages/)
 
-## 🏗️ Architettura
+![Node.js](https://img.shields.io/badge/Node.js-24-5FA04E?logo=nodedotjs&logoColor=white)
+![SvelteKit](https://img.shields.io/badge/SvelteKit-3-FF3E00?logo=svelte&logoColor=white)
+![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
+![Drizzle](https://img.shields.io/badge/Drizzle-ORM-C5F74F?logo=drizzle&logoColor=black)
+![nginx](https://img.shields.io/badge/nginx-proxy-009639?logo=nginx&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-e2e-2EAD33?logo=playwright&logoColor=white)
+![Vitest](https://img.shields.io/badge/Vitest-unit%20%2B%20integration-6E9F18?logo=vitest&logoColor=white)
 
+[Funzioni](#-funzioni) · [Architettura](#-architettura) · [Avvio rapido](#-avvio-rapido) ·
+[Configurazione](#-configurazione) · [Test](#-test) · [Versioni](#-versioni)
+
+</div>
+
+## ✨ Funzioni
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### 🎓 Studenti
+
+- 📅 Calendario della settimana attiva, sempre aggiornato
+- 🎟️ Iscrizione con animazione del biglietto
+- ⏭️ «Il tuo prossimo turno» e «N di M turni»
+- 📲 Download `.ics` di ogni turno
+- 👤 Profilo con turni, ore e ₳ Altarian
+- 🎁 Riepilogo stile _Wrapped_ con badge
+- ⏳ Countdown prima dell'inizio della piscina
+- 📷 Iscrizione alla piscina con QR
+
+</td>
+<td width="33%" valign="top">
+
+### 🛠️ Staff
+
+- 🗓️ Eventi, settimane e attivazione
+- ✅ Presenze e whitelist
+- 🧩 Template con builder e import CSV
+- 🔁 Duplica evento, settimana come template
+- 📊 Partecipanti ed export CSV
+- 🏁 Ciclo di vita della piscina: chiusura, archivio, pulizia verificata
+- 🗄️ Archivio storico con grafici
+- 📋 Log di tutte le operazioni
+
+</td>
+<td width="33%" valign="top">
+
+### 📺 Display e sistema
+
+- 🖥️ Schermo TV con evento in corso e prossimo
+- ⚡ Aggiornamenti in tempo reale (SSE)
+- 🌍 Italiano, inglese, francese
+- 🌗 Tema chiaro e scuro
+- 📱 Pensato prima per il telefono
+- ♿ Funziona anche senza JavaScript
+- 🔐 Login 42, solo campus Firenze
+- 🛡️ Audit di sicurezza completato
+
+</td>
+</tr>
+</table>
+
+## 🧭 Architettura
+
+```mermaid
+flowchart LR
+  subgraph Utenti
+    S["🎓 Studenti<br/>telefono e PC"]
+    A["🛠️ Staff"]
+    T["📺 TV"]
+  end
+  S & A & T -->|HTTPS| N["nginx<br/>TLS, limiti, header"]
+  N --> K["SvelteKit<br/>Node 24"]
+  K <-->|Drizzle| P[("PostgreSQL 17")]
+  K -. "SSE in tempo reale" .-> N
+  K -->|OAuth| F["42 Intra API"]
 ```
-┌─────────────────────────────────────────────────────────┐
-│  GitHub/GitLab                                          │
-│  (Push triggers webhook)                                │
-└───────────────┬─────────────────────────────────────────┘
-                │
-                ▼
-┌─────────────────────────────────────────────────────────┐
-│  Cloudflare Tunnel                                      │
-│  (Exposes app securely via HTTPS)                       │
-└───────────────┬─────────────────────────────────────────┘
-                │
-                ▼
-┌─────────────────────────────────────────────────────────┐
-│  Docker Compose Network                                 │
-│                                                          │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │  Baywatcher Container (Flask + SocketIO)         │   │
-│  │  - OAuth 42 Authentication                       │   │
-│  │  - Event Management                              │   │
-│  │  - Real-time WebSocket Updates                   │   │
-│  │  - Webhook Endpoint (/webhook)                   │   │
-│  │  - SQLite Database (volume: baywatcher-data)     │   │
-│  └──────────────┬───────────────────────────────────┘   │
-│                 │                                        │
-│  ┌──────────────▼───────────────────────────────────┐   │
-│  │  Deployer Container                              │   │
-│  │  - Listens for deployment requests               │   │
-│  │  - Pulls latest code from git                    │   │
-│  │  - Rebuilds Docker containers                    │   │
-│  │  - Access to Docker socket                       │   │
-│  └──────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────┘
+
+|                 |                                                                           |
+| --------------- | ------------------------------------------------------------------------- |
+| 🧱 **Frontend** | SvelteKit 3, Svelte 5 (runes), CSS con design tokens, Paraglide (i18n)    |
+| ⚙️ **Backend**  | Azioni e load di SvelteKit, Zod per la validazione, bus SSE in memoria    |
+| 🗃️ **Dati**     | PostgreSQL 17, Drizzle ORM e migrazioni in `drizzle/`                     |
+| 🔐 **Accesso**  | OAuth 42 (campus Firenze), sessioni salvate come hash, guard per le rotte |
+| 🚢 **Deploy**   | Docker Compose: app, Postgres e nginx con HTTPS su 8080/8443              |
+
+## 🚀 Avvio rapido
+
+**Requisiti**
+
+- 🟢 **Node.js 24** (`.nvmrc`)
+- 📦 **pnpm 10** tramite Corepack: `corepack enable && corepack install`
+- 🐳 **Docker** con Compose
+- 🔏 **OpenSSL** per il certificato locale
+
+```sh
+cp .env.example .env                             # poi AUTH_DEV_LOGIN=true per lo sviluppo
+pnpm install
+docker compose -f compose.dev.yaml up -d --wait  # Postgres su 127.0.0.1:5432
+pnpm db:migrate
+pnpm db:seed                                     # dati fittizi: dev_admin, dev_user, dev_outsider
+pnpm dev                                         # con ORIGIN=http://localhost:5173
 ```
 
-## 🚀 Setup Rapido
+Con `AUTH_DEV_LOGIN=true` si entra da `/auth/dev` senza passare da 42. 🔑
 
-### Prerequisiti
+## 🔧 Configurazione
 
-- Docker & Docker Compose
-- Account 42 OAuth (per autenticazione)
-- Cloudflare Tunnel (per esposizione pubblica)
+Copiare `.env.example` in `.env`: ogni variabile ha un commento. L'app valida tutto all'avvio e non parte se manca
+un valore obbligatorio. `.env` resta fuori da Git.
 
-### 1. Clone del Repository
+| Variabile                          | A cosa serve                                                                                                          |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `ORIGIN`                           | Indirizzo pubblico. Viene incorporato nella build (`kit.paths.origin`): quando cambia, ricostruire.                   |
+| `FT_CLIENT_ID`, `FT_CLIENT_SECRET` | App OAuth 42, con redirect URI `<ORIGIN>/auth/callback`.                                                              |
+| `AUTH_DEV_LOGIN`                   | `false` di default. `true` solo in sviluppo, con `ORIGIN` su `localhost` o `127.0.0.1`: abilita `/auth/dev`.          |
+| `DISPLAY_TOKEN`                    | Accesso della TV (`/display?token=…`). Obbligatorio fuori da localhost, almeno 32 caratteri (`openssl rand -hex 32`). |
+| `DISPLAY_REDIRECT_URL`             | Pagina facoltativa verso cui la TV torna dopo `DISPLAY_REDIRECT_SECONDS`.                                             |
+| `DATABASE_URL`, `POSTGRES_*`       | Connessione e credenziali di Postgres.                                                                                |
 
-```bash
-git clone https://github.com/Bombatomica64/gestionale-baywatchers-42Firenze.git
-cd gestionale-baywatchers-42Firenze
+## 🧪 Test
+
+```sh
+pnpm ci:local
 ```
 
-### 2. Configurazione Variabili d'Ambiente
+<table>
+<tr>
+<td>🐘 Postgres di sviluppo</td><td>→</td><td>🗃️ migrazioni su <code>baywatchers_test</code></td><td>→</td>
+<td>🧹 lint e check</td><td>→</td><td>🧪 unit e integration</td><td>→</td><td>🏗️ seed e build</td><td>→</td>
+<td>🎭 e2e Playwright</td>
+</tr>
+</table>
 
-```bash
-cp .env.example .env
-# Modifica .env con i tuoi dati
-```
+Gli e2e girano su Chromium desktop e mobile e su WebKit, con e senza JavaScript. La prima volta servono i browser:
+`pnpm exec playwright install chromium webkit`.
 
-Variabili essenziali:
-- `CLIENT_ID` e `CLIENT_SECRET`: Ottieni da https://profile.intra.42.fr/oauth/applications/new
-- `SECRET_KEY`: Genera con `python -c "import secrets; print(secrets.token_urlsafe(32))"`
-- `CLOUDFLARE_TOKEN`: Token del tuo Cloudflare Tunnel
-- `WEBHOOK_SECRET` (opzionale): Per sicurezza webhook
+| Comando                 | Cosa esegue                                |
+| ----------------------- | ------------------------------------------ |
+| `pnpm test:unit`        | test unitari                               |
+| `pnpm test:integration` | test sul database (`DATABASE_URL` di test) |
+| `pnpm test:e2e`         | test nel browser                           |
 
-### 3. Avvio Applicazione
+La [CI su GitHub](.github/workflows/ci.yml) esegue gli stessi controlli a ogni push.
 
-```bash
+<details>
+<summary>🔒 <b>Stack completo con nginx e HTTPS</b></summary>
+<br>
+
+In `.env` impostare `DATABASE_URL` con host `db` e `ORIGIN=https://localhost:8443`. Prima del primo avvio generare
+il certificato locale (365 giorni). Il comando protegge la chiave e non sovrascrive certificati esistenti:
+
+```sh
+mkdir -m 700 -p nginx/certs
+(
+  umask 077
+  test ! -e nginx/certs/localhost.key && test ! -e nginx/certs/localhost.crt &&
+    openssl req -x509 -newkey rsa:2048 -noenc -sha256 -days 365 \
+      -subj '/CN=localhost' \
+      -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1' \
+      -keyout nginx/certs/localhost.key -out nginx/certs/localhost.crt
+)
 docker compose up -d --build
 ```
 
-Verifica lo stato:
-```bash
-docker compose ps
-docker compose logs -f baywatcher
-```
+- 🌐 `http://localhost:8080` reindirizza a `https://localhost:8443`. Le porte 80 e 443 non vengono usate.
+- 🔐 Database e app non espongono porte. Le migrazioni si applicano all'avvio dell'app.
+- ⚠️ Il browser avvisa perché il certificato è autofirmato. Controllo da terminale:
+  `curl --cacert nginx/certs/localhost.crt https://localhost:8443/healthz`.
+- 📁 I certificati restano in `nginx/certs/`, fuori da Git e dall'immagine Docker.
+- 🏗️ Build senza Compose: `docker build --build-arg ORIGIN=https://localhost:8443 .`.
 
-### 4. Accesso
+- ⛔ **Non usare `docker compose down -v`**: cancella il volume del database.
 
-- **Applicazione**: [https://app.baywatchers42firenze.dev](https://app.baywatchers42firenze.dev)
+</details>
 
-## 📚 Documentazione
+<details>
+<summary>🌍 <b>Lingue</b></summary>
+<br>
 
-- [**WEBHOOK_SETUP.md**](WEBHOOK_SETUP.md) - Guida completa per configurare il deployment automatico
+Le stringhe dell'interfaccia sono in `messages/it.json`, `messages/en.json` e `messages/fr.json`, con le stesse
+chiavi (un test lo verifica). La lingua si sceglie dal selettore nell'header e resta salvata in un cookie. Titoli
+degli eventi, CSV e descrizioni dei log restano in italiano.
 
-## 🔧 Funzionalità Principali
+</details>
 
-### Per Utenti
-- ✅ Login con account 42
-- ✅ Visualizzazione calendario eventi (4 settimane)
-- ✅ Registrazione/cancellazione da eventi
-- ✅ Profilo personale con storico eventi e wallet
-- ✅ Sistema di compensi per eventi completati
+<details>
+<summary>📦 <b>Import dal vecchio database</b></summary>
+<br>
 
-### Per Admin
-- ✅ Gestione eventi (creazione, modifica, eliminazione)
-- ✅ Sistema di template per settimane ricorrenti
-- ✅ Import/export CSV eventi
-- ✅ Gestione whitelist baywatcher
-- ✅ Tracciamento presenze (mark present/absent)
-- ✅ Report partecipanti con CSV export
-- ✅ Configurazione settimane attive e display
-- ✅ Impostazione date pool e limiti eventi per utente
+`pnpm legacy:import -- --sqlite <calendar.db> [--dry-run]` e `pnpm legacy:verify -- --sqlite <calendar.db>` sono
+verificati in CI su un database fittizio (`pnpm legacy:fake-db`). Non fanno parte dell'avvio: la v2 parte con un
+database vuoto. Il codice Flask originale resta nella storia Git.
 
-### Display Pubblico
-- ✅ Visualizzazione calendario senza autenticazione
-- ✅ Auto-aggiornamento quando eventi passano
-- ✅ Aggiornamenti real-time via WebSocket
-- ✅ Design ottimizzato per proiezione
+</details>
 
-## 🗃️ Struttura Database
+## 🏷️ Versioni
 
-- **users** - Profili utenti con wallet
-- **events** - Eventi con settimana, giorno, orari, slot
-- **registrations** - Iscrizioni con tracking presenze
-- **week_templates** - Template riutilizzabili
-- **template_events** - Eventi nei template
-- **baywatcher_whitelist** - Utenti autorizzati
-- **settings** - Configurazione globale (settimana attiva, display, limiti)
+| Versione                                                                                                                                       | Cosa porta                                                              |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| [![v2.3.1](https://img.shields.io/badge/v2.3.1-ff6a3d)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.3.1) | 🛡️ Correzioni dell'audit finale e di sicurezza                          |
+| [![v2.3.0](https://img.shields.io/badge/v2.3.0-f06ba8)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.3.0) | 🏁 Ciclo di vita della piscina, archivio completo, riepilogo finale, QR |
+| [![v2.2.0](https://img.shields.io/badge/v2.2.0-17a589)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.2.0) | 🗄️ Archivio delle piscine, statistiche, riepilogo animato               |
+| [![v2.1.0](https://img.shields.io/badge/v2.1.0-3d3aa8)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.1.0) | ⏭️ Prossimo turno, duplica evento, chiusura piscina, display in corso   |
+| [![v2.0.0](https://img.shields.io/badge/v2.0.0-0e1a2b)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.0.0) | 🚀 Riscrittura completa in SvelteKit                                    |
 
-## 🔄 Deployment Automatico
+Ogni tag contiene la descrizione completa delle modifiche: `git show v2.3.1`.
 
-Il sistema supporta deployment automatico tramite webhook:
+---
 
-1. Configura il webhook su GitHub/GitLab (vedi [WEBHOOK_SETUP.md](WEBHOOK_SETUP.md))
-2. Ogni push al repository triggera automaticamente:
-   - Git pull del codice aggiornato
-   - Rebuild dei container Docker
-   - Restart dell'applicazione
-
-## 🛠️ Sviluppo Locale
-
-```bash
-# Usa environment locale (senza Docker)
-cp .env.example .env
-# Imposta DB_DIR=./ nel .env
-
-# Installa dipendenze
-pip install -r requirements.txt
-
-# Avvia app
-python app.py
-```
-
-L'app sarà disponibile su http://localhost:5000
-
-## 📊 Monitoring
-
-### Health Check
-```bash
-curl http://localhost:5000/health
-```
-
-### Logs
-```bash
-# Tutti i container
-docker compose logs -f
-
-# Solo baywatcher
-docker logs -f gestionaleBaywatcher
-
-# Solo deployer
-docker logs -f webhook_listener
-```
-
-## 🔐 Sicurezza
-
-- ✅ OAuth 42 per autenticazione
-- ✅ Admin basato su campo `staff?` dell'API 42
-- ✅ Content Security Policy headers
-- ✅ Webhook secret per validare deploy
-- ✅ HTTPS tramite Cloudflare Tunnel
-- ✅ Database persistente su volume Docker
-
-## 📝 Prossimi Sviluppi / TODO
-
-### 🎯 Priorità Alta
-
-- [ ] **Sistema di notifiche**
-  - Notifiche email per eventi imminenti
-  - Reminder 24h prima dell'evento
-  - Conferma presenza via email
-
-- [ ] **Miglioramenti al wallet system**
-  - Storico transazioni dettagliato
-  - Sistema di bonus per presenze consecutive
-
-- [ ] **Dashboard analytics per admin**
-  - Statistiche partecipazione per evento
-  - Grafici andamento presenze
-  - Export report mensili
-
-### 🔄 Priorità Media
-
-- [ ] **Sistema di turni automatico**
-  - Auto-assegnazione equa dei turni
-  - Rotazione basata su disponibilità
-  - Bilanciamento ore per utente
-
-- [ ] **Miglioramenti UI/UX**
-  - Filtri eventi per tipo
-  - Calendario mensile vista compatta
-  - Mobile app (PWA)
-
-- [ ] **Sistema di feedback**
-### 🌟 Priorità Bassa / Nice to Have
-
-- [ ] **Integrazione con altri sistemi 42**
-  - Sincronizzazione con calendar Intra
-  - Import automatico eventi dal campus
-  - Integrazione con Black Hole tracker
-
-- [ ] **Sistema di team/squadre**
-  - Divisione baywatcher in team
-  - Competizione tra team
-  - Leaderboard
-
-- [ ] **Backup automatico database**
-  - Backup giornaliero su cloud storage
-  - Sistema di restore rapido
-  - Export automatico CSV
-
-- [ ] **Testing**
-  - Unit tests per funzioni critiche
-  - Integration tests per workflow principali
-  - Load testing per scalabilità
-
-- [ ] **Miglioramenti tecnici**
-  - Migrazione da SQLite a PostgreSQL (per scalabilità)
-  - Migrazione da flask a un linguaggio serio (es. Go, Angular, React)
-  - Caching con Redis
-  - Rate limiting per API
-  - Containerizzazione frontend separata
-
-## 🐛 Bug Noti
-
-
-## 🤝 Contribuire
-
-1. Fork del repository
-2. Crea un branch per la feature (`git checkout -b feature/AmazingFeature`)
-3. Commit delle modifiche (`git commit -m 'Add some AmazingFeature'`)
-4. Push al branch (`git push origin feature/AmazingFeature`)
-5. Apri una Pull Request
-
-## 📄 Licenza
-
-Vedi il file [LICENSE](LICENSE) per i dettagli.
-
-## 👥 Autori
-
-- **Team Baywatchers 42 Firenze**
-
-## 🙏 Ringraziamenti
-
-- 42 Network per l'API OAuth
-- Cloudflare per il tunnel service
-- Tutti i Baywatcher che testano e usano il sistema!
+<div align="center">
+<sub>Fatto con 🧡 e Claudia 🤖 per i Baywatchers di <b>42 Firenze</b> · Licenza <a href="LICENSE">GPL-3.0</a></sub>
+</div>

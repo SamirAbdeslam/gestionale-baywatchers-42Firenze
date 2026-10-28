@@ -1,0 +1,1 @@
+ALTER TABLE "week_templates" ADD CONSTRAINT "templates_description_length" CHECK (char_length("week_templates"."description") <= 500);

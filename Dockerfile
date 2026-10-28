@@ -1,29 +1,23 @@
-FROM python:3.10.19-alpine
-
+FROM node:24-alpine AS deps
 WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl tzdata
+FROM deps AS build
+ARG ORIGIN
+COPY . .
+RUN ORIGIN="$ORIGIN" pnpm build && pnpm prune --prod --ignore-scripts
 
-ENV TZ=Europe/Rome
-RUN ln -sf /usr/share/zoneinfo/Europe/Rome /etc/localtime && \
-    echo "Europe/Rome" > /etc/timezone
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY app.py .
-COPY notifications.py .
-COPY templates ./templates
-COPY static ./static
-
-EXPOSE 5000
-
-VOLUME [ "/app/calendar_data" ]
-
-# Health check - check every 30s, timeout 10s, start after 40s, max 3 retries
-# Use HTTP for internal health check (localhost only, no security concern)
-# HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-#     CMD curl -f http://localhost:5000/health || exit 1
-
-CMD ["python", "app.py"]
+FROM node:24-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production TZ=Europe/Rome
+COPY --from=build --chown=node:node /app/build ./build
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/package.json ./package.json
+COPY --from=build --chown=node:node /app/drizzle ./drizzle
+COPY --from=build --chown=node:node /app/static ./static
+USER node
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s CMD wget -qO- http://127.0.0.1:3000/healthz || exit 1
+CMD ["node", "build"]

@@ -1,0 +1,66 @@
+{
+	"name": "gestionale-baywatchers-42firenze",
+	"private": true,
+	"version": "2.3.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --strategy cookie preferredLanguage baseLocale --emit-ts-declarations --no-emit-readme && svelte-kit sync",
+		"check": "corepack pnpm prepare && svelte-check --tsconfig ./tsconfig.json",
+		"lint": "prettier --check . && eslint .",
+		"format": "prettier --write .",
+		"test:unit": "vitest run --project unit",
+		"test:integration": "vitest run --project integration",
+		"test:e2e": "playwright test",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "node --env-file-if-exists=.env --import tsx node_modules/drizzle-kit/bin.cjs migrate",
+		"db:seed": "node --env-file-if-exists=.env --import tsx scripts/seed.ts",
+		"legacy:fake-db": "node --env-file-if-exists=.env --import tsx scripts/legacy/make-fake-db.ts",
+		"legacy:import": "node --env-file-if-exists=.env --import tsx scripts/import-legacy.ts",
+		"legacy:verify": "node --env-file-if-exists=.env --import tsx scripts/verify-legacy-import.ts",
+		"ci:local": "docker compose -f compose.dev.yaml up -d --wait && DATABASE_URL=postgres://bay:bay@localhost:5432/baywatchers_test ORIGIN=http://localhost:4173 TZ=Europe/Rome corepack pnpm db:migrate && corepack pnpm lint && corepack pnpm check && corepack pnpm test:unit && corepack pnpm test:integration && DATABASE_URL=postgres://bay:bay@localhost:5432/baywatchers_test ORIGIN=http://localhost:4173 TZ=Europe/Rome corepack pnpm db:seed && ORIGIN=http://localhost:4173 corepack pnpm build && corepack pnpm test:e2e"
+	},
+	"devDependencies": {
+		"@eslint/js": "10.0.1",
+		"@faker-js/faker": "10.6.0",
+		"@inlang/paraglide-js": "2.29.0",
+		"@playwright/test": "1.64.1",
+		"@sveltejs/adapter-node": "6.0.0",
+		"@sveltejs/kit": "3.1.0",
+		"@sveltejs/vite-plugin-svelte": "7.3.1",
+		"@types/better-sqlite3": "9.6.0",
+		"@types/node": "24.19.2",
+		"better-sqlite3": "13.0.3",
+		"drizzle-kit": "0.31.11",
+		"eslint": "10.12.0",
+		"eslint-config-prettier": "10.1.8",
+		"eslint-plugin-svelte": "3.23.1",
+		"globals": "17.13.0",
+		"prettier": "3.9.10",
+		"prettier-plugin-svelte": "4.1.1",
+		"svelte": "5.57.2",
+		"svelte-check": "4.7.6",
+		"tsx": "4.23.15",
+		"typescript": "6.0.3",
+		"typescript-eslint": "8.71.2",
+		"vite": "8.3.4",
+		"vitest": "5.0.5"
+	},
+	"imports": {
+		"#lib/*": "./src/lib/*"
+	},
+	"engines": {
+		"node": ">=24 <25",
+		"pnpm": ">=10 <11"
+	},
+	"packageManager": "pnpm@10.34.7",
+	"dependencies": {
+		"drizzle-orm": "0.45.4",
+		"ical-generator": "11.1.2",
+		"postgres": "3.4.9",
+		"uqr": "0.1.3",
+		"zod": "4.6.7"
+	}
+}
