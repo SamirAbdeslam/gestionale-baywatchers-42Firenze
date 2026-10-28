@@ -30,6 +30,7 @@
 20. Versione 2.1.0: correzioni dell'audit e nuove funzioni
 21. Versione 2.2.0: archivio piscine, riepilogo animato e iscrizioni con QR
 22. Versione 2.3.0: ciclo di vita della piscina, archivio completo e riepilogo definitivo
+23. Controllo finale prima della produzione
 
 ---
 
@@ -81,7 +82,7 @@ HTTPS locale su porta 8443 con certificato autofirmato e redirect HTTP da porta 
 - Webhook di deploy (`/webhook`, `deployer/`).
 - Cloudflare Tunnel (`cloudflared`).
 - `reset_display_week.py`: la logica vive nell'app (§8.6).
-- Feed `.ics` personale descritto in `legacy/CALENDAR_SETUP.md`: non è mai stato implementato. Rientra in 2.1.0 come M22, solo dopo la messa in produzione (§20.6).
+- Feed `.ics` personale descritto in `legacy/CALENDAR_SETUP.md`: non è mai stato implementato. Previsto come M22 e poi annullato (§20.6): restano i `.ics` dei singoli eventi.
 - Lista d'attesa sugli eventi pieni: valutata e rimandata. Le sostituzioni restano fuori dal sito (Slack o a voce, D1).
 
 ---
@@ -985,8 +986,8 @@ Applica `docs/v2/design/` seguendo l'ordine di lavoro del suo `README.md` §7: f
 ### M21 — Display: evento in corso e prossimo (0.5 g)
 §20.5.
 
-### M22 — Feed calendario personale (1.5 g)
-§20.6. Si inizia solo dopo la messa in produzione con il dominio vero.
+### M22 — Feed calendario personale (annullato)
+§20.6. Annullato il 28/10/2026 per decisione di Ismail: Google Calendar aggiorna i calendari in abbonamento ogni 8–24 ore e non si può forzare, mentre i turni cambiano all'istante. Restano il sito in tempo reale e il `.ics` del singolo evento.
 
 ### M23 — Archivio alla chiusura (1,5 g)
 §21.2.
@@ -1065,7 +1066,7 @@ Valori ammessi: `da fare`, `in corso`, `completato (<commit>)`, `bloccato (vedi 
 | M19 Duplica evento e settimana come template | completato (ab9b5ee) |
 | M20 Chiusura della piscina | completato (00dced4) |
 | M21 Display: evento in corso e prossimo | completato (b604143) |
-| M22 Feed calendario personale | da fare (dopo la produzione) |
+| M22 Feed calendario personale | annullato (28/10/2026, §20.6) |
 | M23 Archivio alla chiusura | completato (0187ced) |
 | M24 Archivio staff e import piscine vecchie | completato (85fe2b4) |
 | M25 Riepilogo animato e pagina di attesa | completato (bc903d3) |
@@ -1151,17 +1152,9 @@ Fuori da 2.1.0: lista d'attesa, presenze in blocco, cancellazione dei log vecchi
 - Il display richiama `invalidate('app:display')` ogni 60 secondi, oltre al real-time già presente, così anche "Passato" si aggiorna senza ricaricare.
 - Test: unit sugli stati (prima, durante, all'ora esatta di fine, dopo, data null, cambio ora legale); e2e: con un evento in corso l'etichetta è visibile.
 
-### 20.6 M22 — Feed calendario personale (dopo la produzione)
+### 20.6 M22 — Feed calendario personale (annullato)
 
-Si inizia solo quando il sito è online sul dominio vero con un certificato valido: Google Calendar non legge feed da `localhost` né con certificati autofirmati.
-
-- Colonna `users.calendar_token_hash` (null = nessun feed). Il token è casuale (stesso generatore delle sessioni), nel DB si salva solo l'hash, come per le sessioni.
-- Route pubblica `GET /calendar/feed/[token].ics` (aggiunta a `isPublicPath` e alla matrice e2e). Token sconosciuto: 404. Contenuto: un VCALENDAR con gli eventi a cui il login è iscritto, con `week <= active_week` e data concreta non null; per ogni evento lo stesso VEVENT di `domain/ics.ts` (allarmi compresi), `UID` stabile per evento e `SEQUENCE` che cresce quando l'evento cambia (da `updated_at`).
-- `/profile`: "Abbonati al calendario" (link `webcal://`), "Copia link" e "Rigenera link" (action che sostituisce l'hash e invalida il link vecchio, log `CALENDAR_FEED_RESET`).
-- nginx: `limit_req` sulla route del feed, come per `/auth/`.
-- Il token è nel path, che nginx scrive nell'access log: per questa route usa `access_log off`.
-- Test: integration (contenuto del feed, settimane future escluse, token rigenerato invalida il vecchio); e2e: 404 con token sbagliato, 200 `text/calendar` con quello giusto.
-- Verifica manuale con Ismail: iPhone (Calendario → Aggiungi abbonamento) e Google Calendar (aggiornamento lento, anche 12–24 ore).
+Annullato il 28/10/2026 per decisione di Ismail: Google Calendar aggiorna i calendari in abbonamento ogni 8–24 ore e non si può forzare, mentre i turni cambiano all'istante. Restano il sito in tempo reale e il `.ics` del singolo evento. Il testo originale del modulo resta nella storia git.
 
 ---
 
@@ -1329,3 +1322,15 @@ In `/admin` un pannello "Piscina" con tre pulsanti separati. Sostituisce la pagi
 - **M28 — Archivio completo e CSV standard (1,5 g)**: §22.3.
 - **M29 — Riepilogo definitivo (1,5 g)**: §22.4. E2e con e senza JS e con reduced motion per tutti gli stati; nessun overflow a 360 px.
 - **M26 — Iscrizioni con QR** (§21.5) dopo M29; la pulizia con la casella whitelist svuota anche le richieste in attesa.
+
+---
+
+## 23. Controllo finale prima della produzione
+
+Si fa dopo M26, solo sulla v2 (branch `v2.0.0`): il branch principale con l'app Python non si tocca e le sue segnalazioni non si controllano. Ogni passo parte solo con il via di Ismail, perché alcuni consumano molti token. Ordine, dal più economico:
+
+1. `pnpm audit` sulle dipendenze (niente `osv-scanner` né `pip-audit`).
+2. ponytail-audit sull'intero repository.
+3. `/security-review` di Claude Code sulle modifiche del branch.
+4. Skill `security-audit` di Cloudflare (audit completo), per ultima perché è la più costosa.
+5. Correzioni come un modulo normale: `pnpm ci:local` verde, push, CI verde, voce in `SESSIONS.md`.
