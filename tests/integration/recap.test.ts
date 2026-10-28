@@ -1,4 +1,4 @@
-import { closePool } from '../../src/lib/server/domain/pool.ts';
+import { closePool, cleanPool } from '../../src/lib/server/domain/pool.ts';
 import { setAttendance } from '../../src/lib/server/domain/registrations.ts';
 import assert from 'node:assert/strict';
 import postgres from 'postgres';
@@ -164,4 +164,43 @@ it('keeps both chapters consistent after attendance corrections without saving t
 		});
 	}
 	expect((await database.select().from(schema.poolEntries))[0].attended).toBe(true);
+});
+
+it('counts the current archive in overall stats after cleaning only events and retaining dates', async () => {
+	await client`UPDATE settings SET pool_start='2026-05-04',pool_end='2026-05-31' WHERE id=1`;
+	const [event] = await database
+		.insert(schema.events)
+		.values({
+			title: 'Archived shift',
+			week: 1,
+			weekday: 1,
+			startTime: '09:00',
+			endTime: '11:00',
+			compensation: 200
+		})
+		.returning();
+	await database.insert(schema.registrations).values(
+		[user.login, 'other_student'].map((participantLogin) => ({
+			eventId: event.id,
+			participantLogin
+		}))
+	);
+	const now = new Date('2026-06-01T12:00:00Z');
+	const info = { ipAddress: '', userAgent: null };
+	await closePool(database, admin, { confirm: 'yes' }, info, now);
+	expect(
+		await cleanPool(database, admin, { confirm: 'yes', save: 'no', events: 'yes' }, info, now)
+	).toMatchObject({ ok: true });
+	expect(await database.select().from(schema.events)).toHaveLength(0);
+	expect(await database.select().from(schema.registrations)).toHaveLength(0);
+	expect((await database.select().from(schema.settings))[0].poolStart).toBe('2026-05-04');
+	const recap = await getRecap(database, user);
+	expect(recap?.stats).toMatchObject({ taken: 1, completed: 1, hours: 2, altarian: 200 });
+	expect(recap?.overall).toMatchObject({
+		pools: 1,
+		taken: 1,
+		completed: 1,
+		hours: 2,
+		altarian: 200
+	});
 });

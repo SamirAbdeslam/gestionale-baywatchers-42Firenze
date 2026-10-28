@@ -51,20 +51,22 @@ export async function personalPools(database: typeof db, actor: User | null) {
 	return choices.sort((a, b) => b.startDate.localeCompare(a.startDate));
 }
 
-// The current pool uses live rows even when an older snapshot exists.
+// Prefer live rows for the current pool, falling back to its archive after cleanup.
 async function overallStats(database: typeof db, actor: User, startDate: string) {
 	// Only pools where the login actually attended something count as done.
 	const [config] = await database.select().from(settings).where(eq(settings.id, 1));
 	const choices = [];
 	const perPool: PoolEntry[][] = [];
 	for (const choice of await personalPools(database, actor)) {
-		const own =
+		let own =
 			choice.startDate === config.poolStart
 				? await currentPoolEntries(database, choice.startDate, actor.login)
-				: await database
-						.select()
-						.from(poolEntries)
-						.where(and(eq(poolEntries.poolId, choice.id), eq(poolEntries.login, actor.login)));
+				: [];
+		if (!own.length && choice.id)
+			own = await database
+				.select()
+				.from(poolEntries)
+				.where(and(eq(poolEntries.poolId, choice.id), eq(poolEntries.login, actor.login)));
 		if (!own.some((row) => row.attended)) continue;
 		choices.push(choice);
 		perPool.push(own);
