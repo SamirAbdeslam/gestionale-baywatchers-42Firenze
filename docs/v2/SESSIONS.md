@@ -2943,6 +2943,7 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 - Nei passaggi locali iniziali corretti un riferimento TypeScript oscurato da una variabile locale e una fixture E2E che iscriveva alla settimana 4 senza attivarla. La fixture ora attiva esplicitamente la settimana e ripristina le impostazioni al termine; nessun timeout aumentato o retry aggiunto. Il successivo gate completo è verde.
 - Push di `0af5820` completato; CI [40678008373](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40678008373): tutti e sei i job verdi, `gh run watch 40678008373 --exit-status` exit 0, senza rilanci remoti.
 - Chiusura documentale con `docs: record final audit fixes`; nessuna modifica al codice dopo la validazione.
+- Fix dalla review (`b16ee3f`): il totale usa l'archivio filtrato per login quando le righe vive del login sono vuote; integration con chiusura e pulizia dei soli eventi, mantenendo le date, verifica che la piscina e i suoi numeri restino in "In totale". `ci:local` verde: 309 unit, 378 integration, 199 E2E, totale 886 test, senza retry; CI [40680669108](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40680669108) verde, `gh run watch --exit-status` exit 0; nessun blocco.
 
 **Domande / blocchi**
 - Nessun dubbio o blocco aperto. Restano da verificare con dispositivi e account reali la scansione del QR e almeno 30 login OAuth simultanei dallo stesso IP: i test OAuth usano un provider simulato. Nessuna verifica in produzione.
