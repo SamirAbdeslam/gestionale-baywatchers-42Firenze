@@ -29,3 +29,6 @@ import_baywatch_participants.py
 Thumbs.db
 vite.config.*.timestamp-*
 nginx/certs/
+
+# Local-only project notes, plans and design sources
+docs/
