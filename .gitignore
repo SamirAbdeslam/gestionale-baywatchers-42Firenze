@@ -31,4 +31,4 @@ vite.config.*.timestamp-*
 nginx/certs/
 
 # Local-only project notes, plans and design sources
-docs/
+/docs
