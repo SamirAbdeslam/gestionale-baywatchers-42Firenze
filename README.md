@@ -217,13 +217,14 @@ database vuoto. Il codice Flask originale resta nella storia Git.
 
 | Versione                                                                                                                                       | Cosa porta                                                              |
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| [![v2.3.2](https://img.shields.io/badge/v2.3.2-e8a33d)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.3.2) | 📦 Dipendenze: esbuild aggiornato per drizzle-kit                       |
 | [![v2.3.1](https://img.shields.io/badge/v2.3.1-ff6a3d)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.3.1) | 🛡️ Correzioni dell'audit finale e di sicurezza                          |
 | [![v2.3.0](https://img.shields.io/badge/v2.3.0-f06ba8)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.3.0) | 🏁 Ciclo di vita della piscina, archivio completo, riepilogo finale, QR |
 | [![v2.2.0](https://img.shields.io/badge/v2.2.0-17a589)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.2.0) | 🗄️ Archivio delle piscine, statistiche, riepilogo animato               |
 | [![v2.1.0](https://img.shields.io/badge/v2.1.0-3d3aa8)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.1.0) | ⏭️ Prossimo turno, duplica evento, chiusura piscina, display in corso   |
 | [![v2.0.0](https://img.shields.io/badge/v2.0.0-0e1a2b)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.0.0) | 🚀 Riscrittura completa in SvelteKit                                    |
 
-Ogni tag contiene la descrizione completa delle modifiche: `git show v2.3.1`.
+Ogni tag contiene la descrizione completa delle modifiche: `git show v2.3.2`.
 
 ---
 
