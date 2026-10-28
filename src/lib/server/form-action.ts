@@ -52,9 +52,10 @@ export async function formAction<T>(
 							? 'error_event_date_weekday'
 							: 'error_invalid_input'
 					: options.notFound!;
+			const messages: Notice[] = [{ type: 'error', key, params: {} }];
 			return fail(cause instanceof z.ZodError ? 400 : 404, {
 				ok: false,
-				messages: [{ type: 'error' as const, key, params: {} }]
+				messages
 			});
 		}
 		throw cause;

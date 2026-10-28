@@ -43,6 +43,13 @@
 			"when": 1793111253792,
 			"tag": "0005_thick_toxin",
 			"breakpoints": true
+		},
+		{
+			"idx": 6,
+			"version": "7",
+			"when": 1793176910951,
+			"tag": "0006_empty_starjammers",
+			"breakpoints": true
 		}
 	]
 }

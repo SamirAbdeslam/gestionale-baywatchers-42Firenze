@@ -5,7 +5,7 @@ import { dirname, relative, resolve } from 'node:path';
 import ts from 'typescript';
 import postgres from 'postgres';
 import { expect, test, type APIRequestContext } from '@playwright/test';
-import { adminRoutes } from './routes.ts';
+import { adminRoutes, publicRoutes } from './routes.ts';
 
 const databaseUrl =
 	process.env.DATABASE_URL ?? 'postgres://bay:bay@localhost:5432/baywatchers_test';
@@ -30,6 +30,7 @@ async function snapshot() {
 	const result: unknown[] = [];
 	// Concurrent tests may log in; only those authorized auth writes are excluded.
 	for (const table of [
+		'enrollment_requests',
 		'events',
 		'registrations',
 		'settings',
@@ -40,10 +41,10 @@ async function snapshot() {
 		'pool_entries'
 	])
 		result.push(
-			await client`SELECT md5(coalesce(json_agg(t ORDER BY id)::text,'')) AS hash FROM ${client(table)} t`
+			await client`SELECT md5(coalesce(json_agg(t ORDER BY t::text)::text,'')) AS hash FROM ${client(table)} t`
 		);
 	result.push(
-		await client`SELECT md5(coalesce(json_agg(t ORDER BY id)::text,'')) AS hash FROM action_logs t WHERE action_type <> 'LOGIN'`
+		await client`SELECT md5(coalesce(json_agg(t ORDER BY t::text)::text,'')) AS hash FROM action_logs t WHERE action_type <> 'LOGIN'`
 	);
 	return result;
 }
@@ -257,3 +258,18 @@ for (const javaScriptEnabled of [true, false]) {
 		});
 	});
 }
+
+test('enrollment routes are public while submission requires a session', async ({ request }) => {
+	for (const route of publicRoutes) {
+		expect((await request.get(route.url, { maxRedirects: 0 })).status()).toBe(200);
+		expect(
+			(
+				await request.post(route.url, {
+					form: { weeks: '1' },
+					headers: { origin },
+					maxRedirects: 0
+				})
+			).status()
+		).toBe(401);
+	}
+});

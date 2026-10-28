@@ -1,11 +1,28 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { invalidate } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { listenRealtime } from '#lib/realtime.ts';
+	import type { Notice } from '#lib/components/Toast.svelte';
+	import EnrollmentQr from '#lib/components/EnrollmentQr.svelte';
 	import { enhance } from '$app/forms';
 	import { m } from '#lib/paraglide/messages.js';
 	import { getLocale } from '#lib/paraglide/runtime.js';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
+	let projection = $state<HTMLDialogElement>();
+	let selected = $state<string[]>([]);
+	onMount(() =>
+		listenRealtime(
+			(event) => {
+				if (event.type === 'log_created') void invalidate('app:enrollment');
+			},
+			() => void invalidate('app:enrollment')
+		)
+	);
+	let feedback: Notice[] = $derived(form?.messages ?? []);
 	const recent = $derived(
-		form?.messages?.flatMap((message) =>
+		feedback.flatMap((message) =>
 			message.key === 'whitelist_added' && 'logins' in message.params
 				? String(message.params.logins).split(', ')
 				: []
@@ -19,6 +36,107 @@
 </script>
 
 <svelte:head><title>{m.nav_whitelist()} — {m.app_name()}</title></svelte:head>
+<section class="enrollment" aria-label={m.enrollment_join()}>
+	<form method="POST" action="?/enrollment" use:enhance>
+		<input type="hidden" name="open" value={data.enrollment.url ? 'no' : 'yes'} />
+		<button type="submit" disabled={!data.enrollment.canOpen && !data.enrollment.url}
+			>{data.enrollment.url ? m.enrollment_close() : m.enrollment_open()}</button
+		>
+	</form>
+	{#if data.enrollment.url}
+		<a
+			href={resolve('/admin/enroll')}
+			onclick={(event) => {
+				event.preventDefault();
+				projection?.showModal();
+			}}>{m.enrollment_show_qr()}</a
+		>
+	{/if}
+</section>
+<dialog
+	class="qr-dialog"
+	bind:this={projection}
+	aria-label={m.enrollment_qr()}
+	oncancel={(event) => event.preventDefault()}
+>
+	<button
+		class="close-qr"
+		type="button"
+		aria-label={m.enrollment_close_qr()}
+		onclick={() => projection?.close()}>×</button
+	>
+	<EnrollmentQr enrollment={data.enrollment} />
+</dialog>
+<section class="pending" aria-labelledby="pending-title">
+	<h2 id="pending-title">{m.enrollment_pending()}</h2>
+	{#if data.enrollment.waiting.length}
+		<form
+			method="POST"
+			action="?/review"
+			use:enhance={() =>
+				async ({ update }) => {
+					selected = [];
+					await update();
+				}}
+		>
+			<label
+				><input
+					type="checkbox"
+					name="all"
+					value="yes"
+					checked={data.enrollment.waiting.every((row) => selected.includes(row.login))}
+					onchange={(event) => {
+						selected = event.currentTarget.checked
+							? data.enrollment.waiting.map((row) => row.login)
+							: [];
+					}}
+				/>
+				{m.enrollment_select_all()}</label
+			>
+			<div class="request-list">
+				{#each data.enrollment.waiting as row (row.login)}
+					<div class="request-row">
+						<input type="hidden" name="allLogins" value={row.login} />
+						<label
+							><input type="checkbox" name="logins" value={row.login} bind:group={selected} />
+							@{row.login}</label
+						>
+						<span>{row.weeks.map((week) => m.enrollment_week({ week })).join(', ')}</span>
+						<button type="submit" name="single" value={row.login} formaction="?/approve"
+							>{m.enrollment_approve()}</button
+						>
+						<button type="submit" name="single" value={row.login} formaction="?/reject"
+							>{m.enrollment_reject()}</button
+						>
+					</div>
+				{/each}
+			</div>
+			<button type="submit" name="decision" value="approve"
+				>{m.enrollment_approve_selected()}</button
+			>
+			<button type="submit" name="decision" value="reject">{m.enrollment_reject_selected()}</button>
+		</form>
+	{:else}<p>{m.enrollment_none()}</p>{/if}
+</section>
+<section class="week-summary" aria-labelledby="enrollment-weeks">
+	<h2 id="enrollment-weeks">{m.enrollment_weeks()}</h2>
+	<div class="week-grid">
+		{#each data.enrollment.weeks as entry (entry.week)}
+			<section aria-label={m.enrollment_week({ week: entry.week })}>
+				<h3>{m.enrollment_week({ week: entry.week })}</h3>
+				<p>{m.enrollment_week_count({ count: entry.people.length })}</p>
+				{#each entry.people as person (person.login + person.state)}<p>
+						@{person.login}
+						<span class="state-label"
+							>{person.state === 'approved'
+								? m.enrollment_approved_label()
+								: m.enrollment_waiting_label()}</span
+						>
+					</p>{/each}
+			</section>
+		{/each}
+	</div>
+</section>
 <div class="whitelist-layout">
 	<div class="intro">
 		<h1>{m.nav_whitelist()}</h1>
@@ -64,6 +182,65 @@
 </div>
 
 <style>
+	.enrollment {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+		flex-wrap: wrap;
+	}
+	.pending,
+	.week-summary {
+		margin-bottom: var(--space-lg);
+	}
+	.request-list {
+		display: grid;
+		gap: var(--space-sm);
+		margin-block: var(--space-md);
+	}
+	.request-row {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+		overflow-wrap: anywhere;
+	}
+	.request-row label {
+		margin: 0;
+	}
+	.week-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+		gap: var(--space-md);
+	}
+	.week-grid section {
+		padding: var(--space-md);
+		border: var(--border-width) solid var(--color-border);
+		border-radius: var(--radius-panel);
+		overflow-wrap: anywhere;
+	}
+	.state-label {
+		font-size: var(--font-small);
+		color: var(--color-muted);
+	}
+	.qr-dialog {
+		position: fixed;
+		inset: 0;
+		width: 100%;
+		height: 100dvh;
+		max-width: 100%;
+		max-height: 100dvh;
+		margin: 0;
+		padding: var(--space-lg);
+		border: 0;
+		background: var(--color-background);
+		color: var(--color-text);
+	}
+	.close-qr {
+		position: absolute;
+		top: var(--space-sm);
+		right: var(--space-sm);
+	}
+
 	.whitelist-layout {
 		display: grid;
 		grid-template-columns: var(--whitelist-aside-width) minmax(0, 1fr);

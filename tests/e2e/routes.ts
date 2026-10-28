@@ -1,4 +1,7 @@
+export const publicRoutes = [{ id: '/join/[code]', url: '/join/invalid', actions: ['default'] }];
+
 export const adminRoutes = [
+	{ id: '/admin/enroll', url: '/admin/enroll', actions: [] },
 	{
 		id: '/admin/archive',
 		url: '/admin/archive',
@@ -61,8 +64,8 @@ export const adminRoutes = [
 	{
 		id: '/admin/whitelist',
 		url: '/admin/whitelist',
-		actions: ['add', 'remove'],
-		implementedActions: ['add', 'remove']
+		actions: ['add', 'remove', 'enrollment', 'review', 'approve', 'reject'],
+		implementedActions: ['add', 'remove', 'enrollment', 'review', 'approve', 'reject']
 	},
 	{
 		id: '/admin/templates',

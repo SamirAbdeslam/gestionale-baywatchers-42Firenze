@@ -5,6 +5,7 @@ import {
 	cookieOptions
 } from '../../src/lib/server/auth/session.ts';
 import {
+	sameSiteRedirect,
 	assertAdmin,
 	isPublicPath,
 	matchesDisplayToken
@@ -41,6 +42,8 @@ it.each([
 	'/',
 	'/display',
 	'/display/sub',
+	'/join/[code]',
+	'/join/test',
 	'/auth/login',
 	'/healthz',
 	'/language/en',
@@ -52,6 +55,7 @@ it.each([
 	'/calendar',
 	'/profile',
 	'/display-admin',
+	'/joining',
 	'/authentication',
 	'/healthz-private',
 	'/languages',
@@ -264,4 +268,25 @@ it.each([
 	expect(() => profileSchema.parse({ id: 42, login: 'student', ...fields })).toThrow(
 		CampusAccessError
 	);
+});
+
+it.each([
+	'https://evil.test/join/123',
+	'//evil.test',
+	'/\\evil.test',
+	'https://evil.test@evil.test',
+	'http://[invalid'
+])('rejects off-site or invalid login return targets %s', (target) => {
+	expect(sameSiteRedirect(target, 'https://example.test')).toBe('/calendar');
+});
+it('preserves an absolute same-site login return target including its query', () => {
+	expect(sameSiteRedirect('/join/123?test=1', 'https://example.test')).toBe(
+		'https://example.test/join/123?test=1'
+	);
+	expect(sameSiteRedirect(null, 'https://example.test')).toBe('https://example.test/calendar');
+});
+
+it('keeps normalized double-slash paths on the same site by returning absolute URLs', () => {
+	const target = sameSiteRedirect('/.//evil.test', 'https://example.test');
+	expect(new URL(target).origin).toBe('https://example.test');
 });

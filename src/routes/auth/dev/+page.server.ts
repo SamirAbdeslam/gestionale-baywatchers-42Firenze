@@ -1,3 +1,4 @@
+import { sameSiteRedirect } from '#lib/server/auth/guards.ts';
 import { asc } from 'drizzle-orm';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { users } from '#lib/server/db/schema.ts';
@@ -32,6 +33,8 @@ export const actions: Actions = {
 			event.cookies.get('session')
 		);
 		setSessionCookie(event.cookies, session.token, session.expiresAt, env.ORIGIN);
-		redirect(303, '/calendar');
+		redirect(303, sameSiteRedirect(event.url.searchParams.get('to'), env.ORIGIN), {
+			external: [env.ORIGIN]
+		});
 	}
 };

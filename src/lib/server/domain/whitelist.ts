@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import type { Transaction } from '../db/index.ts';
 import type { db } from '../db/index.ts';
 import { whitelist } from '../db/schema.ts';
 import { assertAdmin, lockAdmin, loginPattern } from '../auth/guards.ts';
@@ -55,27 +56,12 @@ export async function addLogins(
 			logIds: number[] = [];
 		// A fixed order also prevents conflicts between overlapping concurrent batches.
 		for (const login of [...valid].sort()) {
-			const [row] = await tx
-				.insert(whitelist)
-				.values({ login, addedAt: now })
-				.onConflictDoNothing()
-				.returning();
-			if (!row) {
-				duplicates.push(login);
-				continue;
+			const inserted = await insertWhitelistLogin(tx, user, login, null, info, now);
+			if (!inserted) duplicates.push(login);
+			else {
+				added.push(login);
+				logIds.push(inserted.logId);
 			}
-			added.push(login);
-			logIds.push(
-				await audit(tx, {
-					...info,
-					actor: user,
-					actionType: 'WHITELIST_ADD',
-					description: `Aggiunto '${login}' alla whitelist.`,
-					resourceType: 'whitelist',
-					resourceId: String(row.id),
-					newValue: login
-				})
-			);
 		}
 		return { added, duplicates, logIds };
 	});
@@ -130,4 +116,31 @@ export async function removeLogin(
 		{ type: 'success', key: 'whitelist_removed', params: { logins: row.login } }
 	];
 	return { ok: true, messages };
+}
+
+export async function insertWhitelistLogin(
+	tx: Transaction,
+	actor: User,
+	login: string,
+	weeks: number[] | null,
+	info: RequestInfo,
+	now: Date
+) {
+	const insert = tx.insert(whitelist).values({ login, weeks, addedAt: now });
+	const [row] = await (
+		weeks
+			? insert.onConflictDoUpdate({ target: whitelist.login, set: { weeks } })
+			: insert.onConflictDoNothing()
+	).returning();
+	if (!row) return null;
+	const logId = await audit(tx, {
+		...info,
+		actor,
+		actionType: 'WHITELIST_ADD',
+		description: `Aggiunto '${login}' alla whitelist.`,
+		resourceType: 'whitelist',
+		resourceId: String(row.id),
+		newValue: weeks ? { login, weeks } : login
+	});
+	return { row, logId };
 }

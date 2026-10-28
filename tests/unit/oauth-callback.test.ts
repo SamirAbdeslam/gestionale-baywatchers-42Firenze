@@ -25,7 +25,9 @@ function event(query: string, storedState?: string) {
 		url,
 		request: new Request(url),
 		cookies: {
-			get: vi.fn((name: string) => (name === 'oauth_state' ? storedState : 'old-token')),
+			get: vi.fn((name: string) =>
+				name === 'oauth_state' ? storedState : name === 'session' ? 'old-token' : undefined
+			),
 			delete: vi.fn()
 		},
 		getClientAddress: () => '127.0.0.1'
@@ -33,7 +35,10 @@ function event(query: string, storedState?: string) {
 }
 it('consumes state, persists identity and session, and redirects after successful mocked OAuth', async () => {
 	const request = event('?code=code&state=state', 'state');
-	await expect(GET(request)).rejects.toMatchObject({ status: 303, location: '/calendar' });
+	await expect(GET(request)).rejects.toMatchObject({
+		status: 303,
+		location: 'https://localhost:8443/calendar'
+	});
 	expect(request.cookies.delete).toHaveBeenCalledWith('oauth_state', { path: '/' });
 	expect(mocks.profile).toHaveBeenCalledExactlyOnceWith({}, 'code');
 	expect(mocks.login).toHaveBeenCalledWith(

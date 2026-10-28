@@ -44,8 +44,8 @@ async function snapshot() {
 	};
 }
 beforeEach(async () => {
-	await client`TRUNCATE pools, week_activations, users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
-	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start='2026-10-19',pool_end='2026-11-15',active_week=4,display_week=3,max_events_per_user=2,updated_at='2026-01-01T00:00:00Z' WHERE id=1`;
+	await client`TRUNCATE enrollment_requests, pools, week_activations, users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
+	await client`UPDATE settings SET enrollment_code=null,pool_closed_at=null,pool_reopened=false,pool_start='2026-10-19',pool_end='2026-11-15',active_week=4,display_week=3,max_events_per_user=2,updated_at='2026-01-01T00:00:00Z' WHERE id=1`;
 	[actor] = await database
 		.insert(schema.users)
 		.values({ intraId: 42, login: 'pool_admin', role: 'admin' })
@@ -62,8 +62,8 @@ beforeEach(async () => {
 });
 afterEach(() => unsubscribe());
 afterAll(async () => {
-	await client`TRUNCATE pools, week_activations, users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
-	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,active_week=1,display_week=1,max_events_per_user=0 WHERE id=1`;
+	await client`TRUNCATE enrollment_requests, pools, week_activations, users, events, registrations, week_templates, template_events, whitelist, action_logs RESTART IDENTITY CASCADE`;
+	await client`UPDATE settings SET enrollment_code=null,pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,active_week=1,display_week=1,max_events_per_user=0 WHERE id=1`;
 	await client.end();
 });
 
@@ -211,7 +211,7 @@ it.each([
 	expect(Object.keys(old).sort()).toEqual(
 		[
 			...(selected.includes('events') ? ['events'] : []),
-			...(selected.includes('whitelist') ? ['whitelist'] : []),
+			...(selected.includes('whitelist') ? ['whitelist', 'enrollmentRequests'] : []),
 			...(selected.includes('weeks') || selected.includes('dates') ? ['settings'] : [])
 		].sort()
 	);

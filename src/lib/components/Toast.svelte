@@ -1,5 +1,6 @@
 <script module lang="ts">
 	import { formatNumber } from '#lib/format.ts';
+	import type { EnrollmentNotice } from '#lib/server/domain/enrollment.ts';
 	import type { ArchiveNotice } from '#lib/server/domain/archive.ts';
 	import type { PoolNotice } from '#lib/server/domain/pool.ts';
 	import type { TemplateNotice } from '#lib/server/domain/templates.ts';
@@ -28,7 +29,8 @@
 		| WhitelistNotice
 		| TemplateNotice
 		| PoolNotice
-		| ArchiveNotice;
+		| ArchiveNotice
+		| EnrollmentNotice;
 	// Each notice carries the parameters required by its translation key.
 	const m = translations as Record<Notice['key'], (params: Notice['params']) => string>;
 </script>

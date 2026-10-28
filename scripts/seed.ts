@@ -36,7 +36,7 @@ export function seedData(seed: number, now: Date) {
 export async function seedDatabase(client: Sql, seed = 42, now = new Date()) {
 	const data = seedData(seed, now);
 	await client.begin(async (tx) => {
-		await tx`TRUNCATE users, events, registrations, week_templates, template_events, whitelist, action_logs CASCADE`;
+		await tx`TRUNCATE enrollment_requests, users, events, registrations, week_templates, template_events, whitelist, action_logs CASCADE`;
 		await writeData(tx, data);
 	});
 	return { users: data.data.users.length, events: data.data.events.length };

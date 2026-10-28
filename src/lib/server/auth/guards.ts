@@ -19,7 +19,7 @@ export function matchesPath(path: string, prefix: string) {
 export function isPublicPath(path: string) {
 	return (
 		path === '/' ||
-		['/display', '/auth', '/healthz', '/language', '/api/stream', '/_app'].some((prefix) =>
+		['/join', '/display', '/auth', '/healthz', '/language', '/api/stream', '/_app'].some((prefix) =>
 			matchesPath(path, prefix)
 		)
 	);
@@ -38,4 +38,17 @@ export async function lockAdmin(tx: Transaction, actor: User) {
 	if (!user) error(401, m.error_unauthorized());
 	assertAdmin(user);
 	return user;
+}
+
+export function sameSiteRedirect(
+	to: string | null | undefined,
+	origin: string,
+	fallback = '/calendar'
+) {
+	try {
+		const target = new URL(to ?? fallback, origin);
+		return target.origin === new URL(origin).origin ? target.href : fallback;
+	} catch {
+		return fallback;
+	}
 }

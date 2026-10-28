@@ -7,6 +7,7 @@ import {
 	registrations,
 	settings,
 	whitelist,
+	enrollmentRequests,
 	pools,
 	poolEntries,
 	weekActivations
@@ -269,6 +270,9 @@ export async function cleanPool(
 			const removedWhitelist = choices.whitelist
 				? await tx.select().from(whitelist).orderBy(whitelist.id).for('update')
 				: undefined;
+			const removedRequests = choices.whitelist
+				? await tx.select().from(enrollmentRequests).orderBy(enrollmentRequests.login).for('update')
+				: undefined;
 			const oldSettings = {
 				...(choices.weeks
 					? { activeWeek: before.activeWeek, displayWeek: before.displayWeek }
@@ -296,13 +300,20 @@ export async function cleanPool(
 						removedWhitelist.map((row) => row.id)
 					)
 				);
+			if (choices.whitelist) await tx.delete(enrollmentRequests);
 			if (choices.weeks || choices.dates)
 				await tx
 					.update(settings)
 					.set({
 						...(choices.weeks ? { activeWeek: 1, displayWeek: 1 } : {}),
 						...(choices.dates
-							? { poolStart: null, poolEnd: null, poolClosedAt: null, poolReopened: false }
+							? {
+									poolStart: null,
+									poolEnd: null,
+									poolClosedAt: null,
+									poolReopened: false,
+									enrollmentCode: null
+								}
 							: {}),
 						updatedAt: now
 					})
@@ -317,7 +328,9 @@ export async function cleanPool(
 				resourceId: String(archive.id),
 				oldValue: {
 					...(removedEvents ? { events: removedEvents } : {}),
-					...(removedWhitelist ? { whitelist: removedWhitelist } : {}),
+					...(removedWhitelist
+						? { whitelist: removedWhitelist, enrollmentRequests: removedRequests }
+						: {}),
 					...(choices.weeks || choices.dates ? { settings: oldSettings } : {})
 				}
 			});

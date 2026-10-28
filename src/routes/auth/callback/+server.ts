@@ -1,3 +1,4 @@
+import { sameSiteRedirect } from '#lib/server/auth/guards.ts';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { redirect } from '@sveltejs/kit';
 import { z } from 'zod';
@@ -8,6 +9,8 @@ import { login } from '#lib/server/domain/auth.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async (event) => {
+	const returnTo = sameSiteRedirect(event.cookies.get('oauth_return_to'), readEnv().ORIGIN);
+	event.cookies.delete('oauth_return_to', { path: '/' });
 	const storedState = event.cookies.get('oauth_state');
 	event.cookies.delete('oauth_state', { path: '/' });
 	let stage = 'state';
@@ -38,5 +41,5 @@ export const GET: RequestHandler = async (event) => {
 		console.error('OAuth login failed', { id: randomUUID(), stage });
 		redirect(303, '/?error=login_failed');
 	}
-	redirect(303, '/calendar');
+	redirect(303, returnTo, { external: [readEnv().ORIGIN] });
 };

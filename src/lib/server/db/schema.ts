@@ -51,6 +51,7 @@ export const settings = pgTable(
 	{
 		id: smallint('id').primaryKey().default(1),
 		poolStart: date('pool_start'),
+		enrollmentCode: text('enrollment_code'),
 		poolEnd: date('pool_end'),
 		poolClosedAt: timestamp('pool_closed_at', { withTimezone: true }),
 		poolReopened: boolean('pool_reopened').notNull().default(false),
@@ -164,9 +165,32 @@ export const whitelist = pgTable(
 	{
 		id: serial('id').primaryKey(),
 		login: text('login').notNull().unique(),
-		addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow()
+		addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+		weeks: smallint('weeks').array()
 	},
-	(t) => [check('whitelist_login_lowercase', sql`${t.login} = lower(${t.login})`)]
+	(t) => [
+		check('whitelist_login_lowercase', sql`${t.login} = lower(${t.login})`),
+		check(
+			'whitelist_weeks_valid',
+			sql`${t.weeks} IS NULL OR (cardinality(${t.weeks}) BETWEEN 1 AND 4 AND ${t.weeks} <@ ARRAY[1,2,3,4]::smallint[] AND array_position(${t.weeks}, NULL) IS NULL)`
+		)
+	]
+);
+
+export const enrollmentRequests = pgTable(
+	'enrollment_requests',
+	{
+		login: text('login').primaryKey(),
+		weeks: smallint('weeks').array().notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [
+		check('enrollment_login_lowercase', sql`${t.login} = lower(${t.login})`),
+		check(
+			'enrollment_weeks_valid',
+			sql`cardinality(${t.weeks}) BETWEEN 1 AND 4 AND ${t.weeks} <@ ARRAY[1,2,3,4]::smallint[] AND array_position(${t.weeks}, NULL) IS NULL`
+		)
+	]
 );
 
 export const actionLogs = pgTable(
