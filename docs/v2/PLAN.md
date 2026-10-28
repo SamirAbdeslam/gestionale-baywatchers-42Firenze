@@ -1334,3 +1334,5 @@ Si fa dopo M26, solo sulla v2 (branch `v2.0.0`): il branch principale con l'app 
 3. `/security-review` di Claude Code sulle modifiche del branch.
 4. Skill `security-audit` di Cloudflare (audit completo), per ultima perché è la più costosa.
 5. Correzioni come un modulo normale: `pnpm ci:local` verde, push, CI verde, voce in `SESSIONS.md`.
+
+**Esito**: ponytail-audit (correzioni `0af5820`, `b16ee3f`); `/security-review` senza vulnerabilità confermate; audit Cloudflare run-1 (1 bassa e 1 sospetto, corretti in `9999dd6`).

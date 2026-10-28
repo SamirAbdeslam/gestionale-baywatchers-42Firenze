@@ -2950,3 +2950,25 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Arresto dopo commit e push del diario. Nessun branch nuovo, worktree, tag, push forzato o volume cancellato.
+
+
+## 2026-10-28 — Correzioni sicurezza (§23 punto 5) — completate
+
+**Fatto**
+- `9999dd6` — `fix(security): limit streams and harden CSV and display access`, pubblicato su `v2.0.0`.
+- Applicate le quattro correzioni approvate da Ismail sul branch `v2.0.0`, versione `2.3.0`: massimo 6 stream per utente o chiave display condivisa, con risposta 429 al settimo; ultimi 20 dei 500 posti globali riservati ad admin/display. Le quote vengono liberate su abort/cancel, eliminando le chiavi senza connessioni.
+- CSV: celle contenenti punto e virgola o tab racchiuse tra virgolette; formule e tab/CR iniziali neutralizzati anche dopo `;`. Import dell'archivio adeguato per rimuovere esattamente uno strato di protezione nei login/titoli e preservare nel round trip anche gli apostrofi già presenti.
+- `DISPLAY_TOKEN` obbligatorio fuori da localhost/127.0.0.1, con almeno 32 caratteri non vuoti; in locale resta compatibile con token vuoto o di almeno 24 caratteri. Aggiornati `.env.example`, README e runbook di cutover, con comando di generazione del token.
+- `AUTH_DEV_LOGIN=false` predefinito nell'esempio; Playwright e la CI GitHub impostano già esplicitamente `true` dove serve. `compose.dev.yaml` avvia solo Postgres e non legge `.env.example`.
+- Corretta la corsa nel solo test E2E delle iscrizioni, come autorizzato da Ismail: dopo Chiudi iscrizioni si attende Apri iscrizioni prima della navigazione dello studente; dopo la riapertura si attende Mostra QR prima di aprirlo. Nessun timeout o retry aggiunto e nessun'altra modifica ai test E2E.
+- Nessuna dipendenza o stringa d'interfaccia nuova; nessuna modifica al `.env` locale, nessun branch, worktree o tag creato, nessun volume cancellato.
+
+**Controlli**
+- Unico `pnpm ci:local` autorizzato dopo la correzione del test: exit 0; 325 unit, 378 integration, 199 E2E, totale 902 test, senza retry. Esecuzione senza altri processi di test/build in parallelo; migrazioni, lint, check e build verdi; svelte-check con 0 errori e 0 warning; `git diff --check` verde.
+- Regressioni SSE su settimo stream rifiutato, altri utenti ammessi, quota condivisa display, riserva admin/display, tetto globale e rilascio delle quote con abort/cancel. CSV verificato con virgola e punto e virgola, User-Agent `x;=1+1;`, tab/CR e round trip dell'archivio. Validazione ambiente verificata su host locali, pubblici e indirizzo LAN.
+
+- CI [40692546389](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40692546389) su `9999dd6`: tutti e sei i job verdi, `gh run watch 40692546389 --exit-status` exit 0, senza rilanci remoti.
+- Chiusura documentale con `docs: record security audit fixes`: aggiornati questo diario e l’Esito in PLAN.md §23; nessuna modifica al codice dopo la validazione e nessun nuovo gate completo necessario per i soli documenti.
+
+**Domande / blocchi**
+- Nessun dubbio o blocco aperto. Nessuna verifica in produzione; restano i controlli manuali con account e dispositivi reali già indicati nelle sessioni precedenti.
