@@ -1,3 +1,5 @@
+import { closePool } from '../../src/lib/server/domain/pool.ts';
+import { setAttendance } from '../../src/lib/server/domain/registrations.ts';
 import assert from 'node:assert/strict';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -126,4 +128,40 @@ it('keeps the closed recap available from the archive after events have been cle
 	expect(view).toMatchObject({ phase: 'closed', calendar: false, recap: true });
 	expect(view.recapData).toEqual(await getRecap(database, user, String(pool.id)));
 	expect(JSON.stringify(view)).not.toContain('secret_other');
+});
+
+it('keeps both chapters consistent after attendance corrections without saving the archive', async () => {
+	await client`UPDATE settings SET pool_start='2026-05-04',pool_end='2026-05-31' WHERE id=1`;
+	const [event] = await database
+		.insert(schema.events)
+		.values({
+			title: 'Corrected',
+			week: 1,
+			weekday: 1,
+			startTime: '09:00',
+			endTime: '11:00',
+			compensation: 200
+		})
+		.returning();
+	await database
+		.insert(schema.registrations)
+		.values({ eventId: event.id, participantLogin: user.login });
+	const now = new Date('2026-06-01T12:00:00Z');
+	const info = { ipAddress: '', userAgent: null };
+	await closePool(database, admin, { confirm: 'yes' }, info, now);
+	for (const attended of [false, true]) {
+		await setAttendance(database, admin, { id: event.id, login: user.login, attended }, info, now);
+		const recap = await getRecap(database, user);
+		expect(recap?.stats).toMatchObject({
+			completed: attended ? 1 : 0,
+			hours: attended ? 2 : 0,
+			altarian: attended ? 200 : 0
+		});
+		expect(recap?.overall).toMatchObject({
+			completed: recap?.stats?.completed,
+			hours: recap?.stats?.hours,
+			altarian: recap?.stats?.altarian
+		});
+	}
+	expect((await database.select().from(schema.poolEntries))[0].attended).toBe(true);
 });

@@ -49,7 +49,7 @@ test(
 				headers: { origin: requestOrigin, accept: 'text/html' }
 			});
 		try {
-			await client`UPDATE settings SET max_events_per_user=0 WHERE id=1`;
+			await client`UPDATE settings SET active_week=4,max_events_per_user=0 WHERE id=1`;
 			const first = await fixture(`M5 user ${name}`);
 			ids.push(first);
 			const second = await fixture(`M5 second ${name}`);

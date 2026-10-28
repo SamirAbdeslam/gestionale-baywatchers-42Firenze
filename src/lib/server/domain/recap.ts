@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import { and, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { db } from '../db/index.ts';
-import { events, poolEntries, pools, settings } from '../db/schema.ts';
+import { events, poolEntries, pools, registrations, settings } from '../db/schema.ts';
 import { assertAdmin, assertUser } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import {
@@ -39,22 +39,32 @@ export async function personalPools(database: typeof db, actor: User | null) {
 	if (
 		config.poolStart &&
 		!archived.some((pool) => pool.startDate === config.poolStart) &&
-		(await currentPoolEntries(database, config.poolStart)).some((row) => row.login === actor.login)
+		(
+			await database
+				.select({ id: registrations.id })
+				.from(registrations)
+				.where(eq(registrations.participantLogin, actor.login))
+				.limit(1)
+		).length > 0
 	)
 		choices.push({ id: 0, startDate: config.poolStart });
 	return choices.sort((a, b) => b.startDate.localeCompare(a.startDate));
 }
 
-// Sums every pool of the login (archive plus the current pool when not yet archived).
+// The current pool uses live rows even when an older snapshot exists.
 async function overallStats(database: typeof db, actor: User, startDate: string) {
 	// Only pools where the login actually attended something count as done.
+	const [config] = await database.select().from(settings).where(eq(settings.id, 1));
 	const choices = [];
 	const perPool: PoolEntry[][] = [];
 	for (const choice of await personalPools(database, actor)) {
-		const rows = choice.id
-			? await database.select().from(poolEntries).where(eq(poolEntries.poolId, choice.id))
-			: await currentPoolEntries(database, choice.startDate);
-		const own = rows.filter((row) => row.login === actor.login);
+		const own =
+			choice.startDate === config.poolStart
+				? await currentPoolEntries(database, choice.startDate, actor.login)
+				: await database
+						.select()
+						.from(poolEntries)
+						.where(and(eq(poolEntries.poolId, choice.id), eq(poolEntries.login, actor.login)));
 		if (!own.some((row) => row.attended)) continue;
 		choices.push(choice);
 		perPool.push(own);

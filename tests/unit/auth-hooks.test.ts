@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import type { RequestEvent } from '@sveltejs/kit';
+import { autoClosePool } from '../../src/lib/server/domain/pool.ts';
 import { handle, handleError } from '../../src/hooks.server.ts';
 
 const state = vi.hoisted(() => ({
@@ -104,4 +105,13 @@ it('protects avatar endpoints with 401 rather than a page redirect', async () =>
 	expect(response.status).toBe(401);
 	expect(response.headers.get('Cache-Control')).toBe('private, no-store');
 	expect(resolve).not.toHaveBeenCalled();
+});
+
+it('continues serving the request when automatic closure fails without logging private data', async () => {
+	vi.mocked(autoClosePool).mockRejectedValueOnce(new Error('PRIVATE_DATABASE_DATA'));
+	const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+	const response = await handle({ event: event('/'), resolve: async () => new Response('ok') });
+	expect(response.status).toBe(200);
+	expect(await response.text()).toBe('ok');
+	expect(log).toHaveBeenCalledExactlyOnceWith('Auto close failed');
 });

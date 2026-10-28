@@ -1,4 +1,4 @@
-import { closePool, reopenPool, savePool, cleanPool } from '#lib/server/domain/pool.ts';
+import { closePool, reopenPool, savePool, cleanPool, poolPhase } from '#lib/server/domain/pool.ts';
 import { error } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
@@ -18,7 +18,7 @@ import {
 	deleteAllEvents,
 	listWeekEvents
 } from '#lib/server/domain/events.ts';
-import { getPoolPhase } from '#lib/server/domain/archive.ts';
+import { events as poolEvents } from '#lib/server/db/schema.ts';
 import { saveWeekAsTemplate } from '#lib/server/domain/templates.ts';
 import { formAction } from '#lib/server/form-action.ts';
 import {
@@ -44,7 +44,7 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 		const events = await listWeekEvents(db, locals.user, data.week, data.settings.poolStart);
 		return {
 			...data,
-			phase: await getPoolPhase(db, locals.user, new Date()),
+			phase: poolPhase(data.settings, await db.select().from(poolEvents), new Date()),
 			kinds: EVENT_KINDS,
 			events: events.map((event) => ({
 				...event,

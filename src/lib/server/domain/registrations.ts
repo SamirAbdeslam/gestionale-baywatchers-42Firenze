@@ -128,12 +128,14 @@ async function changeRegistration(
 			let description: string;
 			const details = `'${event.title}' (${days[event.weekday - 1]}, ${event.startTime.slice(0, 5)}-${event.endTime.slice(0, 5)}, ID: ${event.id}).`;
 			if (operation === 'register') {
+				if (user.role !== 'admin' && event.week > config.activeWeek)
+					return failure('error_event_not_found', 404);
 				const [allowed] = await tx
 					.select({ id: whitelist.id })
 					.from(whitelist)
 					.where(eq(whitelist.login, login));
 				if (!allowed) return failure('error_not_whitelisted', 403);
-				const { config, isPassed: ended } = await passed(tx, event, now);
+				const { isPassed: ended } = await passed(tx, event, now);
 
 				if (ended) return failure('error_event_passed');
 				if (config.maxEventsPerUser > 0) {

@@ -103,10 +103,12 @@ async function saveArchive(tx: Transaction, config: typeof settings.$inferSelect
 			})
 			.returning();
 		await tx.delete(poolEntries).where(eq(poolEntries.poolId, archive.id));
-		if (entries.length)
+		for (let offset = 0; offset < entries.length; offset += 1000)
 			await tx
 				.insert(poolEntries)
-				.values(entries.map((entry) => ({ ...entry, poolId: archive.id })));
+				.values(
+					entries.slice(offset, offset + 1000).map((entry) => ({ ...entry, poolId: archive.id }))
+				);
 	}
 	const [archive] = await tx.select().from(pools).where(eq(pools.startDate, config.poolStart));
 	if (!archive) throw new Error('Archive verification failed');
@@ -351,12 +353,14 @@ export type PoolEntry = Omit<typeof poolEntries.$inferSelect, 'id' | 'poolId'>;
 // Current and archived pools share the same statistics input, including absences.
 export async function currentPoolEntries(
 	database: Database,
-	poolStart: string | null
+	poolStart: string | null,
+	login?: string
 ): Promise<PoolEntry[]> {
 	const rows = await database
 		.select({ event: events, registration: registrations })
 		.from(events)
 		.innerJoin(registrations, eq(events.id, registrations.eventId))
+		.where(login === undefined ? undefined : eq(registrations.participantLogin, login))
 		.orderBy(events.id, registrations.participantLogin);
 	const activations = new Map(
 		(await database.select().from(weekActivations)).map((row) => [row.week, row.activatedAt])
@@ -482,7 +486,6 @@ export function poolStats(
 				(a.startTime ?? '').localeCompare(b.startTime ?? '') ||
 				a.title.localeCompare(b.title)
 		);
-	const badges = badgesOf(selected, { first: false, pools: 1 });
 	// The stored week is exact; dates measured from the pool start are the fallback for old archives.
 	const weekOf = (row: PoolEntry, index: number) =>
 		attended.every((entry) => entry.week !== null)
@@ -512,7 +515,6 @@ export function poolStats(
 		firstShift: dated[0] ?? null,
 		lastShift: dated.at(-1) ?? null,
 		contributionPercent: totals.minutes ? (personal.minutes / totals.minutes) * 100 : 0,
-		badges,
 		totals
 	};
 }

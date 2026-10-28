@@ -483,3 +483,15 @@ it('rejects user registration before Rome pool midnight without writes or notifi
 		(await register(database, user, { id: row.id }, info, new Date('2026-10-19T22:00:00Z'))).ok
 	).toBe(true);
 });
+
+it('rejects registration in an inactive week without any writes', async () => {
+	const row = await event({ week: 2 });
+	expect(await register(database, user, { id: row.id }, info, now)).toMatchObject({
+		ok: false,
+		status: 404,
+		messages: [{ key: 'error_event_not_found' }]
+	});
+	expect(await database.select().from(schema.registrations)).toHaveLength(0);
+	expect(await database.select().from(schema.actionLogs)).toHaveLength(0);
+	expect(messages).toHaveLength(0);
+});

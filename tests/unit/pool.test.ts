@@ -81,8 +81,7 @@ it('returns finite zero totals and absent descriptive values for no entries or u
 		favoriteTimeBand: null,
 		busiestWeek: null,
 		firstShift: null,
-		lastShift: null,
-		badges: []
+		lastShift: null
 	});
 	expect(empty.byKind.every((kind) => kind.count === 0 && kind.percent === 0)).toBe(true);
 	expect(poolStats([entry()], 'missing')).toMatchObject({
@@ -92,7 +91,7 @@ it('returns finite zero totals and absent descriptive values for no entries or u
 		totals: { taken: 1, completed: 1, hours: 1 }
 	});
 });
-it('counts absences as taken and participants but gives no hours, money or badges', () => {
+it('counts absences as taken and participants but gives no hours or money', () => {
 	expect(
 		poolStats([entry({ attended: false }), entry({ login: 'beta', attended: false })], 'alpha')
 	).toMatchObject({
@@ -106,7 +105,6 @@ it('counts absences as taken and participants but gives no hours, money or badge
 		busiestWeek: null,
 		firstShift: null,
 		contributionPercent: 0,
-		badges: [],
 		totals: { taken: 2, participants: 2, hours: 0 }
 	});
 });
@@ -162,13 +160,11 @@ it('handles imported rows without times, weekday, date or registration date with
 		favoriteTimeBand: null,
 		busiestWeek: null,
 		firstShift: null,
-		lastShift: null,
-		badges: []
+		lastShift: null
 	});
 	expect(poolStats([partial, entry({ kind: 'rush' })])).toMatchObject({
 		favoriteWeekday: 1,
-		favoriteTimeBand: 'morning',
-		badges: []
+		favoriteTimeBand: 'morning'
 	});
 });
 it.each([
@@ -195,16 +191,17 @@ it('finds attended first/last shifts and stable descriptors with stable ties ind
 });
 it('awards descriptive badges only when their attendance and strict majority thresholds hold', () => {
 	const rows = [entry(), entry({ kind: 'rush' }), entry({ kind: 'cluster', startTime: '18:00' })];
-	expect(poolStats(rows).badges).toEqual(['early_bird', 'all_rounder', 'always_there']);
-	expect(poolStats(rows.slice(0, 2)).badges).toEqual(['early_bird']);
-	expect(poolStats([entry(), entry({ startTime: '12:00', kind: 'rush' })]).badges).toEqual([]);
-	expect(poolStats([...rows, entry({ attended: false })]).badges).toEqual([
+	expect(badgesOf([], ctx)).toEqual([]);
+	expect(badgesOf([entry({ attended: false })], ctx)).toEqual([]);
+	expect(badgesOf(rows, ctx)).toEqual(['early_bird', 'all_rounder', 'always_there']);
+	expect(badgesOf(rows.slice(0, 2), ctx)).toEqual(['early_bird']);
+	expect(badgesOf([entry(), entry({ startTime: '12:00', kind: 'rush' })], ctx)).toEqual([]);
+	expect(badgesOf([...rows, entry({ attended: false })], ctx)).toEqual([
 		'early_bird',
 		'all_rounder'
 	]);
 	expect(
-		poolStats([entry(), entry({ kind: 'rush' }), entry({ kind: 'cluster', attended: false })])
-			.badges
+		badgesOf([entry(), entry({ kind: 'rush' }), entry({ kind: 'cluster', attended: false })], ctx)
 	).toEqual(['early_bird']);
 });
 

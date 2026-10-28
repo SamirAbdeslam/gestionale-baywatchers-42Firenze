@@ -12,6 +12,17 @@ export function generateState() {
 	return randomBytes(32).toString('base64url');
 }
 
+async function fetchWithRetry(request: Request): Promise<Response> {
+	for (let attempt = 0; ; attempt++) {
+		const response = await fetch(request.clone());
+		if (response.status !== 429 || attempt === 2) return response;
+		const retryAfter = response.headers.get('Retry-After');
+		const seconds =
+			retryAfter !== null && /^\d+$/.test(retryAfter) ? Math.min(Number(retryAfter), 3) : 1;
+		await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+	}
+}
+
 export function oauthClient(env: {
 	FT_CLIENT_ID: string;
 	FT_CLIENT_SECRET: string;
@@ -46,7 +57,7 @@ export function oauthClient(env: {
 				}),
 				signal: AbortSignal.timeout(10000)
 			});
-			const response = await fetch(request);
+			const response = await fetchWithRetry(request);
 			if (!response.ok) throw new Error('OAuth token request failed');
 			return z.object({ access_token: z.string().min(1) }).parse(await response.json())
 				.access_token;
@@ -96,11 +107,13 @@ export const profileSchema = z
 export type Profile = z.infer<typeof profileSchema>;
 export async function fetchProfile(client: ReturnType<typeof oauthClient>, code: string) {
 	const accessToken = await client.accessToken(code);
-	const response = await fetch(PROFILE_URL, {
-		redirect: 'error',
-		headers: { Authorization: `Bearer ${accessToken}` },
-		signal: AbortSignal.timeout(10000)
-	});
+	const response = await fetchWithRetry(
+		new Request(PROFILE_URL, {
+			redirect: 'error',
+			headers: { Authorization: `Bearer ${accessToken}` },
+			signal: AbortSignal.timeout(10000)
+		})
+	);
 	if (!response.ok) throw new Error('OAuth profile request failed');
 	return profileSchema.parse(await response.json());
 }

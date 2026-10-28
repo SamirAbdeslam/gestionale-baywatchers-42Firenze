@@ -63,7 +63,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (!isStatic && routeId) {
 			const { db } = await import('#lib/server/db/index.ts');
 			const { autoClosePool } = await import('#lib/server/domain/pool.ts');
-			await autoClosePool(db, new Date());
+			try {
+				await autoClosePool(db, new Date());
+			} catch {
+				console.error('Auto close failed');
+			}
 		}
 		// Authenticated HTML and responses carrying session cookies must not enter shared caches.
 		const response = await resolve(

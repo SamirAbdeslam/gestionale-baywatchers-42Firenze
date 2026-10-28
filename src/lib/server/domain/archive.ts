@@ -4,11 +4,11 @@ import { z } from 'zod';
 import type { db } from '../db/index.ts';
 import type { User } from '../auth/session.ts';
 import { assertAdmin, lockAdmin, loginPattern } from '../auth/guards.ts';
-import { pools, poolEntries, settings, events } from '../db/schema.ts';
+import { pools, poolEntries, settings } from '../db/schema.ts';
 import { readCsv, writeCsv } from './csv.ts';
 import { isoDate, digits } from './dates.ts';
 import { EVENT_KINDS } from '#lib/kinds.ts';
-import { poolStats, currentPoolEntries, poolPhase, type PoolEntry } from './pool.ts';
+import { poolStats, currentPoolEntries, type PoolEntry } from './pool.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { publish } from '../realtime/bus.ts';
 import { m } from '#lib/paraglide/messages.js';
@@ -227,19 +227,6 @@ export async function getArchive(database: typeof db, actor: User | null, input:
 					.where(eq(poolEntries.poolId, Number(selected.key)))
 					.orderBy(poolEntries.id);
 	return { years, year, choices: available, selected, ...summary(entries) };
-}
-
-export async function getPoolPhase(database: typeof db, actor: User | null, now: Date) {
-	assertAdmin(actor);
-	const [config] = await database.select().from(settings).where(eq(settings.id, 1));
-	if (!config) throw new Error('Settings row is missing');
-	return poolPhase(
-		config,
-		await database
-			.select({ eventDate: events.eventDate, week: events.week, weekday: events.weekday })
-			.from(events),
-		now
-	);
 }
 
 const badHeader = {

@@ -11,7 +11,7 @@ import {
 	setPoolDates,
 	resetDisplayWeek
 } from '../../src/lib/server/domain/settings.ts';
-import { actions } from '../../src/routes/admin/+page.server.ts';
+import { actions, load } from '../../src/routes/admin/+page.server.ts';
 import { subscribe, type RealtimeEvent } from '../../src/lib/server/realtime/bus.ts';
 
 // Route actions use the same real test database as the domain assertions.
@@ -294,4 +294,23 @@ it('records the activation time once and updates it only when the week changes',
 		[2, new Date('2026-10-22T10:00:00Z')],
 		[3, later]
 	]);
+});
+
+it('computes the admin pool phase with events outside the displayed week', async () => {
+	await client`UPDATE settings SET pool_start='2000-01-01',pool_end='2000-01-02' WHERE id=1`;
+	const input = {
+		locals: { user: actor },
+		url: new URL('http://localhost/admin?week=1'),
+		depends: () => {}
+	} as Parameters<typeof load>[0];
+	expect(await load(input)).toMatchObject({ phase: 'closed' });
+	await database.insert(schema.events).values({
+		title: 'Later week',
+		week: 4,
+		weekday: 1,
+		eventDate: '2100-01-01',
+		startTime: '09:00',
+		endTime: '11:00'
+	});
+	expect(await load(input)).toMatchObject({ phase: 'open', events: [] });
 });

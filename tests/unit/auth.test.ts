@@ -22,7 +22,10 @@ import {
 import { publish, subscribe } from '../../src/lib/server/realtime/bus.ts';
 import type { User } from '../../src/lib/server/auth/session.ts';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+	vi.unstubAllGlobals();
+	vi.useRealTimers();
+});
 it('generates independent base32 tokens with exactly 160 bits and stores only a SHA256 id', () => {
 	const first = generateSessionToken(),
 		second = generateSessionToken();
@@ -139,9 +142,11 @@ it('uses the fixed 42 endpoints and validates mocked token and profile responses
 	const tokenRequest = mocked.mock.calls[0][0] as Request;
 	expect(tokenRequest.url).toBe('https://api.intra.42.fr/oauth/token');
 	expect(await tokenRequest.text()).toContain('grant_type=authorization_code');
-	expect(mocked.mock.calls[1][0]).toBe('https://api.intra.42.fr/v2/me');
+	expect((mocked.mock.calls[1][0] as Request).url).toBe('https://api.intra.42.fr/v2/me');
 	expect(new Request(mocked.mock.calls[1][0], mocked.mock.calls[1][1]).redirect).toBe('error');
-	expect(mocked.mock.calls[1][1].headers).toEqual({ Authorization: 'Bearer test-token' });
+	expect((mocked.mock.calls[1][0] as Request).headers.get('Authorization')).toBe(
+		'Bearer test-token'
+	);
 });
 it('rejects unsuccessful provider responses', async () => {
 	vi.stubGlobal(
@@ -290,3 +295,62 @@ it('keeps normalized double-slash paths on the same site by returning absolute U
 	const target = sameSiteRedirect('/.//evil.test', 'https://example.test');
 	expect(new URL(target).origin).toBe('https://example.test');
 });
+
+it.each(['token', 'profile'] as const)(
+	'retries a throttled %s request with a reusable request body',
+	async (endpoint) => {
+		vi.useFakeTimers();
+		const client = oauthClient({
+			FT_CLIENT_ID: 'id',
+			FT_CLIENT_SECRET: 'secret',
+			ORIGIN: 'http://localhost'
+		});
+		const mocked = vi
+			.fn()
+			.mockResolvedValueOnce(new Response(null, { status: 429, headers: { 'Retry-After': '9' } }))
+			.mockResolvedValueOnce(
+				Response.json(
+					endpoint === 'token'
+						? { access_token: 'token' }
+						: { id: 42, login: 'student', campus_users: [{ campus_id: 52 }] }
+				)
+			);
+		vi.stubGlobal('fetch', mocked);
+		const result =
+			endpoint === 'token'
+				? client.accessToken('code')
+				: fetchProfile({ ...client, accessToken: async () => 'token' }, 'code');
+		await vi.advanceTimersByTimeAsync(2999);
+		expect(mocked).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(1);
+		await expect(result).resolves.toEqual(
+			endpoint === 'token' ? 'token' : expect.objectContaining({ login: 'student' })
+		);
+		expect(mocked).toHaveBeenCalledTimes(2);
+		if (endpoint === 'token')
+			expect(await mocked.mock.calls[1][0].text()).toContain('grant_type=authorization_code');
+	}
+);
+it.each(['token', 'profile'] as const)(
+	'stops after three 429 responses for %s with the existing error',
+	async (endpoint) => {
+		vi.useFakeTimers();
+		const client = oauthClient({
+			FT_CLIENT_ID: 'id',
+			FT_CLIENT_SECRET: 'secret',
+			ORIGIN: 'http://localhost'
+		});
+		const mocked = vi.fn().mockImplementation(async () => new Response(null, { status: 429 }));
+		vi.stubGlobal('fetch', mocked);
+		const result =
+			endpoint === 'token'
+				? client.accessToken('code')
+				: fetchProfile({ ...client, accessToken: async () => 'token' }, 'code');
+		const assertion = expect(result).rejects.toThrow(`OAuth ${endpoint} request failed`);
+		await vi.advanceTimersByTimeAsync(1999);
+		expect(mocked).toHaveBeenCalledTimes(2);
+		await vi.advanceTimersByTimeAsync(1);
+		await assertion;
+		expect(mocked).toHaveBeenCalledTimes(3);
+	}
+);

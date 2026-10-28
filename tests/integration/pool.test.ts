@@ -381,3 +381,16 @@ it('validates confirmation in the final route action without trusting the dialog
 	});
 	expect(await snapshot()).toEqual(before);
 });
+
+it('automatically closes and archives more than 4100 registrations', async () => {
+	await client`INSERT INTO registrations (event_id,participant_login,attended)
+		SELECT 1, 'bulk_' || n, n % 2 = 0 FROM generate_series(1, 4200) AS n`;
+	await autoClosePool(database, new Date('2026-11-16T10:00:00Z'));
+	const entries = await client`SELECT * FROM pool_entries`;
+	expect(entries).toHaveLength(4203);
+	expect(entries.filter((row) => row.attended)).toHaveLength(2102);
+	expect(
+		(await client`SELECT pool_closed_at FROM settings WHERE id=1`)[0].pool_closed_at
+	).not.toBeNull();
+	expect(await client`SELECT * FROM action_logs WHERE action_type='CLOSE_POOL'`).toHaveLength(1);
+});

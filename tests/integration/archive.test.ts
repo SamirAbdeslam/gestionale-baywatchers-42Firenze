@@ -6,7 +6,6 @@ import * as schema from '../../src/lib/server/db/schema.ts';
 import type { User } from '../../src/lib/server/auth/session.ts';
 import {
 	getArchive,
-	getPoolPhase,
 	exportArchive,
 	importPool,
 	previewPoolImport,
@@ -297,13 +296,6 @@ it('lists years and pools and uses the same totals for current and archived pool
 	).rejects.toMatchObject({ status: 400 });
 	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null WHERE id=1`;
 	expect((await getArchive(database, actor, {})).years).toEqual(['2026', '2025']);
-});
-
-it('shows finished only when no event extends beyond the end date', async () => {
-	await client`UPDATE settings SET pool_end='2026-10-20' WHERE id=1`;
-	expect(await getPoolPhase(database, actor, now)).toBe('closed');
-	await client`UPDATE events SET event_date='2026-10-28' WHERE id=1`;
-	expect(await getPoolPhase(database, actor, now)).toBe('open');
 });
 
 it('validates malformed form actions as translated 400 errors', async () => {
