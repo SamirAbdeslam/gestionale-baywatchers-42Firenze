@@ -2852,3 +2852,27 @@ Spazio per istruzioni o risposte di Ismail all'agent (conferme di decisioni, pri
 
 **Prossimo passo**
 - Arresto dopo i documenti. M29 e M26 non iniziati.
+
+
+## 2026-10-28 — M29 — completato
+
+**Fatto**
+- `2336180` — `feat(recap): add definitive two-chapter recap with new badges`: riepilogo in due capitoli, ultima piscina personale e "In totale", con conteggi, ore, compensi, tipo preferito e badge. Presenze sempre visibili; riepilogo sotto il countdown in fase `upcoming` e come pagina di base in `none` e `closed`; calendario conservato in `open`.
+- Nuovi badge descrittivi e testi in italiano, inglese e francese; aggiornati test unit, integration ed E2E del riepilogo, con e senza JavaScript, movimento ridotto e larghezza mobile. Review del codice pulita, confermata da Ismail alla ripresa.
+- Aggiornata soltanto la colonna Stato di M29 in §19. Versione `2.3.0`, branch `v2.0.0`; M26 non iniziato.
+
+**Controlli**
+- `pnpm ci:local`: exit 0; 290 unit, 351 integration, 193 E2E, totale 834 test. Migrazioni, lint, check e build verdi; E2E senza retry. Validazione completa eseguita ora, dopo il push originale del codice.
+- CI [40533194644](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/actions/runs/40533194644) su `2336180`: `completed/success`, verificata alla ripresa.
+- Chiusura documentale: `docs: record M29 completion and validation`.
+
+**Decisioni prese dentro il perimetro del piano**
+- "Piscine fatte" conta soltanto piscine con almeno una presenza.
+- I badge di "In totale" sono l'unione dei badge per piscina e di quelli calcolati sul totale; Fedelissimo può derivare solo da una singola piscina, mai sommando settimane di piscine diverse.
+- "Riflessi pronti" richiede un ritardo compreso tra zero e cinque minuti inclusi: `0 ≤ registered_at - week_activated_at ≤ 5 min`.
+
+**Domande / blocchi**
+- Nessun blocco. Restano da verificare a mano resa sui dispositivi reali e testi inglesi/francesi; nessuna verifica in produzione.
+
+**Prossimo passo**
+- Push dei documenti e verifica CI, poi rimozione autorizzata della cartella `legacy/`. M26 non viene iniziato.
