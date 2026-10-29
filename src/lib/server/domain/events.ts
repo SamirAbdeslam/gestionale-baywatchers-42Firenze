@@ -18,6 +18,17 @@ const id = integer.pipe(z.number().min(1));
 const time = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
 const text = z.string().trim().min(1).max(120).transform(capitalizeFirst);
 const description = z.string().trim().max(500).transform(capitalizeFirst);
+// Free-text staff names, comma-separated: no whitelist check on purpose.
+const staff = z
+	.string()
+	.max(500)
+	.default('')
+	.transform((value) =>
+		value
+			.split(',')
+			.map((name) => name.trim())
+			.filter(Boolean)
+	);
 export const editable = {
 	title: text,
 	description: description.default(''),
@@ -33,6 +44,7 @@ const matchesWeekday = (weekday: number, eventDate: string | null) =>
 	eventDate === null || (new Date(`${eventDate}T00:00:00Z`).getUTCDay() || 7) === weekday;
 const createFields = {
 	...editable,
+	staff,
 	week,
 	eventDate: z
 		.union([isoDate, z.literal('')])
@@ -55,7 +67,7 @@ const createSchema = z
 		message: 'error_event_date_weekday',
 		path: ['weekday']
 	});
-const updateSchema = z.strictObject({ id, ...editable }).refine(timeOrder);
+const updateSchema = z.strictObject({ id, ...editable, staff }).refine(timeOrder);
 const deleteSchema = z.strictObject({ id });
 const bulkSchema = z.strictObject({ week, weekday, confirm: z.literal('yes') });
 
@@ -143,7 +155,7 @@ async function insertEvent(
 		actionType: 'CREATE_EVENT',
 		description:
 			description ??
-			`Creato evento '${event.title}' (${event.weekday}, ${values.startTime}-${values.endTime}) per la settimana ${event.week}.`,
+			`Created event '${event.title}' (${event.weekday}, ${values.startTime}-${values.endTime}) for week ${event.week}.`,
 		resourceType: 'event',
 		resourceId: String(event.id),
 		newValue: event
@@ -217,7 +229,7 @@ export async function updateEvent(
 			...info,
 			actor: user,
 			actionType: 'UPDATE_EVENT',
-			description: `Aggiornato evento '${event.title}' (ID: ${id}).`,
+			description: `Updated event '${event.title}' (ID: ${id}).`,
 			resourceType: 'event',
 			resourceId: String(id),
 			oldValue: before,
@@ -269,7 +281,7 @@ export async function deleteEvent(
 			...info,
 			actor: user,
 			actionType: 'DELETE_EVENT',
-			description: `Eliminato evento '${event.title}' (ID: ${id}) dalla settimana ${event.week}.`,
+			description: `Deleted event '${event.title}' (ID: ${id}) from week ${event.week}.`,
 			resourceType: 'event',
 			resourceId: String(id),
 			oldValue
@@ -333,7 +345,7 @@ export async function deleteDayEvents(
 	await deleteMatching(database, actor, { week, weekday }, info, {
 		actionType: 'DELETE_DAY_EVENTS',
 		resourceId: `${week}-${weekday}`,
-		description: `Eliminati tutti gli eventi del giorno '${weekday}' della settimana ${week}.`
+		description: `Deleted all events of day '${weekday}' of week ${week}.`
 	});
 }
 export async function deleteWeekEvents(
@@ -347,7 +359,7 @@ export async function deleteWeekEvents(
 	await deleteMatching(database, actor, { week }, info, {
 		actionType: 'DELETE_WEEK_EVENTS',
 		resourceId: String(week),
-		description: `Eliminati tutti gli eventi della settimana ${week}.`
+		description: `Deleted all events of week ${week}.`
 	});
 }
 export async function deleteAllEvents(
@@ -360,6 +372,6 @@ export async function deleteAllEvents(
 	bulkSchema.pick({ confirm: true }).parse(input);
 	await deleteMatching(database, actor, {}, info, {
 		actionType: 'DELETE_ALL_EVENTS',
-		description: 'Eliminati TUTTI gli eventi da TUTTE le settimane.'
+		description: 'Deleted ALL events from ALL weeks.'
 	});
 }

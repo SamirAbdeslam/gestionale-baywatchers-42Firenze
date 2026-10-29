@@ -26,6 +26,7 @@ type LoginKey =
 	| 'registration_added'
 	| 'registration_removed'
 	| 'registration_already_registered_login'
+	| 'registration_not_whitelisted_login'
 	| 'registration_not_registered_login'
 	| 'registration_present'
 	| 'registration_absent';
@@ -35,7 +36,7 @@ export type RegistrationNotice =
 			key: ErrorKey | 'registration_registered' | 'registration_unregistered';
 			params: { count?: number };
 	  }
-	| { type: 'success' | 'warning'; key: LoginKey; params: { login: string } };
+	| { type: 'success' | 'warning' | 'error'; key: LoginKey; params: { login: string } };
 export type RegistrationResult = {
 	registeredEventId?: number;
 	ok: boolean;
@@ -51,7 +52,7 @@ const participantSchema = idSchema.extend({
 const attendanceSchema = participantSchema.extend({
 	attended: z.union([z.boolean(), z.enum(['true', 'false']).transform((value) => value === 'true')])
 });
-const days = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const failure = (
 	key: ErrorKey,
 	status: 400 | 403 | 404 = 400,
@@ -154,13 +155,30 @@ async function changeRegistration(
 					.where(eq(registrations.eventId, event.id));
 				if (total.n >= event.maxSlots) return failure('error_event_full');
 				actionType = 'REGISTER_EVENT';
-				description = `Utente '${login}' registrato all'evento ${details}`;
+				description = `User '${login}' registered for event ${details}`;
 				result = {
 					ok: true,
 					messages: [{ type: 'success', key: 'registration_registered', params: {} }],
 					registeredEventId: event.id
 				};
 			} else if (operation === 'add') {
+				// Admins may exceed the slots, but only whitelisted logins can be added.
+				const [listed] = await tx
+					.select({ id: whitelist.id })
+					.from(whitelist)
+					.where(eq(whitelist.login, login));
+				if (!listed)
+					return {
+						ok: false,
+						status: 400 as const,
+						messages: [
+							{
+								type: 'error' as const,
+								key: 'registration_not_whitelisted_login' as const,
+								params: { login }
+							}
+						]
+					};
 				const [existing] = await tx
 					.select({ id: registrations.id })
 					.from(registrations)
@@ -177,7 +195,7 @@ async function changeRegistration(
 						]
 					};
 				actionType = 'ADMIN_ADD_PARTICIPANT';
-				description = `Admin ha aggiunto '${login}' all'evento ${details}`;
+				description = `Admin added '${login}' to event ${details}`;
 				result = {
 					ok: true,
 					messages: [{ type: 'success', key: 'registration_added', params: { login } }]
@@ -191,7 +209,7 @@ async function changeRegistration(
 					.returning({ id: registrations.id });
 				if (!row) return failure('error_registration_not_found', 404);
 				actionType = attended ? 'MARK_PRESENT' : 'MARK_ABSENT';
-				description = `Segnato '${login}' come ${attended ? 'presente' : 'assente'} per l'evento ${details}`;
+				description = `Marked '${login}' as ${attended ? 'present' : 'absent'} for event ${details}`;
 				result = {
 					ok: true,
 					messages: [
@@ -222,8 +240,8 @@ async function changeRegistration(
 				actionType = operation === 'unregister' ? 'UNREGISTER_EVENT' : 'ADMIN_UNREGISTER';
 				description =
 					operation === 'unregister'
-						? `Utente '${login}' disiscritto dall'evento ${details}`
-						: `Admin ha disiscritto '${login}' dall'evento ${details}`;
+						? `User '${login}' unregistered from event ${details}`
+						: `Admin unregistered '${login}' from event ${details}`;
 				result =
 					operation === 'unregister'
 						? {

@@ -103,7 +103,7 @@ it('applies to an empty week with pool-derived dates, copies all fields and publ
 	});
 	const logs = await client`SELECT * FROM action_logs WHERE action_type='APPLY_TEMPLATE'`;
 	expect(logs).toHaveLength(1);
-	expect(logs[0].description).toContain('Sovrascrittura: false');
+	expect(logs[0].description).toContain('Overwrite: false');
 	expect(messages).toEqual([
 		{ type: 'log_created', id: Number(logs[0].id) },
 		{ type: 'event_changed', eventId: null, week: 2, action: 'update' }
@@ -141,7 +141,7 @@ it('warns without overwrite; overwrite cascades registrations and preserves comp
 			]
 		}
 	]);
-	expect(logs[1].description).toContain('Sovrascrittura: true');
+	expect(logs[1].description).toContain('Overwrite: true');
 });
 it('empty legacy templates never delete events, audit or publish', async () => {
 	await database.insert(schema.weekTemplates).values({ name: 'Empty', targetWeek: 2 });
@@ -401,6 +401,7 @@ it('saves only the selected week as a reusable template and applies it without d
 		.insert(schema.events)
 		.values({
 			...entry,
+			staff: ['mrossi'],
 			title: 'Edited exam',
 			description: 'Test',
 			kind: 'rush',
@@ -448,7 +449,8 @@ it('saves only the selected week as a reusable template and applies it without d
 	expect(messages).toEqual([{ type: 'log_created', id: logs[0].id }]);
 	await applyTemplate(database, admin, { id: template.id }, info, now);
 	const [applied] = await client`SELECT * FROM events WHERE week=4`;
-	expect(applied).toMatchObject({ title: source.title, kind: 'rush', event_date: null });
+	expect(applied).toMatchObject({ title: source.title, kind: 'rush', event_date: null, staff: [] });
+	expect(copy).not.toHaveProperty('staff');
 	expect(await client`SELECT * FROM registrations WHERE event_id=${applied.id}`).toHaveLength(0);
 });
 it('warns for an empty week without creating a template or audit', async () => {

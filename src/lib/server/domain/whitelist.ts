@@ -1,19 +1,27 @@
 import { error } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Transaction } from '../db/index.ts';
 import type { db } from '../db/index.ts';
-import { whitelist } from '../db/schema.ts';
+import { users, whitelist } from '../db/schema.ts';
 import { assertAdmin, lockAdmin, loginPattern } from '../auth/guards.ts';
 import type { User } from '../auth/session.ts';
 import { audit, type RequestInfo } from './audit.ts';
 import { publish } from '../realtime/bus.ts';
+import { lookupIntraLogins } from '../intra.ts';
 import { digits } from './dates.ts';
 import { m } from '#lib/paraglide/messages.js';
 
 export type WhitelistNotice = {
-	type: 'success' | 'warning';
-	key: 'whitelist_added' | 'whitelist_duplicates' | 'whitelist_invalid' | 'whitelist_removed';
+	type: 'success' | 'warning' | 'error';
+	key:
+		| 'whitelist_added'
+		| 'whitelist_duplicates'
+		| 'whitelist_invalid'
+		| 'whitelist_removed'
+		| 'whitelist_not_found'
+		| 'whitelist_other_campus'
+		| 'whitelist_unavailable';
 	params: { logins: string };
 };
 const addSchema = z.strictObject({
@@ -49,13 +57,29 @@ export async function addLogins(
 	const invalid = new Set<string>(),
 		valid = new Set<string>();
 	for (const login of tokens) (loginPattern.test(login) ? valid : invalid).add(login);
+	// Only new logins are checked on Intra (existing ones are reported as duplicates).
+	const sorted = [...valid].sort();
+	const existing = sorted.length
+		? new Set(
+				(
+					await database
+						.select({ login: whitelist.login })
+						.from(whitelist)
+						.where(inArray(whitelist.login, sorted))
+				).map((row) => row.login)
+			)
+		: new Set<string>();
+	const lookups = await lookupIntraLogins(sorted.filter((login) => !existing.has(login)));
+	const rejected = (status: string) =>
+		[...lookups].filter(([, result]) => result === status).map(([login]) => login);
 	const { added, duplicates, logIds } = await database.transaction(async (tx) => {
 		const user = await lockAdmin(tx, actor);
 		const added: string[] = [],
 			duplicates: string[] = [],
 			logIds: number[] = [];
 		// A fixed order also prevents conflicts between overlapping concurrent batches.
-		for (const login of [...valid].sort()) {
+		for (const login of sorted) {
+			if (lookups.has(login) && lookups.get(login) !== 'ok') continue;
 			const inserted = await insertWhitelistLogin(tx, user, login, null, info, now);
 			if (!inserted) duplicates.push(login);
 			else {
@@ -85,7 +109,38 @@ export async function addLogins(
 			key: 'whitelist_invalid',
 			params: { logins: [...invalid].join(', ') }
 		});
+	for (const [status, key] of [
+		['missing', 'whitelist_not_found'],
+		['other_campus', 'whitelist_other_campus'],
+		['unavailable', 'whitelist_unavailable']
+	] as const) {
+		const logins = rejected(status);
+		if (logins.length)
+			messages.push({
+				type: status === 'unavailable' ? 'error' : 'warning',
+				key,
+				params: { logins: logins.join(', ') }
+			});
+	}
 	return { ok: added.length > 0, messages };
+}
+
+export async function suggestLogins(database: typeof db, actor: User | null, query: string) {
+	assertAdmin(actor);
+	const q = query.trim().toLowerCase();
+	if (!loginPattern.test(q)) return [];
+	const pattern = q.replace(/[\\%_]/g, '\\$&');
+	return database
+		.select({
+			login: whitelist.login,
+			name: users.displayName,
+			hasImage: sql<boolean>`${users.imageUrl} is not null and ${users.imageUrl} <> ''`
+		})
+		.from(whitelist)
+		.leftJoin(users, eq(users.login, whitelist.login))
+		.where(or(ilike(whitelist.login, `%${pattern}%`), ilike(users.displayName, `%${pattern}%`)))
+		.orderBy(sql`${whitelist.login} not ilike ${pattern + '%'}`, whitelist.login)
+		.limit(8);
 }
 
 export async function removeLogin(
@@ -104,7 +159,7 @@ export async function removeLogin(
 			...info,
 			actor: user,
 			actionType: 'WHITELIST_REMOVE',
-			description: `Rimosso '${row.login}' dalla whitelist.`,
+			description: `Removed '${row.login}' from the whitelist.`,
 			resourceType: 'whitelist',
 			resourceId: String(row.id),
 			oldValue: row.login
@@ -137,7 +192,7 @@ export async function insertWhitelistLogin(
 		...info,
 		actor,
 		actionType: 'WHITELIST_ADD',
-		description: `Aggiunto '${login}' alla whitelist.`,
+		description: `Added '${login}' to the whitelist.`,
 		resourceType: 'whitelist',
 		resourceId: String(row.id),
 		newValue: weeks ? { login, weeks } : login

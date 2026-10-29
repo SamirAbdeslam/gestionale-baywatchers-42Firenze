@@ -8,9 +8,9 @@ vi.mock('#lib/server/avatar.ts', () => ({ avatarResponse: mocks.download }));
 beforeEach(() => {
 	vi.clearAllMocks();
 });
-function event(login: string, authenticated = true, actorLogin = login) {
+function event(login: string, authenticated = true, actorLogin = login, role = 'user') {
 	return {
-		locals: { user: authenticated ? { role: 'user', login: actorLogin } : null },
+		locals: { user: authenticated ? { role, login: actorLogin } : null },
 		params: { login }
 	} as unknown as Parameters<typeof GET>[0];
 }
@@ -57,4 +57,16 @@ it('rejects another user’s avatar before any lookup or network access', async 
 	} finally {
 		fetch.mockRestore();
 	}
+});
+
+it('lets admins fetch the avatar of a whitelisted login only', async () => {
+	mocks.where
+		.mockResolvedValueOnce([{ id: 1 }])
+		.mockResolvedValueOnce([{ imageUrl: 'https://cdn.intra.42.fr/other.jpg' }]);
+	mocks.download.mockResolvedValueOnce(new Response('image'));
+	expect((await GET(event('other', true, 'staff', 'admin'))).status).toBe(200);
+	expect(mocks.download).toHaveBeenCalledExactlyOnceWith('https://cdn.intra.42.fr/other.jpg');
+	mocks.where.mockResolvedValueOnce([]);
+	expect((await GET(event('stranger', true, 'staff', 'admin'))).status).toBe(404);
+	expect(mocks.download).toHaveBeenCalledTimes(1);
 });

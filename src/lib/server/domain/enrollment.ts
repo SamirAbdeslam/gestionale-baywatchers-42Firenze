@@ -1,4 +1,3 @@
-import { m } from '#lib/paraglide/messages.js';
 import { randomBytes } from 'node:crypto';
 import { and, count, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
@@ -61,7 +60,7 @@ export async function setEnrollment(
 				...info,
 				actor: user,
 				actionType: 'UPDATE_SETTING',
-				description: open === 'yes' ? m.enrollment_opened() : m.enrollment_closed(),
+				description: open === 'yes' ? 'Enrollment opened' : 'Enrollment closed',
 				resourceType: 'settings',
 				resourceId: 'enrollment',
 				newValue: { open: open === 'yes' }
@@ -131,7 +130,7 @@ export async function requestEnrollment(
 			...info,
 			actor: user,
 			actionType: 'WHITELIST_REQUEST',
-			description: m.enrollment_request_log({ login: user.login }),
+			description: `Pool enrollment request from ${user.login}.`,
 			resourceType: 'pool_enrollment',
 			resourceId: config.poolStart,
 			newValue: { login: user.login, weeks: sorted }
@@ -173,7 +172,7 @@ export async function reviewEnrollment(
 						...info,
 						actor: user,
 						actionType: 'WHITELIST_REJECT',
-						description: m.enrollment_reject_log({ login: row.login }),
+						description: `Rejected the request from ${row.login}.`,
 						resourceType: 'enrollment_requests',
 						resourceId: row.login,
 						oldValue: row

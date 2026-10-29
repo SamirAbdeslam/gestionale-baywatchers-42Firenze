@@ -77,6 +77,7 @@ for (const { javaScriptEnabled, reducedMotion } of [
 						await client`INSERT INTO events(title,week,weekday,event_date,start_time,end_time,max_slots) VALUES (${'Full ' + fixture.name},2,2,'2099-01-06','09:00','10:00',1) RETURNING id`;
 					await client`INSERT INTO registrations(event_id,participant_login,attended) VALUES (${full.id},${fixture.name + '_full_hidden'},false)`;
 					await client`INSERT INTO events(title,week,weekday,event_date,start_time,end_time) VALUES (${'Past ' + fixture.name},2,3,'2000-01-05','09:00','10:00'),(${'Sunday ' + fixture.name},2,7,'2099-01-11','09:00','10:00')`;
+					await client`UPDATE events SET staff=${['mrossi', 'gbianchi']} WHERE id=${fixture.id}`;
 					await page.goto('/calendar?week=4');
 					await expect(
 						page.getByRole('heading', { name: 'Settimana 2', exact: true })
@@ -141,6 +142,8 @@ for (const { javaScriptEnabled, reducedMotion } of [
 						.locator('.calendar')
 						.getByRole('article', { name: fixture.title, exact: true });
 					await expect(article).toContainText('2/3');
+					await expect(article.locator('.staff')).toHaveText('mrossi, gbianchi');
+					await expect(article).not.toContainText(/supervis/i);
 					await expect(
 						article.getByRole('heading', { name: fixture.title, exact: true, level: 3 })
 					).toBeVisible();
@@ -378,3 +381,18 @@ for (const javaScriptEnabled of [true, false]) {
 		);
 	});
 }
+
+test('shows staff names on the admin calendar', { tag: '@shared-db' }, async ({ page }) => {
+	const fixture = await setup(page.request, true);
+	try {
+		await client`UPDATE events SET staff=${['mrossi']} WHERE id=${fixture.id}`;
+		await page.goto('/calendar');
+		const article = page
+			.locator('.calendar')
+			.getByRole('article', { name: fixture.title, exact: true });
+		await expect(article.locator('.staff')).toHaveText('mrossi');
+		await expect(article).toContainText('2/3');
+	} finally {
+		await fixture.cleanup();
+	}
+});

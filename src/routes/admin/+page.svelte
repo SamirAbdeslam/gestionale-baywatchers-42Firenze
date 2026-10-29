@@ -6,6 +6,7 @@
 	import { resolve } from '$app/paths';
 	import EventCard from '#lib/components/EventCard.svelte';
 	import ParticipantBadge from '#lib/components/ParticipantBadge.svelte';
+	import LoginInput from '#lib/components/LoginInput.svelte';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import { weekdays } from '#lib/weekdays.ts';
 	import { PRESETS } from '#lib/kinds.ts';
@@ -342,6 +343,15 @@
 			required
 		/>
 	</div>
+	<div class="field wide">
+		<label for={`${prefix}-staff`}>{m.admin_event_staff()}</label>
+		<input
+			id={`${prefix}-staff`}
+			name="staff"
+			value={event?.staff.join(', ') ?? ''}
+			maxlength="500"
+		/>
+	</div>
 {/snippet}
 
 {#snippet createEventForm(prefix: string, weekday = 1)}
@@ -477,12 +487,10 @@
 								<label class="sr-only" for={`participant-${event.id}`}
 									>{m.admin_participant_login()}</label
 								>
-								<input
+								<LoginInput
 									id={`participant-${event.id}`}
 									name="login"
-									maxlength="32"
 									placeholder={m.admin_participant_login()}
-									required
 								/>
 								<button class="small" type="submit" aria-label={m.admin_add_participant()}>+</button
 								>
@@ -889,11 +897,12 @@
 	}
 	.add-participant {
 		display: flex;
+		align-items: flex-start;
 		flex-direction: row;
 		gap: var(--space-sm);
 		width: 100%;
 	}
-	.add-participant input {
+	.add-participant :global(input) {
 		flex: 1;
 		min-width: 0;
 		min-height: var(--control-height-sm);

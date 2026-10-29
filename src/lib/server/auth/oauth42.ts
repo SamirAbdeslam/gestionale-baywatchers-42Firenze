@@ -12,7 +12,7 @@ export function generateState() {
 	return randomBytes(32).toString('base64url');
 }
 
-async function fetchWithRetry(request: Request): Promise<Response> {
+export async function fetchWithRetry(request: Request): Promise<Response> {
 	for (let attempt = 0; ; attempt++) {
 		const response = await fetch(request.clone());
 		if (response.status !== 429 || attempt === 2) return response;

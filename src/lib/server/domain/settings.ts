@@ -87,7 +87,7 @@ export async function setActiveWeek(
 		{ activeWeek: week },
 		{
 			actionType: 'ACTIVATE_WEEK',
-			description: `Settimana ${week} attivata`,
+			description: `Week ${week} activated`,
 			resourceId: String(week)
 		},
 		info,
@@ -110,7 +110,7 @@ export async function setMaxEvents(
 		{ maxEventsPerUser: maxEvents },
 		{
 			actionType: 'UPDATE_SETTING',
-			description: `Impostato il numero massimo di eventi per utente a ${maxEvents}`
+			description: `Set maximum events per user to ${maxEvents}`
 		},
 		info,
 		now
@@ -144,7 +144,7 @@ export async function setPoolDates(
 			...info,
 			actor: user,
 			actionType: 'UPDATE_SETTING',
-			description: `Date pool impostate. Inizio: ${start}, Fine: ${end}`,
+			description: `Pool dates set. Start: ${start}, End: ${end}`,
 			resourceType: 'setting',
 			oldValue: Object.fromEntries(
 				Object.keys(changes).map((key) => [key, before[key as keyof typeof before]])
@@ -175,7 +175,7 @@ export async function resetDisplayWeek(
 		database,
 		actor,
 		{ displayWeek: 1 },
-		{ actionType: 'UPDATE_SETTING', description: 'Settimana display reimpostata a 1' },
+		{ actionType: 'UPDATE_SETTING', description: 'Display week reset to 1' },
 		info,
 		now
 	);

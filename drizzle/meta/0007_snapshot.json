@@ -1,0 +1,1164 @@
+{
+	"id": "0d4658d2-6b82-43fc-b8d5-23b5c0ad7577",
+	"prevId": "59d299cf-60c2-45c2-a8f2-424221cb10ca",
+	"version": "7",
+	"dialect": "postgresql",
+	"tables": {
+		"public.action_logs": {
+			"name": "action_logs",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "bigserial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"actor_user_id": {
+					"name": "actor_user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"actor_login": {
+					"name": "actor_login",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"action_type": {
+					"name": "action_type",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"description": {
+					"name": "description",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"ip_address": {
+					"name": "ip_address",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"user_agent": {
+					"name": "user_agent",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"resource_type": {
+					"name": "resource_type",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"resource_id": {
+					"name": "resource_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"old_value": {
+					"name": "old_value",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"new_value": {
+					"name": "new_value",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": false
+				}
+			},
+			"indexes": {
+				"logs_created_idx": {
+					"name": "logs_created_idx",
+					"columns": [
+						{
+							"expression": "created_at",
+							"isExpression": false,
+							"asc": false,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"logs_actor_idx": {
+					"name": "logs_actor_idx",
+					"columns": [
+						{
+							"expression": "actor_login",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"logs_action_idx": {
+					"name": "logs_action_idx",
+					"columns": [
+						{
+							"expression": "action_type",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"action_logs_actor_user_id_users_id_fk": {
+					"name": "action_logs_actor_user_id_users_id_fk",
+					"tableFrom": "action_logs",
+					"tableTo": "users",
+					"columnsFrom": ["actor_user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "set null",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"logs_user_agent_length": {
+					"name": "logs_user_agent_length",
+					"value": "char_length(\"action_logs\".\"user_agent\") <= 200"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.enrollment_requests": {
+			"name": "enrollment_requests",
+			"schema": "",
+			"columns": {
+				"login": {
+					"name": "login",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"weeks": {
+					"name": "weeks",
+					"type": "smallint[]",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"enrollment_login_lowercase": {
+					"name": "enrollment_login_lowercase",
+					"value": "\"enrollment_requests\".\"login\" = lower(\"enrollment_requests\".\"login\")"
+				},
+				"enrollment_weeks_valid": {
+					"name": "enrollment_weeks_valid",
+					"value": "cardinality(\"enrollment_requests\".\"weeks\") BETWEEN 1 AND 4 AND \"enrollment_requests\".\"weeks\" <@ ARRAY[1,2,3,4]::smallint[] AND array_position(\"enrollment_requests\".\"weeks\", NULL) IS NULL"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.events": {
+			"name": "events",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"week": {
+					"name": "week",
+					"type": "smallint",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"title": {
+					"name": "title",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"description": {
+					"name": "description",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "''"
+				},
+				"kind": {
+					"name": "kind",
+					"type": "event_kind",
+					"typeSchema": "public",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'custom'"
+				},
+				"weekday": {
+					"name": "weekday",
+					"type": "smallint",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"event_date": {
+					"name": "event_date",
+					"type": "date",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"start_time": {
+					"name": "start_time",
+					"type": "time",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"end_time": {
+					"name": "end_time",
+					"type": "time",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"max_slots": {
+					"name": "max_slots",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 10
+				},
+				"compensation": {
+					"name": "compensation",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				},
+				"staff": {
+					"name": "staff",
+					"type": "text[]",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'{}'"
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"events_week_day_start_idx": {
+					"name": "events_week_day_start_idx",
+					"columns": [
+						{
+							"expression": "week",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "weekday",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "start_time",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"events_week_range": {
+					"name": "events_week_range",
+					"value": "\"events\".\"week\" BETWEEN 1 AND 4"
+				},
+				"events_title_length": {
+					"name": "events_title_length",
+					"value": "char_length(\"events\".\"title\") BETWEEN 1 AND 120"
+				},
+				"events_description_length": {
+					"name": "events_description_length",
+					"value": "char_length(\"events\".\"description\") <= 500"
+				},
+				"events_weekday_range": {
+					"name": "events_weekday_range",
+					"value": "\"events\".\"weekday\" BETWEEN 1 AND 7"
+				},
+				"events_time_order": {
+					"name": "events_time_order",
+					"value": "\"events\".\"end_time\" > \"events\".\"start_time\""
+				},
+				"events_slots_positive": {
+					"name": "events_slots_positive",
+					"value": "\"events\".\"max_slots\" >= 1"
+				},
+				"events_compensation_nonnegative": {
+					"name": "events_compensation_nonnegative",
+					"value": "\"events\".\"compensation\" >= 0"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.pool_entries": {
+			"name": "pool_entries",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"pool_id": {
+					"name": "pool_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"login": {
+					"name": "login",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"title": {
+					"name": "title",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"kind": {
+					"name": "kind",
+					"type": "event_kind",
+					"typeSchema": "public",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"event_date": {
+					"name": "event_date",
+					"type": "date",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"weekday": {
+					"name": "weekday",
+					"type": "smallint",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"start_time": {
+					"name": "start_time",
+					"type": "time",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"end_time": {
+					"name": "end_time",
+					"type": "time",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"duration_minutes": {
+					"name": "duration_minutes",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"compensation": {
+					"name": "compensation",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"attended": {
+					"name": "attended",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"registered_at": {
+					"name": "registered_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"week": {
+					"name": "week",
+					"type": "smallint",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"max_slots": {
+					"name": "max_slots",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"event_ref": {
+					"name": "event_ref",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"week_activated_at": {
+					"name": "week_activated_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				}
+			},
+			"indexes": {
+				"pool_entries_pool_login_idx": {
+					"name": "pool_entries_pool_login_idx",
+					"columns": [
+						{
+							"expression": "pool_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "login",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"pool_entries_pool_id_pools_id_fk": {
+					"name": "pool_entries_pool_id_pools_id_fk",
+					"tableFrom": "pool_entries",
+					"tableTo": "pools",
+					"columnsFrom": ["pool_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"pool_entries_login_lowercase": {
+					"name": "pool_entries_login_lowercase",
+					"value": "\"pool_entries\".\"login\" = lower(\"pool_entries\".\"login\")"
+				},
+				"pool_entries_weekday_range": {
+					"name": "pool_entries_weekday_range",
+					"value": "\"pool_entries\".\"weekday\" BETWEEN 1 AND 7"
+				},
+				"pool_entries_week_range": {
+					"name": "pool_entries_week_range",
+					"value": "\"pool_entries\".\"week\" BETWEEN 1 AND 4"
+				},
+				"pool_entries_duration_nonnegative": {
+					"name": "pool_entries_duration_nonnegative",
+					"value": "\"pool_entries\".\"duration_minutes\" >= 0"
+				},
+				"pool_entries_compensation_nonnegative": {
+					"name": "pool_entries_compensation_nonnegative",
+					"value": "\"pool_entries\".\"compensation\" >= 0"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.pools": {
+			"name": "pools",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"start_date": {
+					"name": "start_date",
+					"type": "date",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"end_date": {
+					"name": "end_date",
+					"type": "date",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"source": {
+					"name": "source",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"archived_at": {
+					"name": "archived_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"pools_start_date_unique": {
+					"name": "pools_start_date_unique",
+					"nullsNotDistinct": false,
+					"columns": ["start_date"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"pools_source_valid": {
+					"name": "pools_source_valid",
+					"value": "\"pools\".\"source\" IN ('site', 'csv')"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.registrations": {
+			"name": "registrations",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"event_id": {
+					"name": "event_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"participant_login": {
+					"name": "participant_login",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"attended": {
+					"name": "attended",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true,
+					"default": true
+				},
+				"registered_at": {
+					"name": "registered_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"registrations_login_idx": {
+					"name": "registrations_login_idx",
+					"columns": [
+						{
+							"expression": "participant_login",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"registrations_event_id_events_id_fk": {
+					"name": "registrations_event_id_events_id_fk",
+					"tableFrom": "registrations",
+					"tableTo": "events",
+					"columnsFrom": ["event_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"registrations_event_login_unique": {
+					"name": "registrations_event_login_unique",
+					"nullsNotDistinct": false,
+					"columns": ["event_id", "participant_login"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"registrations_login_lowercase": {
+					"name": "registrations_login_lowercase",
+					"value": "\"registrations\".\"participant_login\" = lower(\"registrations\".\"participant_login\")"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.sessions": {
+			"name": "sessions",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"user_id": {
+					"name": "user_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"expires_at": {
+					"name": "expires_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"sessions_user_id_users_id_fk": {
+					"name": "sessions_user_id_users_id_fk",
+					"tableFrom": "sessions",
+					"tableTo": "users",
+					"columnsFrom": ["user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.settings": {
+			"name": "settings",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "smallint",
+					"primaryKey": true,
+					"notNull": true,
+					"default": 1
+				},
+				"pool_start": {
+					"name": "pool_start",
+					"type": "date",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"enrollment_code": {
+					"name": "enrollment_code",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"pool_end": {
+					"name": "pool_end",
+					"type": "date",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"pool_closed_at": {
+					"name": "pool_closed_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"pool_reopened": {
+					"name": "pool_reopened",
+					"type": "boolean",
+					"primaryKey": false,
+					"notNull": true,
+					"default": false
+				},
+				"active_week": {
+					"name": "active_week",
+					"type": "smallint",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 1
+				},
+				"display_week": {
+					"name": "display_week",
+					"type": "smallint",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 1
+				},
+				"max_events_per_user": {
+					"name": "max_events_per_user",
+					"type": "smallint",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"settings_singleton": {
+					"name": "settings_singleton",
+					"value": "\"settings\".\"id\" = 1"
+				},
+				"settings_active_week_range": {
+					"name": "settings_active_week_range",
+					"value": "\"settings\".\"active_week\" BETWEEN 1 AND 4"
+				},
+				"settings_display_week_range": {
+					"name": "settings_display_week_range",
+					"value": "\"settings\".\"display_week\" BETWEEN 1 AND 4"
+				},
+				"settings_max_events_nonnegative": {
+					"name": "settings_max_events_nonnegative",
+					"value": "\"settings\".\"max_events_per_user\" >= 0"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.template_events": {
+			"name": "template_events",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"template_id": {
+					"name": "template_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"title": {
+					"name": "title",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"description": {
+					"name": "description",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "''"
+				},
+				"kind": {
+					"name": "kind",
+					"type": "event_kind",
+					"typeSchema": "public",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'custom'"
+				},
+				"weekday": {
+					"name": "weekday",
+					"type": "smallint",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"start_time": {
+					"name": "start_time",
+					"type": "time",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"end_time": {
+					"name": "end_time",
+					"type": "time",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"max_slots": {
+					"name": "max_slots",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 10
+				},
+				"compensation": {
+					"name": "compensation",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"template_events_template_id_week_templates_id_fk": {
+					"name": "template_events_template_id_week_templates_id_fk",
+					"tableFrom": "template_events",
+					"tableTo": "week_templates",
+					"columnsFrom": ["template_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"template_events_title_length": {
+					"name": "template_events_title_length",
+					"value": "char_length(\"template_events\".\"title\") BETWEEN 1 AND 120"
+				},
+				"template_events_description_length": {
+					"name": "template_events_description_length",
+					"value": "char_length(\"template_events\".\"description\") <= 500"
+				},
+				"template_events_weekday_range": {
+					"name": "template_events_weekday_range",
+					"value": "\"template_events\".\"weekday\" BETWEEN 1 AND 7"
+				},
+				"template_events_time_order": {
+					"name": "template_events_time_order",
+					"value": "\"template_events\".\"end_time\" > \"template_events\".\"start_time\""
+				},
+				"template_events_slots_positive": {
+					"name": "template_events_slots_positive",
+					"value": "\"template_events\".\"max_slots\" >= 1"
+				},
+				"template_events_compensation_nonnegative": {
+					"name": "template_events_compensation_nonnegative",
+					"value": "\"template_events\".\"compensation\" >= 0"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.users": {
+			"name": "users",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"intra_id": {
+					"name": "intra_id",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"login": {
+					"name": "login",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"email": {
+					"name": "email",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"display_name": {
+					"name": "display_name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"image_url": {
+					"name": "image_url",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"wallet": {
+					"name": "wallet",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				},
+				"role": {
+					"name": "role",
+					"type": "user_role",
+					"typeSchema": "public",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'user'"
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"last_login_at": {
+					"name": "last_login_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": false
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"users_intra_id_unique": {
+					"name": "users_intra_id_unique",
+					"nullsNotDistinct": false,
+					"columns": ["intra_id"]
+				},
+				"users_login_unique": {
+					"name": "users_login_unique",
+					"nullsNotDistinct": false,
+					"columns": ["login"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"users_login_lowercase": {
+					"name": "users_login_lowercase",
+					"value": "\"users\".\"login\" = lower(\"users\".\"login\")"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.week_activations": {
+			"name": "week_activations",
+			"schema": "",
+			"columns": {
+				"week": {
+					"name": "week",
+					"type": "smallint",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"activated_at": {
+					"name": "activated_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.week_templates": {
+			"name": "week_templates",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"name": {
+					"name": "name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"description": {
+					"name": "description",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "''"
+				},
+				"target_week": {
+					"name": "target_week",
+					"type": "smallint",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"templates_name_length": {
+					"name": "templates_name_length",
+					"value": "char_length(\"week_templates\".\"name\") BETWEEN 1 AND 120"
+				},
+				"templates_description_length": {
+					"name": "templates_description_length",
+					"value": "char_length(\"week_templates\".\"description\") <= 500"
+				},
+				"templates_week_range": {
+					"name": "templates_week_range",
+					"value": "\"week_templates\".\"target_week\" BETWEEN 1 AND 4"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.whitelist": {
+			"name": "whitelist",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "serial",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"login": {
+					"name": "login",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"added_at": {
+					"name": "added_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"weeks": {
+					"name": "weeks",
+					"type": "smallint[]",
+					"primaryKey": false,
+					"notNull": false
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"whitelist_login_unique": {
+					"name": "whitelist_login_unique",
+					"nullsNotDistinct": false,
+					"columns": ["login"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"whitelist_login_lowercase": {
+					"name": "whitelist_login_lowercase",
+					"value": "\"whitelist\".\"login\" = lower(\"whitelist\".\"login\")"
+				},
+				"whitelist_weeks_valid": {
+					"name": "whitelist_weeks_valid",
+					"value": "\"whitelist\".\"weeks\" IS NULL OR (cardinality(\"whitelist\".\"weeks\") BETWEEN 1 AND 4 AND \"whitelist\".\"weeks\" <@ ARRAY[1,2,3,4]::smallint[] AND array_position(\"whitelist\".\"weeks\", NULL) IS NULL)"
+				}
+			},
+			"isRLSEnabled": false
+		}
+	},
+	"enums": {
+		"public.event_kind": {
+			"name": "event_kind",
+			"schema": "public",
+			"values": ["exam", "icebreaker", "rush", "cluster", "welcome", "custom"]
+		},
+		"public.user_role": {
+			"name": "user_role",
+			"schema": "public",
+			"values": ["user", "admin"]
+		}
+	},
+	"schemas": {},
+	"sequences": {},
+	"roles": {},
+	"policies": {},
+	"views": {},
+	"_meta": {
+		"columns": {},
+		"schemas": {},
+		"tables": {}
+	}
+}

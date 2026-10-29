@@ -82,6 +82,7 @@
 											count: formatNumber(event.freeSlots)
 										})}
 						</p>
+						{#if event.staff.length}<p class="staff">{event.staff.join(', ')}</p>{/if}
 						<ul aria-label={m.calendar_participants()}>
 							{#each event.participants as login (login)}<li>
 									<ParticipantBadge {login} />

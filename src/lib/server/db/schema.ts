@@ -82,6 +82,7 @@ export const events = pgTable(
 		endTime: time('end_time').notNull(),
 		maxSlots: integer('max_slots').notNull().default(10),
 		compensation: integer('compensation').notNull().default(0),
+		staff: text('staff').array().notNull().default([]),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},

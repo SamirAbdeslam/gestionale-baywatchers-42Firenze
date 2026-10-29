@@ -145,22 +145,56 @@ for (const options of [
 						await expect(
 							recap.getByRole('heading', { name: 'Il tuo turno preferito', exact: true })
 						).toBeVisible();
+						const screen = recap.locator('.screen:visible');
+						const tapAt = async (side: 'left' | 'right') => {
+							const box = await screen.boundingBox();
+							if (!box) throw new Error('Recap screen is not visible');
+							await screen.click({
+								position: { x: side === 'left' ? 20 : box.width - 20, y: 20 }
+							});
+						};
+						await tapAt('right');
+						await expect(
+							recap.getByRole('heading', { name: 'Il tuo ritmo', exact: true })
+						).toBeVisible();
+						await tapAt('left');
+						await expect(
+							recap.getByRole('heading', { name: 'Il tuo turno preferito', exact: true })
+						).toBeVisible();
+						await screen.evaluate((el) => {
+							const button = document.createElement('button');
+							button.textContent = 'Inner';
+							el.append(button);
+						});
+						await screen.getByRole('button', { name: 'Inner', exact: true }).click();
+						await expect(
+							recap.getByRole('heading', { name: 'Il tuo turno preferito', exact: true })
+						).toBeVisible();
+						await recap.getByRole('button', { name: 'Indietro', exact: true }).click();
+						await tapAt('left');
+						await expect(recap.locator('[data-screen=intro]')).toBeVisible();
+						await expect(
+							recap.getByRole('button', { name: 'Indietro', exact: true })
+						).toBeDisabled();
 						if (options.reducedMotion === 'reduce')
 							expect(
 								await recap
 									.locator('.screen:visible')
 									.evaluate((el) => getComputedStyle(el).animationName)
 							).toBe('none');
-						for (let i = 1; i < 7; i++)
-							await recap.getByRole('button', { name: 'Avanti', exact: true }).click();
-						await expect(recap.getByRole('heading', { name: /La piscina insieme/ })).toBeVisible();
+						const next = recap.getByRole('button', { name: 'Avanti', exact: true });
+						for (let i = 0; i < 15 && !(await next.isDisabled()); i++) await tapAt('right');
+						await expect(next).toBeDisabled();
+						const last = await screen.getAttribute('data-screen');
+						await tapAt('right');
+						await expect(screen).toHaveAttribute('data-screen', last ?? '');
 					} else {
 						await expect(recap.locator('.screen')).toHaveCount(11);
 						await expect(
 							recap.getByRole('heading', { name: 'In totale', exact: true })
 						).toBeVisible();
-						await expect(recap.getByText('Nottambulo')).toHaveCount(0);
-						await expect(recap.getByText('Debuttante').first()).toBeVisible();
+						await expect(recap.getByText('Dracula')).toHaveCount(0);
+						await expect(recap.getByText('Matricola').first()).toBeVisible();
 						await expect(recap.getByRole('navigation')).toHaveCount(0);
 						await expect(
 							recap.getByText('Settimana più intensa: 1', { exact: true })
@@ -181,8 +215,8 @@ for (const options of [
 					await expect(recap.locator('[data-screen=attendance]')).toHaveCount(1);
 					await expect(recap.locator('[data-screen=rhythm]')).toHaveCount(0);
 					await expect(recap.locator('[data-screen=first-last]')).toHaveCount(0);
-					await expect(recap.locator('[data-screen=badges]')).toContainText('Custode degli esami');
-					await expect(recap.locator('[data-screen=badges]')).not.toContainText('Nottambulo');
+					await expect(recap.locator('[data-screen=badges]')).toContainText('Tu non puoi passare!');
+					await expect(recap.locator('[data-screen=badges]')).not.toContainText('Dracula');
 					expect(
 						await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
 					).toBe(true);

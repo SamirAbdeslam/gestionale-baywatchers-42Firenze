@@ -11,8 +11,8 @@ import {
 	reviewEnrollment,
 	enrollmentAdmin
 } from '../../src/lib/server/domain/enrollment.ts';
-import { addLogins } from '../../src/lib/server/domain/whitelist.ts';
 import { closePool, cleanPool } from '../../src/lib/server/domain/pool.ts';
+import { overwriteGetLocale } from '#lib/paraglide/runtime.js';
 import { subscribe, type RealtimeEvent } from '../../src/lib/server/realtime/bus.ts';
 
 assert.equal(new URL(process.env.DATABASE_URL!).pathname, '/baywatchers_test');
@@ -111,7 +111,7 @@ it('accepts HTML week strings, sorts them, audits them, and deduplicates concurr
 	expect((await request()).messages[0].key).toBe('enrollment_waiting');
 });
 it('recognizes approved logins and keeps manual additions without weeks', async () => {
-	await addLogins(database, admin, { logins: student.login }, info, now);
+	await database.insert(schema.whitelist).values({ login: student.login, addedAt: now });
 	expect((await request()).messages[0].key).toBe('enrollment_already_in');
 	expect(await getEnrollment(database, code, student)).toMatchObject({ state: 'approved' });
 	expect((await client`SELECT * FROM whitelist`)[0].weeks).toBeNull();
@@ -251,7 +251,7 @@ it('cleans pending requests only with whitelist, records the snapshot, and rolls
 
 it('approval keeps the requested weeks if staff has also added the waiting login manually', async () => {
 	await request();
-	await addLogins(database, admin, { logins: student.login }, info, now);
+	await database.insert(schema.whitelist).values({ login: student.login, addedAt: now });
 	await reviewEnrollment(
 		database,
 		admin,
@@ -281,4 +281,26 @@ it('approves a complete selected batch with one audit per login and each set of 
 	]);
 	expect(await client`SELECT * FROM enrollment_requests`).toHaveLength(0);
 	expect(await client`SELECT * FROM action_logs WHERE action_type='WHITELIST_ADD'`).toHaveLength(2);
+});
+it('writes the same English log description whatever the UI locale is', async () => {
+	const seen: string[] = [];
+	for (const locale of ['it', 'en', 'fr'] as const) {
+		overwriteGetLocale(() => locale);
+		await client`DELETE FROM action_logs`;
+		await setEnrollment(database, admin, { open: 'no' }, info, now);
+		await setEnrollment(database, admin, { open: 'yes' }, info, now);
+		const code = (await client`SELECT enrollment_code FROM settings`)[0].enrollment_code;
+		await requestEnrollment(database, student, { code, weeks: [1] }, info, now);
+		await reviewEnrollment(database, admin, { logins: ['student'], decision: 'reject' }, info, now);
+		seen.push(
+			(await client`SELECT description FROM action_logs ORDER BY id`)
+				.map((row) => row.description)
+				.join('|')
+		);
+	}
+	expect(seen[0]).toBe(
+		'Enrollment closed|Enrollment opened|Pool enrollment request from student.|Rejected the request from student.'
+	);
+	expect(seen[1]).toBe(seen[0]);
+	expect(seen[2]).toBe(seen[0]);
 });

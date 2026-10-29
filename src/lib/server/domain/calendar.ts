@@ -46,6 +46,7 @@ export async function getCalendar(
 			endTime: event.endTime.slice(0, 5),
 			compensation: event.compensation,
 			maxSlots: event.maxSlots,
+			staff: event.staff,
 			registeredCount: participants.length,
 			state,
 			isRegistered: registered,
