@@ -104,7 +104,7 @@ export async function removeLogin(
 			...info,
 			actor: user,
 			actionType: 'WHITELIST_REMOVE',
-			description: `Rimosso '${row.login}' dalla whitelist.`,
+			description: `Removed '${row.login}' from the whitelist.`,
 			resourceType: 'whitelist',
 			resourceId: String(row.id),
 			oldValue: row.login
@@ -137,7 +137,7 @@ export async function insertWhitelistLogin(
 		...info,
 		actor,
 		actionType: 'WHITELIST_ADD',
-		description: `Aggiunto '${login}' alla whitelist.`,
+		description: `Added '${login}' to the whitelist.`,
 		resourceType: 'whitelist',
 		resourceId: String(row.id),
 		newValue: weeks ? { login, weeks } : login

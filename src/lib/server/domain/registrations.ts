@@ -51,7 +51,7 @@ const participantSchema = idSchema.extend({
 const attendanceSchema = participantSchema.extend({
 	attended: z.union([z.boolean(), z.enum(['true', 'false']).transform((value) => value === 'true')])
 });
-const days = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const failure = (
 	key: ErrorKey,
 	status: 400 | 403 | 404 = 400,
@@ -154,7 +154,7 @@ async function changeRegistration(
 					.where(eq(registrations.eventId, event.id));
 				if (total.n >= event.maxSlots) return failure('error_event_full');
 				actionType = 'REGISTER_EVENT';
-				description = `Utente '${login}' registrato all'evento ${details}`;
+				description = `User '${login}' registered for event ${details}`;
 				result = {
 					ok: true,
 					messages: [{ type: 'success', key: 'registration_registered', params: {} }],
@@ -177,7 +177,7 @@ async function changeRegistration(
 						]
 					};
 				actionType = 'ADMIN_ADD_PARTICIPANT';
-				description = `Admin ha aggiunto '${login}' all'evento ${details}`;
+				description = `Admin added '${login}' to event ${details}`;
 				result = {
 					ok: true,
 					messages: [{ type: 'success', key: 'registration_added', params: { login } }]
@@ -191,7 +191,7 @@ async function changeRegistration(
 					.returning({ id: registrations.id });
 				if (!row) return failure('error_registration_not_found', 404);
 				actionType = attended ? 'MARK_PRESENT' : 'MARK_ABSENT';
-				description = `Segnato '${login}' come ${attended ? 'presente' : 'assente'} per l'evento ${details}`;
+				description = `Marked '${login}' as ${attended ? 'present' : 'absent'} for event ${details}`;
 				result = {
 					ok: true,
 					messages: [
@@ -222,8 +222,8 @@ async function changeRegistration(
 				actionType = operation === 'unregister' ? 'UNREGISTER_EVENT' : 'ADMIN_UNREGISTER';
 				description =
 					operation === 'unregister'
-						? `Utente '${login}' disiscritto dall'evento ${details}`
-						: `Admin ha disiscritto '${login}' dall'evento ${details}`;
+						? `User '${login}' unregistered from event ${details}`
+						: `Admin unregistered '${login}' from event ${details}`;
 				result =
 					operation === 'unregister'
 						? {

@@ -320,7 +320,7 @@ export async function importPool(
 			...info,
 			actor: user,
 			actionType: 'IMPORT_POOL',
-			description: `Importata piscina da CSV con ${entries.length} iscrizioni.`,
+			description: `Pool imported from CSV with ${entries.length} registrations.`,
 			resourceType: 'pool',
 			resourceId: String(pool.id),
 			newValue: { archiveId: pool.id, entries: entries.length }

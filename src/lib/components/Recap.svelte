@@ -99,6 +99,12 @@
 	function move(step: number) {
 		index = Math.max(0, Math.min(screens.length - 1, index + step));
 	}
+	function tap(event: MouseEvent & { currentTarget: HTMLElement }) {
+		if ((event.target as Element).closest('a, button, input, select, textarea, summary, label'))
+			return;
+		const { left, width } = event.currentTarget.getBoundingClientRect();
+		move(event.clientX < left + width / 2 ? -1 : 1);
+	}
 	function keyboard(event: KeyboardEvent) {
 		if (event.key === 'ArrowRight') {
 			event.preventDefault();
@@ -139,7 +145,8 @@
 			</nav>
 		{/if}
 		{#each screens as screen, i (screen)}
-			<section class="screen" hidden={ready && index !== i} data-screen={screen}>
+			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (Tapping is a pointer shortcut; the buttons and arrow keys stay the accessible way.) -->
+			<section class="screen" onclick={tap} hidden={ready && index !== i} data-screen={screen}>
 				{#if screen === 'intro' && stats}
 					<h2>{m.recap_intro({ pool: poolName(recap.startDate) })}</h2>
 					<dl class="numbers">

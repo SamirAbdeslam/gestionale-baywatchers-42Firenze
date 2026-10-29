@@ -13,6 +13,7 @@ import {
 } from '../../src/lib/server/domain/enrollment.ts';
 import { addLogins } from '../../src/lib/server/domain/whitelist.ts';
 import { closePool, cleanPool } from '../../src/lib/server/domain/pool.ts';
+import { overwriteGetLocale } from '#lib/paraglide/runtime.js';
 import { subscribe, type RealtimeEvent } from '../../src/lib/server/realtime/bus.ts';
 
 assert.equal(new URL(process.env.DATABASE_URL!).pathname, '/baywatchers_test');
@@ -281,4 +282,26 @@ it('approves a complete selected batch with one audit per login and each set of 
 	]);
 	expect(await client`SELECT * FROM enrollment_requests`).toHaveLength(0);
 	expect(await client`SELECT * FROM action_logs WHERE action_type='WHITELIST_ADD'`).toHaveLength(2);
+});
+it('writes the same English log description whatever the UI locale is', async () => {
+	const seen: string[] = [];
+	for (const locale of ['it', 'en', 'fr'] as const) {
+		overwriteGetLocale(() => locale);
+		await client`DELETE FROM action_logs`;
+		await setEnrollment(database, admin, { open: 'no' }, info, now);
+		await setEnrollment(database, admin, { open: 'yes' }, info, now);
+		const code = (await client`SELECT enrollment_code FROM settings`)[0].enrollment_code;
+		await requestEnrollment(database, student, { code, weeks: [1] }, info, now);
+		await reviewEnrollment(database, admin, { logins: ['student'], decision: 'reject' }, info, now);
+		seen.push(
+			(await client`SELECT description FROM action_logs ORDER BY id`)
+				.map((row) => row.description)
+				.join('|')
+		);
+	}
+	expect(seen[0]).toBe(
+		'Enrollment closed|Enrollment opened|Pool enrollment request from student.|Rejected the request from student.'
+	);
+	expect(seen[1]).toBe(seen[0]);
+	expect(seen[2]).toBe(seen[0]);
 });
