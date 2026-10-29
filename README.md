@@ -160,7 +160,7 @@ Gli e2e girano su Chromium desktop e mobile e su WebKit, con e senza JavaScript.
 | `pnpm test:integration` | test sul database (`DATABASE_URL` di test) |
 | `pnpm test:e2e`         | test nel browser                           |
 
-La [CI su GitHub](.github/workflows/ci.yml) esegue gli stessi controlli a ogni push.
+La [CI su GitHub](.github/workflows/ci.yml) esegue gli stessi controlli sulle PR verso `main` e sui push su `main`, con gli e2e divisi in 3 job paralleli.
 
 <details>
 <summary>🔒 <b>Stack completo con nginx e HTTPS</b></summary>
@@ -217,6 +217,7 @@ database vuoto. Il codice Flask originale resta nella storia Git.
 
 | Versione                                                                                                                                       | Cosa porta                                                                              |
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [![v2.4.1](https://img.shields.io/badge/v2.4.1-3d9970)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.4.1) | ⚙️ CI solo per main, e2e in 3 job paralleli                                             |
 | [![v2.4.0](https://img.shields.io/badge/v2.4.0-7b61ff)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.4.0) | 🧑‍🚒 Staff presente, controllo dei login, badge meme, tocco nel riepilogo, log in inglese |
 | [![v2.3.2](https://img.shields.io/badge/v2.3.2-e8a33d)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.3.2) | 📦 Dipendenze: esbuild aggiornato per drizzle-kit                                       |
 | [![v2.3.1](https://img.shields.io/badge/v2.3.1-ff6a3d)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.3.1) | 🛡️ Correzioni dell'audit finale e di sicurezza                                          |
@@ -225,7 +226,7 @@ database vuoto. Il codice Flask originale resta nella storia Git.
 | [![v2.1.0](https://img.shields.io/badge/v2.1.0-3d3aa8)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.1.0) | ⏭️ Prossimo turno, duplica evento, chiusura piscina, display in corso                   |
 | [![v2.0.0](https://img.shields.io/badge/v2.0.0-0e1a2b)](https://github.com/SamirAbdeslam/gestionale-baywatchers-42Firenze/releases/tag/v2.0.0) | 🚀 Riscrittura completa in SvelteKit                                                    |
 
-Ogni tag contiene la descrizione completa delle modifiche: `git show v2.4.0`.
+Ogni tag contiene la descrizione completa delle modifiche: `git show v2.4.1`.
 
 ---
 
