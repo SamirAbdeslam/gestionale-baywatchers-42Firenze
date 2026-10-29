@@ -145,6 +145,32 @@ for (const options of [
 						await expect(
 							recap.getByRole('heading', { name: 'Il tuo turno preferito', exact: true })
 						).toBeVisible();
+						const screen = recap.locator('.screen:visible');
+						const tapAt = (side: 'left' | 'right') =>
+							screen.click({ position: { x: side === 'left' ? 20 : 340, y: 20 } });
+						await tapAt('right');
+						await expect(
+							recap.getByRole('heading', { name: 'Il tuo ritmo', exact: true })
+						).toBeVisible();
+						await tapAt('left');
+						await expect(
+							recap.getByRole('heading', { name: 'Il tuo turno preferito', exact: true })
+						).toBeVisible();
+						await screen.evaluate((el) => {
+							const button = document.createElement('button');
+							button.textContent = 'Inner';
+							el.append(button);
+						});
+						await screen.getByRole('button', { name: 'Inner', exact: true }).click();
+						await expect(
+							recap.getByRole('heading', { name: 'Il tuo turno preferito', exact: true })
+						).toBeVisible();
+						await recap.getByRole('button', { name: 'Indietro', exact: true }).click();
+						await tapAt('left');
+						await expect(recap.locator('[data-screen=intro]')).toBeVisible();
+						await expect(
+							recap.getByRole('button', { name: 'Indietro', exact: true })
+						).toBeDisabled();
 						if (options.reducedMotion === 'reduce')
 							expect(
 								await recap
@@ -154,6 +180,9 @@ for (const options of [
 						for (let i = 1; i < 7; i++)
 							await recap.getByRole('button', { name: 'Avanti', exact: true }).click();
 						await expect(recap.getByRole('heading', { name: /La piscina insieme/ })).toBeVisible();
+						for (let i = 0; i < 4; i++) await tapAt('right');
+						await expect(recap.locator('[data-screen=overall-badges]')).toBeVisible();
+						await expect(recap.getByRole('button', { name: 'Avanti', exact: true })).toBeDisabled();
 					} else {
 						await expect(recap.locator('.screen')).toHaveCount(11);
 						await expect(
