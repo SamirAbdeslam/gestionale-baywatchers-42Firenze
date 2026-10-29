@@ -1,10 +1,11 @@
 name: CI
 
 on:
+  # PRs into release/** are checked with `pnpm ci:local` before merging.
   push:
-    branches: [main, 'release/**']
+    branches: [main]
   pull_request:
-    branches: [main, 'release/**']
+    branches: [main]
 
 permissions:
   contents: read
@@ -82,8 +83,13 @@ jobs:
       - run: pnpm test:integration
 
   e2e:
+    name: e2e (${{ matrix.group }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [chromium-shared, mobile-shared, webkit-and-parallel]
     # shortcut: image tag must match @playwright/test in package.json, bump both together
     container: mcr.microsoft.com/playwright:v1.64.1-noble
     env:
@@ -113,11 +119,15 @@ jobs:
       - run: pnpm db:migrate
       - run: pnpm db:seed
       - run: pnpm build
-      - run: pnpm test:e2e
+      # Each group has its own database, so the shared projects no longer need to run in one chain.
+      - if: matrix.group != 'webkit-and-parallel'
+        run: pnpm test:e2e --project ${{ matrix.group }} --no-deps
+      - if: matrix.group == 'webkit-and-parallel'
+        run: pnpm test:e2e --project webkit-shared --no-deps && pnpm test:e2e --project chromium --project mobile --no-deps
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.group }}
           path: playwright-report/
           retention-days: 7
 
