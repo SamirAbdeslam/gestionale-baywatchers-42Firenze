@@ -342,6 +342,15 @@
 			required
 		/>
 	</div>
+	<div class="field wide">
+		<label for={`${prefix}-staff`}>{m.admin_event_staff()}</label>
+		<input
+			id={`${prefix}-staff`}
+			name="staff"
+			value={event?.staff.join(', ') ?? ''}
+			maxlength="500"
+		/>
+	</div>
 {/snippet}
 
 {#snippet createEventForm(prefix: string, weekday = 1)}

@@ -37,6 +37,7 @@ async function create(page: Page, title: string, kind = 'custom', weekday = '7')
 	await form.getByLabel('Descrizione', { exact: true }).fill('descrizione custom');
 	await form.getByLabel('Giorno', { exact: true }).selectOption(weekday);
 	await form.getByLabel('Compenso (₳)', { exact: true }).fill('450');
+	await form.getByLabel('Staff presente', { exact: true }).fill(' mrossi, ,gbianchi ');
 	const response = page.waitForResponse(
 		(response) => response.request().method() === 'POST' && response.url().includes('/admin?')
 	);
@@ -98,10 +99,15 @@ test(
 			await page.getByRole('button', { name: 'Chiudi messaggio' }).click();
 			await expect(page.getByRole('status')).toHaveCount(0);
 			const [event] = await client`SELECT * FROM events WHERE title=${title}`;
+			expect(event.staff).toEqual(['mrossi', 'gbianchi']);
 			await client`INSERT INTO registrations (event_id,participant_login,attended) VALUES (${event.id},'m4_present',true),(${event.id},'m4_absent',false)`;
 			await page.reload();
 			await article.getByRole('button', { name: 'Modifica evento', exact: true }).click();
 			const editor = page.getByRole('dialog', { name: 'Modifica evento', exact: true });
+			await expect(editor.getByLabel('Staff presente', { exact: true })).toHaveValue(
+				'mrossi, gbianchi'
+			);
+			await editor.getByLabel('Staff presente', { exact: true }).fill('lverdi');
 			await editor.getByLabel('Titolo', { exact: true }).fill('m4 modificato');
 			await editor.getByLabel('Giorno', { exact: true }).selectOption('1');
 			await editor.getByLabel('Posti', { exact: true }).fill('1');
@@ -125,6 +131,9 @@ test(
 				true
 			);
 			if (viewport) await page.setViewportSize(viewport);
+			expect((await client`SELECT staff FROM events WHERE id=${event.id}`)[0].staff).toEqual([
+				'lverdi'
+			]);
 			expect(
 				(await client`SELECT week,kind,event_date::text FROM events WHERE id=${event.id}`)[0]
 			).toMatchObject({ week: 4, kind: 'custom', event_date: '2027-01-31' });

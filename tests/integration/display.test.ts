@@ -202,3 +202,8 @@ it('loads native redirect configuration and exposes the complete encoded TV URL 
 	await expect(load(user)).rejects.toMatchObject({ status: 403 });
 	await expect(load(null)).rejects.toMatchObject({ status: 401 });
 });
+it('shows staff names on the display without using a slot', async () => {
+	await event({ staff: ['mrossi'] });
+	const [row] = (await getDisplay(database, null, {}, '', now)).events;
+	expect(row).toMatchObject({ staff: ['mrossi'], freeSlots: 2, participants: [] });
+});

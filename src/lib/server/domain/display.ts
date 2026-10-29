@@ -106,6 +106,7 @@ export async function getDisplay(
 			compensation: event.compensation,
 			freeSlots,
 			maxSlots: event.maxSlots,
+			staff: event.staff,
 			participants: event.participants
 				.filter((participant) => participant.attended)
 				.map((participant) => participant.participantLogin)

@@ -401,6 +401,7 @@ it('saves only the selected week as a reusable template and applies it without d
 		.insert(schema.events)
 		.values({
 			...entry,
+			staff: ['mrossi'],
 			title: 'Edited exam',
 			description: 'Test',
 			kind: 'rush',
@@ -448,7 +449,8 @@ it('saves only the selected week as a reusable template and applies it without d
 	expect(messages).toEqual([{ type: 'log_created', id: logs[0].id }]);
 	await applyTemplate(database, admin, { id: template.id }, info, now);
 	const [applied] = await client`SELECT * FROM events WHERE week=4`;
-	expect(applied).toMatchObject({ title: source.title, kind: 'rush', event_date: null });
+	expect(applied).toMatchObject({ title: source.title, kind: 'rush', event_date: null, staff: [] });
+	expect(copy).not.toHaveProperty('staff');
 	expect(await client`SELECT * FROM registrations WHERE event_id=${applied.id}`).toHaveLength(0);
 });
 it('warns for an empty week without creating a template or audit', async () => {

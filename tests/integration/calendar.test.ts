@@ -270,3 +270,15 @@ it('returns the next shift independently of the displayed week', async () => {
 		week: 3
 	});
 });
+it('exposes staff names to students and admins without changing slots or participants', async () => {
+	await event({ staff: ['mrossi', 'gbianchi'] });
+	for (const actor of [user, admin]) {
+		const [row] = (await getCalendar(database, actor, {}, now)).events;
+		expect(row).toMatchObject({
+			staff: ['mrossi', 'gbianchi'],
+			registeredCount: 0,
+			state: 'available',
+			participants: []
+		});
+	}
+});

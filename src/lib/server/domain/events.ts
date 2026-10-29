@@ -18,6 +18,17 @@ const id = integer.pipe(z.number().min(1));
 const time = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
 const text = z.string().trim().min(1).max(120).transform(capitalizeFirst);
 const description = z.string().trim().max(500).transform(capitalizeFirst);
+// Free-text staff names, comma-separated: no whitelist check on purpose.
+const staff = z
+	.string()
+	.max(500)
+	.default('')
+	.transform((value) =>
+		value
+			.split(',')
+			.map((name) => name.trim())
+			.filter(Boolean)
+	);
 export const editable = {
 	title: text,
 	description: description.default(''),
@@ -33,6 +44,7 @@ const matchesWeekday = (weekday: number, eventDate: string | null) =>
 	eventDate === null || (new Date(`${eventDate}T00:00:00Z`).getUTCDay() || 7) === weekday;
 const createFields = {
 	...editable,
+	staff,
 	week,
 	eventDate: z
 		.union([isoDate, z.literal('')])
@@ -55,7 +67,7 @@ const createSchema = z
 		message: 'error_event_date_weekday',
 		path: ['weekday']
 	});
-const updateSchema = z.strictObject({ id, ...editable }).refine(timeOrder);
+const updateSchema = z.strictObject({ id, ...editable, staff }).refine(timeOrder);
 const deleteSchema = z.strictObject({ id });
 const bulkSchema = z.strictObject({ week, weekday, confirm: z.literal('yes') });
 

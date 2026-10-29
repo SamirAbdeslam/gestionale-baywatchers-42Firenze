@@ -50,6 +50,13 @@
 			"when": 1793176910951,
 			"tag": "0006_empty_starjammers",
 			"breakpoints": true
+		},
+		{
+			"idx": 7,
+			"version": "7",
+			"when": 1793265400366,
+			"tag": "0007_handy_hellcat",
+			"breakpoints": true
 		}
 	]
 }
