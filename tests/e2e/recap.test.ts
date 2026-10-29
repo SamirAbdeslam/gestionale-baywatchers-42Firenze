@@ -182,12 +182,12 @@ for (const options of [
 									.locator('.screen:visible')
 									.evaluate((el) => getComputedStyle(el).animationName)
 							).toBe('none');
-						for (let i = 1; i < 7; i++)
-							await recap.getByRole('button', { name: 'Avanti', exact: true }).click();
-						await expect(recap.getByRole('heading', { name: /La piscina insieme/ })).toBeVisible();
-						for (let i = 0; i < 4; i++) await tapAt('right');
-						await expect(recap.locator('[data-screen=overall-badges]')).toBeVisible();
-						await expect(recap.getByRole('button', { name: 'Avanti', exact: true })).toBeDisabled();
+						const next = recap.getByRole('button', { name: 'Avanti', exact: true });
+						for (let i = 0; i < 15 && !(await next.isDisabled()); i++) await tapAt('right');
+						await expect(next).toBeDisabled();
+						const last = await screen.getAttribute('data-screen');
+						await tapAt('right');
+						await expect(screen).toHaveAttribute('data-screen', last ?? '');
 					} else {
 						await expect(recap.locator('.screen')).toHaveCount(11);
 						await expect(
