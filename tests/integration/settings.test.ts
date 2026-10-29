@@ -92,8 +92,8 @@ it('updates only the requested fields, audits every action once and publishes af
 		[{ maxEventsPerUser: 0 }, { maxEventsPerUser: 2 }],
 		[{ displayWeek: 3 }, { displayWeek: 1 }]
 	]);
-	expect(logs[1].description).toBe('Settimana 4 attivata');
-	expect(logs[0].description).toBe('Date pool impostate. Inizio: 2026-10-20, Fine: 2026-11-30');
+	expect(logs[1].description).toBe('Week 4 activated');
+	expect(logs[0].description).toBe('Pool dates set. Start: 2026-10-20, End: 2026-11-30');
 	expect(messages).toEqual([
 		{ type: 'log_created', id: 1 },
 		{ type: 'event_changed', eventId: null, week: null, action: 'update' },

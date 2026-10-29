@@ -439,7 +439,5 @@
 	"enrollment_week_count": "{count} people",
 	"enrollment_approved_label": "approved",
 	"enrollment_waiting_label": "waiting",
-	"enrollment_none": "No pending requests",
-	"enrollment_request_log": "Pool enrollment request from {login}.",
-	"enrollment_reject_log": "Rejected the request from {login}."
+	"enrollment_none": "No pending requests"
 }

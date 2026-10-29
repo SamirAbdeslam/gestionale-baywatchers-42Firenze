@@ -103,7 +103,7 @@ it('applies to an empty week with pool-derived dates, copies all fields and publ
 	});
 	const logs = await client`SELECT * FROM action_logs WHERE action_type='APPLY_TEMPLATE'`;
 	expect(logs).toHaveLength(1);
-	expect(logs[0].description).toContain('Sovrascrittura: false');
+	expect(logs[0].description).toContain('Overwrite: false');
 	expect(messages).toEqual([
 		{ type: 'log_created', id: Number(logs[0].id) },
 		{ type: 'event_changed', eventId: null, week: 2, action: 'update' }
@@ -141,7 +141,7 @@ it('warns without overwrite; overwrite cascades registrations and preserves comp
 			]
 		}
 	]);
-	expect(logs[1].description).toContain('Sovrascrittura: true');
+	expect(logs[1].description).toContain('Overwrite: true');
 });
 it('empty legacy templates never delete events, audit or publish', async () => {
 	await database.insert(schema.weekTemplates).values({ name: 'Empty', targetWeek: 2 });
