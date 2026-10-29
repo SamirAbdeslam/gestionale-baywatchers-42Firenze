@@ -146,8 +146,13 @@ for (const options of [
 							recap.getByRole('heading', { name: 'Il tuo turno preferito', exact: true })
 						).toBeVisible();
 						const screen = recap.locator('.screen:visible');
-						const tapAt = (side: 'left' | 'right') =>
-							screen.click({ position: { x: side === 'left' ? 20 : 340, y: 20 } });
+						const tapAt = async (side: 'left' | 'right') => {
+							const box = await screen.boundingBox();
+							if (!box) throw new Error('Recap screen is not visible');
+							await screen.click({
+								position: { x: side === 'left' ? 20 : box.width - 20, y: 20 }
+							});
+						};
 						await tapAt('right');
 						await expect(
 							recap.getByRole('heading', { name: 'Il tuo ritmo', exact: true })
