@@ -160,7 +160,7 @@ Gli e2e girano su Chromium desktop e mobile e su WebKit, con e senza JavaScript.
 | `pnpm test:integration` | test sul database (`DATABASE_URL` di test) |
 | `pnpm test:e2e`         | test nel browser                           |
 
-La [CI su GitHub](.github/workflows/ci.yml) esegue gli stessi controlli a ogni push.
+La [CI su GitHub](.github/workflows/ci.yml) esegue gli stessi controlli sulle PR verso `main` e sui push su `main`, con gli e2e divisi in 3 job paralleli.
 
 <details>
 <summary>🔒 <b>Stack completo con nginx e HTTPS</b></summary>
