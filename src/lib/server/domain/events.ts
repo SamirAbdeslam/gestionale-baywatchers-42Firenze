@@ -143,7 +143,7 @@ async function insertEvent(
 		actionType: 'CREATE_EVENT',
 		description:
 			description ??
-			`Creato evento '${event.title}' (${event.weekday}, ${values.startTime}-${values.endTime}) per la settimana ${event.week}.`,
+			`Created event '${event.title}' (${event.weekday}, ${values.startTime}-${values.endTime}) for week ${event.week}.`,
 		resourceType: 'event',
 		resourceId: String(event.id),
 		newValue: event
@@ -217,7 +217,7 @@ export async function updateEvent(
 			...info,
 			actor: user,
 			actionType: 'UPDATE_EVENT',
-			description: `Aggiornato evento '${event.title}' (ID: ${id}).`,
+			description: `Updated event '${event.title}' (ID: ${id}).`,
 			resourceType: 'event',
 			resourceId: String(id),
 			oldValue: before,
@@ -269,7 +269,7 @@ export async function deleteEvent(
 			...info,
 			actor: user,
 			actionType: 'DELETE_EVENT',
-			description: `Eliminato evento '${event.title}' (ID: ${id}) dalla settimana ${event.week}.`,
+			description: `Deleted event '${event.title}' (ID: ${id}) from week ${event.week}.`,
 			resourceType: 'event',
 			resourceId: String(id),
 			oldValue
@@ -333,7 +333,7 @@ export async function deleteDayEvents(
 	await deleteMatching(database, actor, { week, weekday }, info, {
 		actionType: 'DELETE_DAY_EVENTS',
 		resourceId: `${week}-${weekday}`,
-		description: `Eliminati tutti gli eventi del giorno '${weekday}' della settimana ${week}.`
+		description: `Deleted all events of day '${weekday}' of week ${week}.`
 	});
 }
 export async function deleteWeekEvents(
@@ -347,7 +347,7 @@ export async function deleteWeekEvents(
 	await deleteMatching(database, actor, { week }, info, {
 		actionType: 'DELETE_WEEK_EVENTS',
 		resourceId: String(week),
-		description: `Eliminati tutti gli eventi della settimana ${week}.`
+		description: `Deleted all events of week ${week}.`
 	});
 }
 export async function deleteAllEvents(
@@ -360,6 +360,6 @@ export async function deleteAllEvents(
 	bulkSchema.pick({ confirm: true }).parse(input);
 	await deleteMatching(database, actor, {}, info, {
 		actionType: 'DELETE_ALL_EVENTS',
-		description: 'Eliminati TUTTI gli eventi da TUTTE le settimane.'
+		description: 'Deleted ALL events from ALL weeks.'
 	});
 }

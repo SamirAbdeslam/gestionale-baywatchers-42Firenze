@@ -439,7 +439,5 @@
 	"enrollment_week_count": "{count} persone",
 	"enrollment_approved_label": "approvato",
 	"enrollment_waiting_label": "in attesa",
-	"enrollment_none": "Nessuna richiesta in attesa",
-	"enrollment_request_log": "Richiesta di iscrizione alla piscina di {login}.",
-	"enrollment_reject_log": "Rifiutata la richiesta di {login}."
+	"enrollment_none": "Nessuna richiesta in attesa"
 }

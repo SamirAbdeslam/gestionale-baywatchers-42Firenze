@@ -116,7 +116,7 @@ async function insertTemplate(
 		...info,
 		actor: user,
 		actionType: 'CREATE_TEMPLATE',
-		description: `Creato template '${template.name}' per la settimana ${template.targetWeek}.`,
+		description: `Created template '${template.name}' for week ${template.targetWeek}.`,
 		resourceType: 'template',
 		resourceId: String(template.id)
 	});
@@ -241,7 +241,7 @@ export async function applyTemplate(
 			...info,
 			actor: user,
 			actionType: 'APPLY_TEMPLATE',
-			description: `Applicato template '${template.name}' alla settimana ${template.targetWeek}. Sovrascrittura: ${!!parsed.overwrite}.`,
+			description: `Applied template '${template.name}' to week ${template.targetWeek}. Overwrite: ${!!parsed.overwrite}.`,
 			resourceType: 'template',
 			resourceId: String(template.id),
 			oldValue: parsed.overwrite ? oldValue : undefined
@@ -290,7 +290,7 @@ export async function deleteTemplate(
 			...info,
 			actor: user,
 			actionType: 'DELETE_TEMPLATE',
-			description: `Eliminato template '${template.name}' (ID: ${template.id}).`,
+			description: `Deleted template '${template.name}' (ID: ${template.id}).`,
 			resourceType: 'template',
 			resourceId: String(template.id)
 		});
@@ -327,7 +327,7 @@ export async function importTemplates(
 				.insert(weekTemplates)
 				.values({
 					name: `Week ${targetWeek} - Import CSV`,
-					description: `Template importato da CSV con ${entries.length} eventi`,
+					description: `Template imported from CSV with ${entries.length} events`,
 					targetWeek,
 					createdAt: now
 				})
@@ -340,7 +340,7 @@ export async function importTemplates(
 			...info,
 			actor: user,
 			actionType: 'IMPORT_TEMPLATES',
-			description: `Importati ${grouped.size} template da CSV con ${total} eventi totali.`,
+			description: `Imported ${grouped.size} templates from CSV with ${total} total events.`,
 			resourceType: 'template'
 		});
 	});

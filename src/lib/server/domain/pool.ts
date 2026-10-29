@@ -137,7 +137,7 @@ async function writeClosure(
 		...info,
 		actor,
 		actionType: 'CLOSE_POOL',
-		description: 'Chiusura della piscina.',
+		description: 'Pool closed.',
 		resourceType: 'pool',
 		resourceId: String(archive.archiveId),
 		newValue: archive
@@ -209,7 +209,7 @@ export async function reopenPool(
 			...info,
 			actor: user,
 			actionType: 'REOPEN_POOL',
-			description: 'Riapertura della piscina.',
+			description: 'Pool reopened.',
 			resourceType: 'pool'
 		});
 	});
@@ -237,7 +237,7 @@ export async function savePool(
 			...info,
 			actor: user,
 			actionType: 'SAVE_POOL',
-			description: 'Salvataggio archivio piscina.',
+			description: 'Pool archive saved.',
 			resourceType: 'pool',
 			resourceId: String(archive.archiveId),
 			newValue: archive
@@ -325,7 +325,7 @@ export async function cleanPool(
 				...info,
 				actor: user,
 				actionType: 'CLEAN_POOL',
-				description: 'Pulizia della piscina.',
+				description: 'Pool cleared.',
 				resourceType: 'pool',
 				resourceId: String(archive.id),
 				oldValue: {
