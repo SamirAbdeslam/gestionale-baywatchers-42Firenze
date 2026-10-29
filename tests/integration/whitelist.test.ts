@@ -1,13 +1,22 @@
 import assert from 'node:assert/strict';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { afterAll, afterEach, beforeEach, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as schema from '../../src/lib/server/db/schema.ts';
 import type { User } from '../../src/lib/server/auth/session.ts';
-import { listWhitelist, addLogins, removeLogin } from '../../src/lib/server/domain/whitelist.ts';
+import {
+	listWhitelist,
+	addLogins,
+	removeLogin,
+	suggestLogins
+} from '../../src/lib/server/domain/whitelist.ts';
 import { subscribe, type RealtimeEvent } from '../../src/lib/server/realtime/bus.ts';
 import { register, unregister } from '../../src/lib/server/domain/registrations.ts';
 
+const intra = vi.hoisted(() => ({
+	lookup: vi.fn<(logins: string[]) => Promise<Map<string, string>>>()
+}));
+vi.mock('../../src/lib/server/intra.ts', () => ({ lookupIntraLogins: intra.lookup }));
 assert.equal(new URL(process.env.DATABASE_URL!).pathname, '/baywatchers_test');
 const client = postgres(process.env.DATABASE_URL!, { onnotice: () => {} });
 const database = drizzle(client, { schema });
@@ -17,6 +26,8 @@ let admin: User, user: User, messages: RealtimeEvent[], stop: () => void;
 const truncate = () =>
 	client`TRUNCATE users,events,registrations,week_templates,template_events,whitelist,action_logs RESTART IDENTITY CASCADE`;
 beforeEach(async () => {
+	intra.lookup.mockReset();
+	intra.lookup.mockImplementation(async (logins) => new Map(logins.map((l) => [l, 'ok'])));
 	await truncate();
 	await client`UPDATE settings SET pool_closed_at=null,pool_reopened=false,pool_start=null,pool_end=null,max_events_per_user=0 WHERE id=1`;
 	[admin, user] = await database
@@ -232,3 +243,58 @@ it.each(['add', 'remove'] as const)(
 		}
 	}
 );
+it('adds only logins verified on Intra, reports the others and checks only new logins', async () => {
+	await database.insert(schema.whitelist).values({ login: 'existing' });
+	intra.lookup.mockResolvedValueOnce(
+		new Map([
+			['fine', 'ok'],
+			['ghost', 'missing'],
+			['other', 'other_campus'],
+			['later', 'unavailable']
+		])
+	);
+	const result = await addLogins(
+		database,
+		admin,
+		{ logins: 'fine ghost other later existing' },
+		info,
+		now
+	);
+	expect(intra.lookup).toHaveBeenCalledExactlyOnceWith(['fine', 'ghost', 'later', 'other']);
+	expect(result).toEqual({
+		ok: true,
+		messages: [
+			{ type: 'success', key: 'whitelist_added', params: { logins: 'fine' } },
+			{ type: 'warning', key: 'whitelist_duplicates', params: { logins: 'existing' } },
+			{ type: 'warning', key: 'whitelist_not_found', params: { logins: 'ghost' } },
+			{ type: 'warning', key: 'whitelist_other_campus', params: { logins: 'other' } },
+			{ type: 'error', key: 'whitelist_unavailable', params: { logins: 'later' } }
+		]
+	});
+	expect((await client`SELECT login FROM whitelist ORDER BY login`).map((r) => r.login)).toEqual([
+		'existing',
+		'fine'
+	]);
+	expect(await client`SELECT * FROM action_logs`).toHaveLength(1);
+});
+it('does not call Intra for invalid or already listed logins', async () => {
+	await database.insert(schema.whitelist).values({ login: 'existing' });
+	await addLogins(database, admin, { logins: 'existing bad!' }, info, now);
+	expect(intra.lookup).toHaveBeenCalledExactlyOnceWith([]);
+});
+it('suggests whitelisted logins by substring with names and image flags, admin only', async () => {
+	await database
+		.insert(schema.whitelist)
+		.values([{ login: 'mrossi' }, { login: 'xmrosa' }, { login: 'zed_1' }, { login: 'zedx1' }]);
+	await client`UPDATE users SET display_name='Zed Zeta', image_url='https://cdn.intra.42.fr/a.jpg' WHERE login='student'`;
+	await database.insert(schema.whitelist).values({ login: 'student' });
+	expect(await suggestLogins(database, admin, 'MRO')).toEqual([
+		{ login: 'mrossi', name: null, hasImage: false },
+		{ login: 'xmrosa', name: null, hasImage: false }
+	]);
+	expect((await suggestLogins(database, admin, 'zeta')).map((r) => r.login)).toEqual(['student']);
+	expect((await suggestLogins(database, admin, 'stud'))[0]).toMatchObject({ hasImage: true });
+	expect((await suggestLogins(database, admin, 'zed_')).map((r) => r.login)).toEqual(['zed_1']);
+	expect(await suggestLogins(database, admin, 'no match!')).toEqual([]);
+	await expect(suggestLogins(database, user, 'm')).rejects.toMatchObject({ status: 403 });
+});

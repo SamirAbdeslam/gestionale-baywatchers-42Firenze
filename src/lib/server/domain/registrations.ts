@@ -26,6 +26,7 @@ type LoginKey =
 	| 'registration_added'
 	| 'registration_removed'
 	| 'registration_already_registered_login'
+	| 'registration_not_whitelisted_login'
 	| 'registration_not_registered_login'
 	| 'registration_present'
 	| 'registration_absent';
@@ -35,7 +36,7 @@ export type RegistrationNotice =
 			key: ErrorKey | 'registration_registered' | 'registration_unregistered';
 			params: { count?: number };
 	  }
-	| { type: 'success' | 'warning'; key: LoginKey; params: { login: string } };
+	| { type: 'success' | 'warning' | 'error'; key: LoginKey; params: { login: string } };
 export type RegistrationResult = {
 	registeredEventId?: number;
 	ok: boolean;
@@ -161,6 +162,23 @@ async function changeRegistration(
 					registeredEventId: event.id
 				};
 			} else if (operation === 'add') {
+				// Admins may exceed the slots, but only whitelisted logins can be added.
+				const [listed] = await tx
+					.select({ id: whitelist.id })
+					.from(whitelist)
+					.where(eq(whitelist.login, login));
+				if (!listed)
+					return {
+						ok: false,
+						status: 400 as const,
+						messages: [
+							{
+								type: 'error' as const,
+								key: 'registration_not_whitelisted_login' as const,
+								params: { login }
+							}
+						]
+					};
 				const [existing] = await tx
 					.select({ id: registrations.id })
 					.from(registrations)

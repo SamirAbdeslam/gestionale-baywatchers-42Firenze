@@ -111,6 +111,7 @@ for (const javaScriptEnabled of [true, false]) {
 					await page.goto('/admin?week=4');
 					const article = page.getByRole('article', { name: title, exact: true });
 					const external = `external_${name}`;
+					await client`INSERT INTO whitelist (login) VALUES (${external})`;
 					await article.getByLabel('Login del partecipante').fill(external.toUpperCase());
 					await article.getByRole('button', { name: 'Aggiungi partecipante', exact: true }).click();
 					const participant = article.getByRole('listitem').filter({ hasText: external });
@@ -159,6 +160,7 @@ for (const javaScriptEnabled of [true, false]) {
 						).map((row) => row.action_type)
 					).toEqual(['ADMIN_ADD_PARTICIPANT', 'MARK_ABSENT', 'MARK_PRESENT', 'ADMIN_UNREGISTER']);
 				} finally {
+					await client`DELETE FROM whitelist WHERE login=${`external_${name}`}`;
 					await cleanup(name, ids);
 				}
 			}
