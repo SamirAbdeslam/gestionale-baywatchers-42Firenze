@@ -159,8 +159,8 @@ for (const options of [
 						await expect(
 							recap.getByRole('heading', { name: 'In totale', exact: true })
 						).toBeVisible();
-						await expect(recap.getByText('Nottambulo')).toHaveCount(0);
-						await expect(recap.getByText('Debuttante').first()).toBeVisible();
+						await expect(recap.getByText('Dracula')).toHaveCount(0);
+						await expect(recap.getByText('Matricola').first()).toBeVisible();
 						await expect(recap.getByRole('navigation')).toHaveCount(0);
 						await expect(
 							recap.getByText('Settimana più intensa: 1', { exact: true })
@@ -181,8 +181,8 @@ for (const options of [
 					await expect(recap.locator('[data-screen=attendance]')).toHaveCount(1);
 					await expect(recap.locator('[data-screen=rhythm]')).toHaveCount(0);
 					await expect(recap.locator('[data-screen=first-last]')).toHaveCount(0);
-					await expect(recap.locator('[data-screen=badges]')).toContainText('Custode degli esami');
-					await expect(recap.locator('[data-screen=badges]')).not.toContainText('Nottambulo');
+					await expect(recap.locator('[data-screen=badges]')).toContainText('Tu non puoi passare!');
+					await expect(recap.locator('[data-screen=badges]')).not.toContainText('Dracula');
 					expect(
 						await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
 					).toBe(true);
