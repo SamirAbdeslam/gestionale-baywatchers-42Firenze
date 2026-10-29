@@ -6,6 +6,7 @@
 	import { resolve } from '$app/paths';
 	import EventCard from '#lib/components/EventCard.svelte';
 	import ParticipantBadge from '#lib/components/ParticipantBadge.svelte';
+	import LoginInput from '#lib/components/LoginInput.svelte';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import { weekdays } from '#lib/weekdays.ts';
 	import { PRESETS } from '#lib/kinds.ts';
@@ -486,12 +487,10 @@
 								<label class="sr-only" for={`participant-${event.id}`}
 									>{m.admin_participant_login()}</label
 								>
-								<input
+								<LoginInput
 									id={`participant-${event.id}`}
 									name="login"
-									maxlength="32"
 									placeholder={m.admin_participant_login()}
-									required
 								/>
 								<button class="small" type="submit" aria-label={m.admin_add_participant()}>+</button
 								>
@@ -898,11 +897,12 @@
 	}
 	.add-participant {
 		display: flex;
+		align-items: flex-start;
 		flex-direction: row;
 		gap: var(--space-sm);
 		width: 100%;
 	}
-	.add-participant input {
+	.add-participant :global(input) {
 		flex: 1;
 		min-width: 0;
 		min-height: var(--control-height-sm);
