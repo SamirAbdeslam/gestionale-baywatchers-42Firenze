@@ -63,7 +63,10 @@ for (const javaScriptEnabled of [true, false])
 					await expect(
 						page.getByRole('heading', { name: 'Settimana 4', exact: true })
 					).toBeVisible();
+					await client`UPDATE events SET staff=${['mrossi', 'gbianchi']} WHERE title=${fixture.title}`;
+					await page.reload();
 					const article = page.getByRole('article', { name: fixture.title, exact: true });
+					await expect(article.locator('.staff')).toHaveText('mrossi, gbianchi');
 					await expect(
 						article.getByRole('heading', { name: fixture.title, exact: true, level: 3 })
 					).toBeVisible();

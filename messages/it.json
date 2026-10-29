@@ -106,6 +106,7 @@
 	"admin_event_end": "Ora fine",
 	"admin_event_slots": "Posti",
 	"admin_event_compensation": "Compenso (₳)",
+	"admin_event_staff": "Staff presente",
 	"admin_preset_hint": "Per i preset, titolo, descrizione e compenso vengono impostati automaticamente. Per un evento personalizzato, titolo e compenso sono obbligatori.",
 	"admin_registered_count": "Iscritti: {count}",
 	"admin_attended_count": "Presenti: {count}",

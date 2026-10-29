@@ -106,6 +106,7 @@
 	"admin_event_end": "Heure de fin",
 	"admin_event_slots": "Places",
 	"admin_event_compensation": "Rémunération (₳)",
+	"admin_event_staff": "Staff présent",
 	"admin_preset_hint": "Pour les préréglages, le titre, la description et la rémunération sont définis automatiquement. Pour un événement personnalisé, le titre et la rémunération sont obligatoires.",
 	"admin_registered_count": "Inscrits : {count}",
 	"admin_attended_count": "Présents : {count}",

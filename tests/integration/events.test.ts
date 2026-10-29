@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import postgres from 'postgres';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { afterAll, afterEach, beforeEach, expect, it } from 'vitest';
 import * as schema from '../../src/lib/server/db/schema.ts';
@@ -430,4 +431,49 @@ it('rolls back a duplicate if its creation audit fails', async () => {
 	} finally {
 		await client`ALTER TABLE action_logs DROP CONSTRAINT test_duplicate_audit`;
 	}
+});
+it('stores staff names trimmed without empties, logs them, and keeps slots untouched', async () => {
+	const event = await createEvent(
+		database,
+		actor,
+		{ ...input, staff: ' mrossi, ,gbianchi ,, ' },
+		info,
+		now
+	);
+	expect(event.staff).toEqual(['mrossi', 'gbianchi']);
+	const [created] = await listWeekEvents(database, actor, 2, null);
+	expect(created).toMatchObject({ staff: ['mrossi', 'gbianchi'], registeredCount: 0, maxSlots: 2 });
+	const [log] = await database.select().from(schema.actionLogs);
+	expect(log.newValue).toMatchObject({ staff: ['mrossi', 'gbianchi'] });
+	expect((await createEvent(database, actor, input, info, now)).staff).toEqual([]);
+	const updated = await updateEvent(
+		database,
+		actor,
+		{ id: event.id, ...changes, staff: 'a' },
+		info,
+		now
+	);
+	expect(updated.staff).toEqual(['a']);
+	const cleared = await updateEvent(
+		database,
+		actor,
+		{ id: event.id, ...changes, staff: '' },
+		info,
+		now
+	);
+	expect(cleared.staff).toEqual([]);
+});
+it('does not copy staff names when duplicating an event', async () => {
+	const source = await fixture({ staff: ['mrossi'] });
+	const copy = await duplicateEvent(
+		database,
+		actor,
+		{ id: source.id, week: '4', weekday: '1' },
+		info,
+		now
+	);
+	expect(copy.staff).toEqual([]);
+	expect(
+		(await database.select().from(schema.events).where(eq(schema.events.id, source.id)))[0].staff
+	).toEqual(['mrossi']);
 });
