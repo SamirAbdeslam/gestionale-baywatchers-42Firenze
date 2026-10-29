@@ -103,6 +103,13 @@ export const adminRoutes = [
 		actions: []
 	},
 	{
+		id: '/admin/logins',
+		implementedEndpoint: true,
+		url: '/admin/logins?q=dev',
+		endpoint: true,
+		actions: []
+	},
+	{
 		id: '/admin/participants/[login].csv',
 		implementedEndpoint: true,
 		url: '/admin/participants/dev_user.csv',

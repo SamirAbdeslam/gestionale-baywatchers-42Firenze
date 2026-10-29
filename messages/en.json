@@ -440,5 +440,10 @@
 	"enrollment_week_count": "{count} people",
 	"enrollment_approved_label": "approved",
 	"enrollment_waiting_label": "waiting",
-	"enrollment_none": "No pending requests"
+	"enrollment_none": "No pending requests",
+	"registration_not_whitelisted_login": "The login {login} is not on the whitelist: add it first from the Whitelist page",
+	"whitelist_not_found": "Logins not found on Intra, not added: {logins}",
+	"whitelist_other_campus": "Logins from another campus, not added: {logins}",
+	"whitelist_unavailable": "Could not verify on Intra, not added (try again later): {logins}",
+	"admin_participant_suggestions": "Login suggestions"
 }

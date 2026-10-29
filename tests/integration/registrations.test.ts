@@ -191,6 +191,7 @@ it('admin bypasses every user restriction, normalizes unknown logins and audits 
 	const row = await event({ eventDate: '2026-10-18', maxSlots: 1 });
 	await signup(row.id);
 	await client`UPDATE settings SET max_events_per_user=1 WHERE id=1`;
+	await database.insert(schema.whitelist).values({ login: 'external_login' });
 	expect(
 		(await addParticipant(database, admin, { id: row.id, login: '  External_Login  ' }, info, now))
 			.ok
@@ -391,8 +392,24 @@ it('serializes bookings for different events so the weekly limit cannot be excee
 	).toHaveLength(1);
 	expect(await client`SELECT * FROM registrations`).toHaveLength(1);
 });
+it('rejects admin additions of logins outside the whitelist without writes', async () => {
+	const row = await event({ maxSlots: 1 });
+	expect(await addParticipant(database, admin, { id: row.id, login: ' Typo ' }, info, now)).toEqual(
+		{
+			ok: false,
+			status: 400,
+			messages: [
+				{ type: 'error', key: 'registration_not_whitelisted_login', params: { login: 'typo' } }
+			]
+		}
+	);
+	expect(await client`SELECT * FROM registrations`).toHaveLength(0);
+	expect(await client`SELECT * FROM action_logs`).toHaveLength(0);
+	expect(messages).toEqual([]);
+});
 it('concurrent admin additions of the same normalized login remain unique', async () => {
 	const row = await event();
+	await database.insert(schema.whitelist).values({ login: 'external' });
 	const [other] = await database
 		.insert(schema.users)
 		.values({ intraId: 3, login: 'other_staff', role: 'admin' })
