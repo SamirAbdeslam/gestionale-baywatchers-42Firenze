@@ -14,6 +14,7 @@
 	import { calendarTotals } from '#lib/calendar-view.ts';
 	import EventCard from '#lib/components/EventCard.svelte';
 	import Dialog from '#lib/components/Dialog.svelte';
+	import Toast from '#lib/components/Toast.svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { weekdays } from '#lib/weekdays.ts';
 	import { formatNumber } from '#lib/format.ts';
@@ -187,16 +188,19 @@
 			</Dialog>
 		{/if}
 		{#if activated}
-			{#key activated}
-				<Dialog
-					label={m.calendar_week_activated({ week: formatNumber(activated.week) })}
-					title={m.calendar_week_activated({ week: formatNumber(activated.week) })}
-					closeLabel={m.dialog_ok()}
-					open
-				>
-					<p>{m.calendar_week_activated({ week: formatNumber(activated.week) })}</p>
-				</Dialog>
-			{/key}
+			<Toast
+				messages={[
+					{
+						type: 'success',
+						key: 'calendar_week_activated',
+						params: { week: formatNumber(activated.week) },
+						action: {
+							href: `${resolve('/calendar')}?week=${activated.week}`,
+							label: m.calendar_view_week()
+						}
+					}
+				]}
+			/>
 		{/if}
 		<div class="day-tabs" role={ready ? 'tablist' : 'navigation'} aria-label={m.calendar_days()}>
 			{#each data.days as day, index (day.weekday)}

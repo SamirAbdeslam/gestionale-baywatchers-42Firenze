@@ -73,7 +73,7 @@
 
 {#if poolEnded && data.user?.role === 'user'}
 	{#key poolEnded}
-		<Dialog label={m.pool_closed()} title={m.pool_closed()} closeLabel={m.dialog_ok()} open
+		<Dialog label={m.pool_closed()} title={m.pool_closed()} closeLabel={m.recap_view()} open
 			><p>{m.pool_closed()}</p></Dialog
 		>
 	{/key}

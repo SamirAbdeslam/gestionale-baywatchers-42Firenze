@@ -23,14 +23,21 @@
 			| 'error_template_not_found';
 		params: Record<string, never>;
 	};
-	export type Notice =
+	type WeekNotice = {
+		type: 'success';
+		key: 'calendar_week_activated';
+		params: { week: string };
+	};
+	export type Notice = (
 		| BasicNotice
+		| WeekNotice
 		| RegistrationNotice
 		| WhitelistNotice
 		| TemplateNotice
 		| PoolNotice
 		| ArchiveNotice
-		| EnrollmentNotice;
+		| EnrollmentNotice
+	) & { action?: { href: string; label: string } };
 	// Each notice carries the parameters required by its translation key.
 	const m = translations as Record<Notice['key'], (params: Notice['params']) => string>;
 </script>
@@ -69,6 +76,8 @@
 							{:else}
 								{m[message.key](message.params)}
 							{/if}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- Callers pass resolved hrefs. -->
+							{#if message.action}<a href={message.action.href}>{message.action.label}</a>{/if}
 						</p>
 					</details>
 				</div>
@@ -143,6 +152,11 @@
 		margin: 0;
 		min-width: 0;
 		flex: 1;
+	}
+	.notice p a {
+		margin-inline-start: var(--space-sm);
+		font-weight: 700;
+		color: inherit;
 	}
 	.notice summary::-webkit-details-marker {
 		display: none;

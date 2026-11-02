@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
 import { expect, test, type Page } from '@playwright/test';
+import { cancelDialog } from './dialog.ts';
 const databaseUrl =
 	process.env.DATABASE_URL ?? 'postgres://bay:bay@localhost:5432/baywatchers_test';
 assert.equal(new URL(databaseUrl).pathname, '/baywatchers_test');
@@ -83,7 +84,7 @@ for (const javaScriptEnabled of [true, false])
 					await expect(dialog.locator('pre').nth(1)).toHaveText(
 						JSON.stringify({ title: 'Dopo' }, null, 2)
 					);
-					await dialog.getByRole('button', { name: 'Annulla', exact: true }).click();
+					await cancelDialog(page);
 					await expect(dialog).toBeHidden();
 					const downloading = page.waitForEvent('download');
 					await page.getByRole('link', { name: 'Esporta CSV', exact: true }).click();
@@ -195,7 +196,7 @@ test(
 			await expect(page.getByRole('dialog')).toContainText(fixture.danger);
 			await expect(page.getByRole('dialog').locator('dd').nth(7)).toHaveText(fixture.danger);
 			await expect(page.getByRole('dialog').locator('img')).toHaveCount(0);
-			await page.getByRole('dialog').getByRole('button', { name: 'Annulla', exact: true }).click();
+			await cancelDialog(page);
 			for (const [index, path] of [
 				'/admin/logs?page=2',
 				'/admin/logs?user=' + fixture.base + '_two'

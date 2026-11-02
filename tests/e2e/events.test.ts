@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import postgres from 'postgres';
 import { expect, test, type APIRequestContext, type Page, type Locator } from '@playwright/test';
+import { cancelDialog } from './dialog.ts';
 
 const databaseUrl =
 	process.env.DATABASE_URL ?? 'postgres://bay:bay@localhost:5432/baywatchers_test';
@@ -138,7 +139,7 @@ test(
 				(await client`SELECT week,kind,event_date::text FROM events WHERE id=${event.id}`)[0]
 			).toMatchObject({ week: 4, kind: 'custom', event_date: '2027-01-31' });
 			await article.getByRole('button', { name: 'Elimina evento', exact: true }).click();
-			await page.getByRole('dialog').getByRole('button', { name: 'Annulla' }).click();
+			await cancelDialog(page);
 			expect(await client`SELECT id FROM events WHERE id=${event.id}`).toHaveLength(1);
 			await confirm(page, article.getByRole('button', { name: 'Elimina evento', exact: true }));
 			await expect(article).toHaveCount(0);
@@ -163,7 +164,7 @@ test(
 					.getByRole('dialog', { name: 'Crea evento', exact: true })
 					.getByLabel('Giorno', { exact: true })
 			).toHaveValue('2');
-			await page.getByRole('dialog').getByRole('button', { name: 'Annulla', exact: true }).click();
+			await cancelDialog(page);
 			await tuesday.getByRole('button', { name: 'Elimina eventi di Martedì', exact: true }).click();
 			await page.getByRole('dialog').getByRole('button', { name: 'Conferma eliminazione' }).click();
 			expect(
@@ -241,10 +242,10 @@ test(
 				.click();
 			await expect(page.getByRole('dialog')).toBeVisible();
 			await page.getByRole('dialog').getByRole('checkbox').check();
-			await page.getByRole('dialog').getByRole('button', { name: 'Annulla', exact: true }).click();
+			await cancelDialog(page, { discard: true });
 			await expect(page.getByRole('dialog')).not.toBeVisible();
 			await article.getByRole('button', { name: 'Elimina evento', exact: true }).click();
-			await page.getByRole('dialog').getByRole('button', { name: 'Annulla', exact: true }).click();
+			await cancelDialog(page);
 			await expect(page.getByRole('dialog')).not.toBeVisible();
 			await article.getByRole('button', { name: 'Elimina evento', exact: true }).click();
 			await page

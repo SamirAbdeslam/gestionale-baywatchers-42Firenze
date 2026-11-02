@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import postgres from 'postgres';
 import { expect, test } from '@playwright/test';
+import { cancelDialog } from './dialog.ts';
 
 const databaseUrl =
 	process.env.DATABASE_URL ?? 'postgres://bay:bay@localhost:5432/baywatchers_test';
@@ -85,7 +86,7 @@ for (const javaScriptEnabled of [true, false]) {
 				dialog = page.getByRole('dialog', { name: 'Pulizia', exact: true });
 				await expect(dialog.locator('input[type=checkbox]:checked')).toHaveCount(0);
 				await dialog.getByRole('checkbox', { name: 'Whitelist', exact: true }).check();
-				await dialog.getByRole('button', { name: 'Annulla', exact: true }).click();
+				await cancelDialog(page, { discard: true });
 				expect(await client`SELECT * FROM whitelist`).toEqual(whitelist);
 				await panel.getByRole('button', { name: 'Pulizia', exact: true }).click();
 				for (const name of [
@@ -205,7 +206,7 @@ for (const automatic of [false, true]) {
 					).toBe(200);
 				const dialog = page.getByRole('dialog', { name: 'La piscina è finita!', exact: true });
 				await expect(dialog).toBeVisible();
-				await dialog.getByRole('button', { name: 'OK', exact: true }).click();
+				await dialog.getByRole('button', { name: 'Vedi il riepilogo', exact: true }).click();
 				await expect(page).toHaveURL('/calendar');
 				await expect(page.locator('div.calendar')).toHaveCount(0);
 				await expect(
@@ -237,7 +238,7 @@ for (const automatic of [false, true]) {
 						).status()
 					).toBe(200);
 					await expect(dialog).toBeVisible();
-					await dialog.getByRole('button', { name: 'OK', exact: true }).click();
+					await dialog.getByRole('button', { name: 'Vedi il riepilogo', exact: true }).click();
 					await expect(page.locator('div.calendar')).toHaveCount(0);
 				}
 				await expect(page.getByRole('dialog', { name: /La settimana/ })).toHaveCount(0);
