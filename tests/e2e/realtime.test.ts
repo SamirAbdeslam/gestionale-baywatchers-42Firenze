@@ -91,11 +91,12 @@ test(
 			);
 			await post(context.request, '/admin?/setActiveWeek', { week: '2' });
 			await logsRefresh;
+			const notice = page
+				.getByRole('status')
+				.filter({ hasText: 'La settimana 2 è stata attivata!' });
 			await expect(
-				page
-					.getByRole('dialog', { name: 'La settimana 2 è stata attivata!' })
-					.getByRole('button', { name: 'OK', exact: true })
-			).toBeVisible();
+				notice.getByRole('link', { name: 'Vedi settimana', exact: true })
+			).toHaveAttribute('href', '/calendar?week=2');
 			await expect(page.getByRole('heading', { name: 'Settimana 2', exact: true })).toBeVisible();
 			await expect(
 				page.getByRole('article', { name: fixture.name + '_next', exact: true })
