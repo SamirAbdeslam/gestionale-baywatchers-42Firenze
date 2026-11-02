@@ -244,10 +244,6 @@
 			>
 		{/each}
 	</nav>
-	<form class="inline" method="GET">
-		<input type="hidden" name="week" value={data.week} />
-		<button class="secondary" type="submit">{m.admin_show_week()}</button>
-	</form>
 	<Dialog label={m.admin_create_event()} title={m.admin_create_event()}>
 		{@render createEventForm('create')}
 	</Dialog>
