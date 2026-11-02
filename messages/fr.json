@@ -50,7 +50,6 @@
 	"admin_pool_end": "Fin de la piscine",
 	"admin_dates_unset": "Dates non définies",
 	"admin_view_week": "Semaine affichée",
-	"admin_show_week": "Afficher la semaine",
 	"admin_week_dates": "Dates de la semaine",
 	"admin_pool_dates": "Dates de la piscine",
 	"admin_pool_end_hint": "Les dates de début et de fin sont obligatoires.",

@@ -50,7 +50,6 @@
 	"admin_pool_end": "Pool end",
 	"admin_dates_unset": "Dates not set",
 	"admin_view_week": "Displayed week",
-	"admin_show_week": "Show week",
 	"admin_week_dates": "Week dates",
 	"admin_pool_dates": "Pool dates",
 	"admin_pool_end_hint": "Start and end dates are required.",
