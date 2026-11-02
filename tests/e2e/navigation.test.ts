@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 for (const javaScriptEnabled of [true, false]) {
 	test.describe(`navigation JavaScript ${javaScriptEnabled}`, () => {
 		test.use({ javaScriptEnabled });
-		test('keeps desktop and mobile navigation visible with the current page marked', async ({
+		test('shows the desktop navigation and the avatar menu with the current page marked', async ({
 			page
 		}) => {
 			const errors: string[] = [];
@@ -21,15 +21,21 @@ for (const javaScriptEnabled of [true, false]) {
 			expect(response.status()).toBe(303);
 			await page.goto('/calendar');
 			const nav = page.locator('#main-navigation');
+			const menu = page.getByRole('navigation', { name: 'Menu utente', exact: true });
+			const trigger = page.getByRole('button', { name: /^Menu utente di / });
 			for (const width of [360, 768, 1280]) {
 				await page.setViewportSize({ width, height: 800 });
-				await expect(nav).toBeVisible();
-				await expect(nav.getByRole('link', { name: 'Calendario', exact: true })).toHaveAttribute(
-					'aria-current',
-					'page'
-				);
-				const menu = page.getByRole('navigation', { name: 'Menu utente', exact: true });
-				const trigger = page.getByRole('button', { name: /^Menu utente di / });
+				const mobile = width < 768;
+				if (mobile) {
+					await expect(nav).toBeHidden();
+				} else {
+					await expect(nav).toBeVisible();
+					await expect(nav.getByRole('link', { name: 'Calendario', exact: true })).toHaveAttribute(
+						'aria-current',
+						'page'
+					);
+					await expect(nav.getByRole('link', { name: 'Profilo', exact: true })).toHaveCount(0);
+				}
 				const initials = (await page.locator('.identity .avatar').textContent())!.trim();
 				await expect(trigger).toHaveAccessibleName(new RegExp(initials));
 				const visibleLogin = page.locator('.identity .user-login');
@@ -39,6 +45,7 @@ for (const javaScriptEnabled of [true, false]) {
 					);
 				await trigger.click();
 				await expect(menu).toBeVisible();
+				await expect(menu.locator('a, button')).toHaveText(['Profilo', 'Admin', 'Esci']);
 				await page.keyboard.press('Escape');
 				await expect(menu).not.toBeVisible();
 				await trigger.click();
@@ -56,16 +63,9 @@ for (const javaScriptEnabled of [true, false]) {
 							.evaluate((element) => element.getBoundingClientRect().width)
 					).toBe(1);
 				}
-				if (width < 768) {
-					await expect(nav.getByRole('link', { name: 'Profilo', exact: true })).toHaveAttribute(
-						'aria-current',
-						'page'
-					);
-				} else {
-					await expect(nav.getByRole('link', { name: 'Profilo', exact: true })).toHaveCount(0);
-				}
-				await expect(page.locator('#user-menu a')).toHaveAttribute('aria-current', 'page');
-				await nav.getByRole('link', { name: 'Admin', exact: true }).click();
+				await expect(page.locator('#user-menu a').first()).toHaveAttribute('aria-current', 'page');
+				await trigger.click();
+				await menu.getByRole('link', { name: 'Admin', exact: true }).click();
 				await expect(page).toHaveURL('/admin');
 				await page.getByRole('link', { name: 'Whitelist', exact: true }).click();
 				await expect(page).toHaveURL('/admin/whitelist');
@@ -73,7 +73,8 @@ for (const javaScriptEnabled of [true, false]) {
 					'aria-current',
 					'page'
 				);
-				await nav.getByRole('link', { name: 'Calendario', exact: true }).click();
+				await page.locator('.brand').click();
+				await expect(page).toHaveURL('/calendar');
 				expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
 					true
 				);
@@ -82,6 +83,38 @@ for (const javaScriptEnabled of [true, false]) {
 		});
 	});
 }
+
+test('mobile header shows the page title after scrolling and respects reduced motion', async ({
+	page
+}) => {
+	const response = await page.request.post('/auth/dev', {
+		form: { mode: 'create', login: `hdr_${randomUUID().replaceAll('-', '').slice(0, 20)}` },
+		headers: { origin: 'http://localhost:4173', accept: 'text/html' },
+		maxRedirects: 0
+	});
+	expect(response.status()).toBe(303);
+	await page.setViewportSize({ width: 360, height: 800 });
+	await page.goto('/calendar');
+	const title = page.locator('.header-title');
+	const heading = (await page.locator('main h1').textContent())!.trim();
+	await expect(title).toBeHidden();
+	await page.evaluate(() => {
+		const spacer = document.createElement('div');
+		spacer.style.height = '3000px';
+		document.querySelector('main')!.append(spacer);
+		scrollTo(0, 1500);
+	});
+	await expect(title).toBeVisible();
+	await expect(title).toHaveText(heading);
+	await expect(page.locator('.site-header')).toBeInViewport();
+	await page.evaluate(() => scrollTo(0, 0));
+	await expect(title).toBeHidden();
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await page.getByRole('button', { name: /^Menu utente di / }).click();
+	const menu = page.locator('#user-menu');
+	await expect(menu).toBeVisible();
+	expect(await menu.evaluate((element) => getComputedStyle(element).transitionDuration)).toBe('0s');
+});
 
 test(
 	'admin subnavigation keeps the configured TV token on a different admin page',

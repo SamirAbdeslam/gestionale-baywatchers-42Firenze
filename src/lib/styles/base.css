@@ -67,6 +67,24 @@ a {
 	min-height: var(--header-height);
 	border-bottom: var(--border-width) solid var(--color-border);
 }
+.site-header {
+	view-transition-name: site-header;
+}
+@media (prefers-reduced-motion: no-preference) {
+	::view-transition-old(root),
+	::view-transition-new(root) {
+		animation-duration: var(--duration-page);
+	}
+	button:not(:disabled),
+	.button {
+		transition: transform var(--duration-spring) var(--ease-spring);
+	}
+	button:not(:disabled):active,
+	.button:active {
+		transform: scale(0.97);
+		transition-duration: var(--duration-fast);
+	}
+}
 .brand {
 	display: inline-flex;
 	align-items: center;

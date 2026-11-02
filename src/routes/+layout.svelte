@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { goto, onNavigate } from '$app/navigation';
+	import { afterNavigate, goto, onNavigate } from '$app/navigation';
 	import Dialog from '#lib/components/Dialog.svelte';
 	import { onMount } from 'svelte';
 	import Logo from '#lib/components/Logo.svelte';
@@ -31,10 +31,44 @@
 	$effect(() => {
 		if (page.form) messages = page.form.messages ?? [];
 	});
-	onNavigate(() => {
+	onNavigate((navigation) => {
 		messages = [];
 		userMenu?.hidePopover();
+		// Cross-fade only real page changes; query changes (week, filters) swap in place.
+		if (
+			!document.startViewTransition ||
+			navigation.from?.url.pathname === navigation.to?.url.pathname ||
+			matchMedia('(prefers-reduced-motion: reduce)').matches
+		)
+			return;
+		return new Promise((resolve) => {
+			// The browser may skip a transition (e.g. on resize); the navigation goes on anyway.
+			document
+				.startViewTransition(async () => {
+					resolve();
+					await navigation.complete;
+				})
+				.ready.catch(() => {});
+		});
 	});
+	// On mobile the page title moves into the header once the large heading scrolls away.
+	let header = $state<HTMLElement>();
+	let headerTitle = $state('');
+	let compact = $state(false);
+	let titleObserver: IntersectionObserver | undefined;
+	afterNavigate(() => {
+		titleObserver?.disconnect();
+		compact = false;
+		const heading = document.querySelector('main h1');
+		headerTitle = heading?.textContent?.trim() ?? '';
+		if (!heading || !header) return;
+		titleObserver = new IntersectionObserver(
+			([entry]) => (compact = !entry.isIntersecting && entry.boundingClientRect.top < 0),
+			{ rootMargin: `-${header.offsetHeight}px 0px 0px 0px` }
+		);
+		titleObserver.observe(heading);
+	});
+	onMount(() => () => titleObserver?.disconnect());
 </script>
 
 {#if poolEnded && data.user?.role === 'user'}
@@ -47,46 +81,25 @@
 <svelte:head><link rel="icon" href={asset('badge.png')} /></svelte:head>
 {#if page.route.id !== '/display'}
 	<a class="skip-link" href="#main">{m.app_skip_to_content()}</a>
-	<header class="site-header" class:access={page.route.id === '/'}>
-		<a class="brand" href={resolve('/')}><Logo /></a>
+	<header class="site-header" class:access={page.route.id === '/'} class:compact bind:this={header}>
+		<div class="header-start">
+			<!-- On mobile the logo is the way back to the calendar. -->
+			<a class="brand" href={data.user ? resolve('/calendar') : resolve('/')}><Logo /></a>
+			<span class="header-title" aria-hidden="true">{headerTitle}</span>
+		</div>
 
 		{#if data.user}
 			<nav id="main-navigation" class="main-navigation" aria-label={m.nav_main()}>
 				<a
 					href={resolve('/calendar')}
-					aria-current={page.route.id === '/calendar' ? 'page' : undefined}
+					aria-current={page.route.id === '/calendar' ? 'page' : undefined}>{m.nav_calendar()}</a
 				>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"
-						><rect x="3" y="5" width="18" height="16" rx="2" /><path
-							d="M3 10h18M8 3v4m8-4v4"
-						/></svg
-					>
-					{m.nav_calendar()}
-				</a>
-				<a
-					href={resolve('/profile')}
-					class="mobile-profile"
-					aria-current={page.route.id === '/profile' ? 'page' : undefined}
-				>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"
-						><circle cx="12" cy="8" r="4" /><path d="M4 22v-3a8 8 0 0 1 16 0v3" /></svg
-					>
-					{m.nav_profile()}
-				</a>
 				{#if data.user.role === 'admin'}
 					<a
 						href={resolve('/admin')}
 						aria-current={page.route.id?.startsWith('/admin') ? 'page' : undefined}
+						>{m.nav_admin()}</a
 					>
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"
-							><path d="M4 7h16M4 17h16" /><circle cx="8" cy="7" r="3" /><circle
-								cx="16"
-								cy="17"
-								r="3"
-							/></svg
-						>
-						{m.nav_admin()}
-					</a>
 				{/if}
 			</nav>
 		{/if}
@@ -124,6 +137,13 @@
 					href={resolve('/profile')}
 					aria-current={page.route.id === '/profile' ? 'page' : undefined}>{m.nav_profile()}</a
 				>
+				{#if data.user.role === 'admin'}
+					<a
+						href={resolve('/admin')}
+						aria-current={page.route.id?.startsWith('/admin') ? 'page' : undefined}
+						>{m.nav_admin()}</a
+					>
+				{/if}
 				<form class="logout" method="POST" action={resolve('/auth/logout')}>
 					<button type="submit">{m.nav_logout()}</button>
 				</form>
@@ -155,7 +175,6 @@
 <main
 	class:admin-page={page.route.id?.startsWith('/admin')}
 	id="main"
-	class:authenticated={!!data.user}
 	class:display={page.route.id === '/display'}
 	class:calendar={page.route.id === '/calendar' || page.route.id === '/admin'}
 >
@@ -196,8 +215,21 @@
 		color: var(--color-text);
 		border-color: var(--color-signal);
 	}
-	.main-navigation svg {
+	.header-start {
+		display: grid;
+		align-items: center;
+		min-width: 0;
+		margin-inline-end: auto;
+	}
+	.header-start > * {
+		grid-area: 1 / 1;
+	}
+	.header-title {
 		display: none;
+		overflow: hidden;
+		font: 800 var(--font-nav) var(--font-heading);
+		white-space: nowrap;
+		text-overflow: ellipsis;
 	}
 	.identity,
 	.language {
@@ -245,11 +277,6 @@
 		background: transparent;
 		color: var(--color-danger);
 	}
-	@media (min-width: 768px) {
-		.main-navigation .mobile-profile {
-			display: none;
-		}
-	}
 	.admin-navigation {
 		min-height: var(--header-mobile-height);
 		padding-inline: var(--space-xl);
@@ -277,43 +304,64 @@
 			top: calc(var(--brand-bar) + var(--header-mobile-height) + var(--space-sm));
 			right: var(--space-md);
 		}
-		.main-navigation {
-			position: fixed;
-			bottom: 0;
-			left: 0;
-			right: 0;
-			height: var(--bottom-nav-height);
-			padding-bottom: env(safe-area-inset-bottom);
-			gap: 0;
-			background: var(--color-background);
-			border-block-start: var(--border-width) solid var(--color-border);
+		.site-header {
+			position: sticky;
+			top: 0;
 			z-index: var(--layer-nav);
+			background: var(--color-background);
 		}
-		.main-navigation a {
-			flex: 1;
-			flex-direction: column;
-			justify-content: center;
-			gap: var(--space-xs);
-			font-size: var(--font-small);
-			border-block-start: var(--nav-underline) solid transparent;
-			border-block-end: 0;
+		.main-navigation {
+			display: none;
 		}
-		.main-navigation a[aria-current] {
-			color: var(--color-signal-text);
-			border-block-start-color: var(--color-signal);
-		}
-		.main-navigation svg {
+		.header-title {
 			display: block;
-			height: var(--icon-size);
-			width: var(--icon-size);
-			stroke-width: var(--border-strong);
+			visibility: hidden;
+			opacity: 0;
+			transform: translateY(var(--space-sm));
+		}
+		.compact .header-title {
+			visibility: visible;
+			opacity: 1;
+			transform: none;
+		}
+		.compact .brand {
+			visibility: hidden;
+			opacity: 0;
+			transform: translateY(calc(-1 * var(--space-sm)));
 		}
 		.admin-navigation {
 			padding-inline: var(--space-md);
 			gap: var(--space-md);
 		}
-		main.authenticated {
-			padding-bottom: calc(var(--bottom-nav-height) + var(--space-lg));
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.brand,
+		.header-title {
+			transition:
+				opacity var(--duration-fast) ease,
+				transform var(--duration-spring) var(--ease-spring),
+				visibility var(--duration-fast);
+		}
+		.user-menu,
+		.language-menu {
+			transform-origin: top right;
+			transition:
+				opacity var(--duration-fast) ease,
+				transform var(--duration-spring) var(--ease-spring),
+				display var(--duration-fast) allow-discrete,
+				overlay var(--duration-fast) allow-discrete;
+		}
+		.user-menu:not(:popover-open),
+		.language-menu:not(:popover-open) {
+			opacity: 0;
+			transform: scale(0.94);
+		}
+		@starting-style {
+			.user-menu:popover-open,
+			.language-menu:popover-open {
+				opacity: 0;
+				transform: scale(0.94);
+			}
 		}
 	}
 </style>
