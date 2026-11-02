@@ -188,7 +188,7 @@
 
 <style>
 	:global(html:has(.template-footer)) {
-		scroll-padding-block-end: calc(var(--control-height) * 3 + var(--bottom-nav-height));
+		scroll-padding-block-end: calc(var(--control-height) * 3);
 	}
 	.field,
 	summary {
@@ -340,7 +340,7 @@
 	}
 	@media (max-width: 767px) {
 		.template-footer {
-			bottom: var(--bottom-nav-height);
+			bottom: 0;
 			padding-inline: var(--space-md);
 		}
 		.template-metadata {

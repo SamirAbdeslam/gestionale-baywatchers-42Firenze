@@ -178,13 +178,15 @@ test('dev login has accessible forms, responsive navigation and POST logout', as
 	await page.getByRole('button', { name: 'Entra', exact: true }).click();
 	await expect(page).toHaveURL('/calendar');
 	await page.setViewportSize({ width: 360, height: 800 });
-	await expect(page.locator('#main-navigation')).toBeVisible();
-	await page.getByRole('link', { name: 'Admin', exact: true }).click();
+	await expect(page.locator('#main-navigation')).toBeHidden();
+	const userMenu = page.getByRole('navigation', { name: 'Menu utente', exact: true });
+	await page.getByRole('button', { name: /^Menu utente di / }).click();
+	await userMenu.getByRole('link', { name: 'Admin', exact: true }).click();
 	await expect(page.getByRole('link', { name: 'Whitelist', exact: true })).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-	await page.getByRole('link', { name: 'Profilo', exact: true }).click();
+	await page.getByRole('button', { name: /^Menu utente di / }).click();
+	await userMenu.getByRole('link', { name: 'Profilo', exact: true }).click();
 	await expect(page).toHaveURL('/profile');
-	await expect(page.locator('#main-navigation')).toBeVisible();
 	const cookie = (await page.context().cookies()).find((c) => c.name === 'session');
 	expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'Lax', path: '/' });
 	expect(cookie?.value).toMatch(/^[a-z2-7]{32}$/);
@@ -206,7 +208,9 @@ test('normal users have no admin navigation and role revocation takes effect imm
 	await page.reload();
 	await page.setViewportSize({ width: 360, height: 800 });
 	await expect(page.getByRole('link', { name: 'Admin', exact: true })).toHaveCount(0);
-	await expect(page.getByRole('link', { name: 'Profilo', exact: true })).toBeVisible();
+	const userMenu = page.getByRole('navigation', { name: 'Menu utente', exact: true });
+	await page.getByRole('button', { name: /^Menu utente di / }).click();
+	await expect(userMenu.locator('a, button')).toHaveText(['Profilo', 'Esci']);
 });
 test('rejects cross-origin form posts, invalid dev inputs and OAuth callbacks without matching state', async ({
 	request

@@ -140,7 +140,6 @@
 :root {
 	--logo-compact-width: 18rem;
 	--header-mobile-height: 60px;
-	--bottom-nav-height: 76px;
 	--avatar-size: 32px;
 	--font-small: 0.75rem;
 	--font-tiny: 0.6875rem;
@@ -248,6 +247,14 @@
 :root {
 	--font-admin-title: 44px;
 	--font-profile-title: 32px;
+}
+
+/* Design v3: spring motion (slight overshoot) for buttons, menus and the header title. */
+:root {
+	--ease-spring: linear(0, 0.42 10%, 0.82 21%, 1.04 32%, 1.06 40%, 1.02 52%, 0.995 68%, 1);
+	--duration-spring: 420ms;
+	--duration-fast: 180ms;
+	--duration-page: 280ms;
 }
 
 /* Design v2: compact tickets, messages and account menu. */
